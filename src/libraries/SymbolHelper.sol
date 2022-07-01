@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.7.6;
+pragma solidity ^0.8.13;
 
 import "../interfaces/IERC20Metadata.sol";
 
@@ -12,7 +12,11 @@ library SymbolHelper {
   function lowestBitSet(uint256 self) internal pure returns (uint256 _z) {
     require (self > 0, "Bits::lowestBitSet: Value 0 has no bits set");
     uint256 _magic = 0x00818283848586878898a8b8c8d8e8f929395969799a9b9d9e9faaeb6bedeeff;
-    uint256 val = (self & -self) * _magic >> 248;
+    int256 negOne = -1;
+    uint256 val;
+        assembly {
+        val := mul(shr(248, _magic), and(self, mul(self, negOne)))
+        }
     uint256 _y = val >> 5;
     _z = (
       _y < 4
