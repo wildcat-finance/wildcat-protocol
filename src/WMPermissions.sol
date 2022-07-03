@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.13;
 
-contract WMPermissioned {
+contract WMPermissions {
 
     address public wintermute;
     mapping(address => bool) public whitelisted;

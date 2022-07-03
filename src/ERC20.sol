@@ -7,11 +7,19 @@ import "./interfaces/IERC20.sol";
 contract ERC20 is IERC20 {
   using LowGasSafeMath for uint256;
 
-  mapping(address => uint256) public override balanceOf;
+  mapping(address => uint256) internal _balanceOf;
+
+  function balanceOf(address account) public view virtual returns (uint) {
+    return _balanceOf[account];
+  }
 
   mapping(address => mapping(address => uint256)) public override allowance;
 
-  uint256 public override totalSupply;
+  uint256 internal _total_Supply;
+
+  function totalSupply() external view virtual returns (uint256) {
+    return _total_Supply;
+  }
 
   function transfer(address recipient, uint256 amount) external override returns (bool) {
     _transfer(msg.sender, recipient, amount);
@@ -59,24 +67,24 @@ contract ERC20 is IERC20 {
     require(sender != address(0), "ERC20: transfer from the zero address");
     require(recipient != address(0), "ERC20: transfer to the zero address");
 
-    balanceOf[sender] = balanceOf[sender].sub(amount, "ERC20: transfer amount exceeds balance");
-    balanceOf[recipient] = balanceOf[recipient].add(amount);
+    _balanceOf[sender] = _balanceOf[sender].sub(amount, "ERC20: transfer amount exceeds balance");
+    _balanceOf[recipient] = _balanceOf[recipient].add(amount);
     emit Transfer(sender, recipient, amount);
   }
 
   function _mint(address account, uint256 amount) internal {
     require(account != address(0), "ERC20: mint to the zero address");
 
-    totalSupply = totalSupply.add(amount);
-    balanceOf[account] = balanceOf[account].add(amount);
+    _total_Supply = _total_Supply.add(amount);
+    _balanceOf[account] = _balanceOf[account].add(amount);
     emit Transfer(address(0), account, amount);
   }
 
   function _burn(address account, uint256 amount) internal {
     require(account != address(0), "ERC20: burn from the zero address");
 
-    balanceOf[account] = balanceOf[account].sub(amount, "ERC20: burn amount exceeds balance");
-    totalSupply = totalSupply.sub(amount);
+    _balanceOf[account] = _balanceOf[account].sub(amount, "ERC20: burn amount exceeds balance");
+    _total_Supply = _total_Supply.sub(amount);
     emit Transfer(account, address(0), amount);
   }
 

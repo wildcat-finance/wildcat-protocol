@@ -7,4 +7,10 @@ contract WMRegistry {
 
     WMVault[] public wmVaults;
 
+    // EnumerableSet.AddressSet internal vaults; // do we want this?
+
+    constructor() {
+        
+    } 
+
 }

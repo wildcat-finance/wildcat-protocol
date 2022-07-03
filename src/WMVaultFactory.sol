@@ -7,10 +7,13 @@ import "./interfaces/IWMVault.sol";
 contract WMVaultFactory {
 
     address public factoryVaultUnderlying = address(0x00);
+    address public factoryPermissionRegistry = address(0x00);
 
     // can shave these values down to appropriate uintX later
-    uint public factoryVaultAvailableCapacity = 0;
+    uint public factoryVaultMaximumCapacity = 0;
     uint public factoryVaultAnnualAPR = 0;
     uint public factoryVaultCollatRatio = 0;
+
+
 
 }
