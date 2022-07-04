@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import "./interfaces/IERC20.sol";
 import "./interfaces/IERC20Metadata.sol";
 import "./interfaces/IWMPermissions.sol";
-import "./interfaces/IWMRegistry.sol";
 import "./interfaces/IWMVault.sol";
 import "./interfaces/IWMVaultFactory.sol";
 
@@ -73,6 +72,10 @@ contract WMVault is ERC20 {
         uint256 assets,
         uint256 shares
     );
+
+    // Vault Specific
+    event CollateralWithdrawn(address indexed recipient, uint256 assets);
+    event CollateralDeposited(address indexed sender, uint256 assets);
     // END: Events
 
     // BEGIN: Modifiers
@@ -255,16 +258,19 @@ contract WMVault is ERC20 {
         return (availableCapacity * COLLATERALISATION_RATIO) / 100;
     }
 
-    function withdrawCollateral() external isWintermute() returns (uint256 assets) {
-
+    function withdrawCollateral(address receiver, uint256 assets) external isWintermute() returns (uint256 withdrawn) {
+        uint256 maxAvailable = maxCollateralToWithdraw();
+        require(assets <= maxAvailable, "trying to withdraw more than collat ratio allows");
+        underlyingERC20.safeTransfer(receiver, assets);
+        return assets;
     }
 
     function adjustMaximumCapacity() external isWintermute() returns (uint256 assets) {
-
+        // TODO: requirement that cannot drop max capacity below outstanding amount
     }
 
     function depositCollateral() external isWintermute() returns (uint256 assets) {
-
+        underlyingERC20.safeTransferFrom(msg.sender, address(this), assets);
     }
     // END: Unique vault functionality
 
