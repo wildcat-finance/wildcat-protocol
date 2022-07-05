@@ -76,6 +76,7 @@ contract WMVault is ERC20 {
     // Vault Specific
     event CollateralWithdrawn(address indexed recipient, uint256 assets);
     event CollateralDeposited(address indexed sender, uint256 assets);
+    event MaximumCapacityChanged(address vault, uint256 assets);
     // END: Events
 
     // BEGIN: Modifiers
@@ -153,7 +154,7 @@ contract WMVault is ERC20 {
         uint184 amount = safeCastTo184(rawAmount);
         user.balance -= amount;
         _totalSupply -= amount;
-        availableCapacity += amount; // TODO: add a check here that you're not exceeding maximumCapacity
+        availableCapacity += amount;
 	}
 
     function _transfer(address from, address to, uint256 rawAmount) internal override {
@@ -255,22 +256,27 @@ contract WMVault is ERC20 {
     // BEGIN: Unique vault functionality
     function maxCollateralToWithdraw() public view returns (uint256 assets) {
         // TODO: how are we encoding COLLATERALISATION_RATIO? How many decimals? Could use InterestDenominator here?
+        // At present we're assuming a float 0 <= x < 100
         return (availableCapacity * COLLATERALISATION_RATIO) / 100;
     }
 
-    function withdrawCollateral(address receiver, uint256 assets) external isWintermute() returns (uint256 withdrawn) {
+    function withdrawCollateral(address receiver, uint256 assets) external isWintermute() {
         uint256 maxAvailable = maxCollateralToWithdraw();
         require(assets <= maxAvailable, "trying to withdraw more than collat ratio allows");
         underlyingERC20.safeTransfer(receiver, assets);
-        return assets;
+        emit CollateralWithdrawn(receiver, assets);
     }
 
-    function adjustMaximumCapacity() external isWintermute() returns (uint256 assets) {
-        // TODO: requirement that cannot drop max capacity below outstanding amount
+    function adjustMaximumCapacity(uint256 _newCapacity) external isWintermute() returns (uint256 assets) {
+        require(_newCapacity > capacityRemaining, "Cannot reduce max exposure to below outstanding");
+        maximumCapacity = _newCapacity;
+        emit MaximumCapacityChanged(address(this), _newCapacity);
     }
 
-    function depositCollateral() external isWintermute() returns (uint256 assets) {
+    function depositCollateral(uint256 assets) external isWintermute() {
+        // TODO: require that the token being sent is the underlying
         underlyingERC20.safeTransferFrom(msg.sender, address(this), assets);
+        emit CollateralDeposited(address(this), assets);
     }
     // END: Unique vault functionality
 
