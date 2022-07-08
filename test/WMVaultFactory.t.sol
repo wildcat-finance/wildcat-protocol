@@ -44,10 +44,15 @@ contract VaultFactoryTest is Test {
         wmvf.deployVault(address(DAI), 100e18, 5e16, 90, bytes32(saltDAI));
 
         address wmr = wmvf.vaultRegistryAddress();
-        console.log(wmr);
 
         address[] memory regVaults = IWMRegistry(wmr).listVaults();
-        console.log(regVaults[0]);
+        WMVault wmDAI = WMVault(regVaults[0]);
+
+        string memory vaultName = wmDAI.name();
+
+        console.log(vaultName);
+
+
     }
 
     function testCreatedVaults() public {
