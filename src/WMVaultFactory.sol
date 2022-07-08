@@ -38,7 +38,6 @@ contract WMVaultFactory {
 
     function deployVault(
         address _underlying,
-        address _permissions,
         uint _maxCapacity,
         uint _annualAPR,
         uint _collatRatio,

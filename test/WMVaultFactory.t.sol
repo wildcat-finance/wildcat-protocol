@@ -40,11 +40,11 @@ contract VaultFactoryTest is Test {
         
         vm.prank(wintermute);
         uint saltDAI = 1;
-        wmvf.deployVault(address(DAI), address(wmp), 100e18, 5e16, 90, bytes32(saltDAI));
+        wmvf.deployVault(address(DAI), 100e18, 5e16, 90, bytes32(saltDAI));
 
-        vm.prank(wintermute);
-        uint saltWETH = 2;
-        wmvf.deployVault(address(WETH), address(wmp), 100e18, 2e16, 80, bytes32(saltWETH));
+        //vm.prank(wintermute);
+        //uint saltWETH = 2;
+        //wmvf.deployVault(address(WETH), 100e18, 2e16, 80, bytes32(saltWETH));
     }
 
     function testCreatedVaults() public {
