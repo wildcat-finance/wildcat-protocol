@@ -63,7 +63,7 @@ contract ERC20 is IERC20 {
     address sender,
     address recipient,
     uint256 amount
-  ) internal {
+  ) internal virtual {
     require(sender != address(0), "ERC20: transfer from the zero address");
     require(recipient != address(0), "ERC20: transfer to the zero address");
 
@@ -72,7 +72,7 @@ contract ERC20 is IERC20 {
     emit Transfer(sender, recipient, amount);
   }
 
-  function _mint(address account, uint256 amount) internal {
+  function _mint(address account, uint256 amount) internal virtual {
     require(account != address(0), "ERC20: mint to the zero address");
 
     _total_Supply = _total_Supply.add(amount);
@@ -80,7 +80,7 @@ contract ERC20 is IERC20 {
     emit Transfer(address(0), account, amount);
   }
 
-  function _burn(address account, uint256 amount) internal {
+  function _burn(address account, uint256 amount) internal virtual {
     require(account != address(0), "ERC20: burn from the zero address");
 
     _balanceOf[account] = _balanceOf[account].sub(amount, "ERC20: burn amount exceeds balance");
