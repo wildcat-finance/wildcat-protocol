@@ -12,10 +12,9 @@ library SymbolHelper {
   function lowestBitSet(uint256 self) internal pure returns (uint256 _z) {
     require (self > 0, "Bits::lowestBitSet: Value 0 has no bits set");
     uint256 _magic = 0x00818283848586878898a8b8c8d8e8f929395969799a9b9d9e9faaeb6bedeeff;
-    int256 negOne = -1;
     uint256 val;
         assembly {
-        val := mul(shr(248, _magic), and(self, mul(self, negOne)))
+        val := shr(248, mul(and(self, sub(0, self)), _magic))
         }
     uint256 _y = val >> 5;
     _z = (
