@@ -34,7 +34,7 @@ contract WMVault is ERC20 {
     uint256 public COLLATERALISATION_RATIO;
     uint256 public ANNUAL_APR; // squeeze down to a uint40
 
-    uint256 internal INTEREST_PER_SECOND;  // squeeze down to a uint40
+    uint256 internal INTEREST_PER_SECOND;  // squeeze down to a uint40 // TODO, allow this to be negative to encourage burning
 
     uint256 constant InterestDenominator = 1e12;
 

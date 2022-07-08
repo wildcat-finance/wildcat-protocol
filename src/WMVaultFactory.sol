@@ -62,6 +62,14 @@ contract WMVaultFactory {
         factoryVaultAnnualAPR = 0;
         factoryVaultCollatRatio = 0;
 
-    } 
+    }
+
+    function vaultPermissionsAddress() public view returns (address) {
+        return wmPermissionAddress;
+    }
+
+    function vaultRegistryAddress() public view returns (address) {
+        return address(wmRegistry);
+    }
 
 }

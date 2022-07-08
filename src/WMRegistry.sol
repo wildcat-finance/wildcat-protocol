@@ -9,8 +9,8 @@ contract WMRegistry {
 
     // EnumerableSet.AddressSet internal vaults; // do we want this?
 
-    constructor() {
-        
-    } 
+    function registerVault(address _newVault) external {
+        wmVaults.push(WMVault(_newVault));
+    }
 
 }
