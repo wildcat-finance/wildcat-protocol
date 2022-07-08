@@ -20,7 +20,7 @@ contract VaultFactoryTest is Test {
     address public wlUser = address(0x42);
 
     WMPermissions public wmp;
-    WMRegistry public wmr;
+    IWMRegistry public wmr;
     WMVaultFactory public wmvf;
     
     IERC20 internal DAI  = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
@@ -37,26 +37,24 @@ contract VaultFactoryTest is Test {
 
     function setUp() public {
         wmp  = new WMPermissions(wintermute);
-        wmvf = new WMVaultFactory(address(wmp)); // TODO: permission this so that only Wintermute can create it
+        wmvf = new WMVaultFactory(address(wmp));
         
         vm.prank(wintermute);
         uint saltDAI = 1;
         wmvf.deployVault(address(DAI), 100e18, 5e16, 90, bytes32(saltDAI));
 
-        address wmr = wmvf.vaultRegistryAddress();
-
-        address[] memory regVaults = IWMRegistry(wmr).listVaults();
-        WMVault wmDAI = WMVault(regVaults[0]);
-
-        string memory vaultName = wmDAI.name();
-
-        console.log(vaultName);
-
-
+        address wmrAddr = wmvf.vaultRegistryAddress();
+        wmr = IWMRegistry(wmrAddr);
     }
 
-    function testCreatedVaults() public {
-        assertTrue(true);
+    function testVaultCreated() public {
+        address[] memory regVaults = wmr.listVaults();
+        WMVault wmDAI = WMVault(regVaults[0]);
+        IERC20Metadata wmDAImd = IERC20Metadata(regVaults[0]);
+
+        string memory vaultName = wmDAImd.name();
+        
+        assertTrue(keccak256(abi.encodePacked(vaultName)) == keccak256(abi.encodePacked("Wintermute Dai Stablecoin")));
     }
 
 }
