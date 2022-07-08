@@ -63,11 +63,11 @@ contract WMVaultFactory {
 
     }
 
-    function vaultPermissionsAddress() public view returns (address) {
+    function vaultPermissionsAddress() external view returns (address) {
         return wmPermissionAddress;
     }
 
-    function vaultRegistryAddress() public view returns (address) {
+    function vaultRegistryAddress() external view returns (address) {
         return address(wmRegistry);
     }
 

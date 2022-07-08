@@ -6,6 +6,7 @@ import "../lib/forge-std/src/Vm.sol";
 
 import "src/interfaces/IERC20.sol";
 import "src/interfaces/IWMVaultFactory.sol";
+import "src/interfaces/IWMRegistry.sol";
 
 import "src/WMPermissions.sol";
 import "src/WMRegistry.sol";
@@ -42,9 +43,11 @@ contract VaultFactoryTest is Test {
         uint saltDAI = 1;
         wmvf.deployVault(address(DAI), 100e18, 5e16, 90, bytes32(saltDAI));
 
-        //vm.prank(wintermute);
-        //uint saltWETH = 2;
-        //wmvf.deployVault(address(WETH), 100e18, 2e16, 80, bytes32(saltWETH));
+        address wmr = wmvf.vaultRegistryAddress();
+        console.log(wmr);
+
+        address[] memory regVaults = IWMRegistry(wmr).listVaults();
+        console.log(regVaults[0]);
     }
 
     function testCreatedVaults() public {

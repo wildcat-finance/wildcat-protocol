@@ -9,4 +9,7 @@ interface IWMVaultFactory {
     function factoryVaultAnnualAPR() external returns (uint);
     function factoryVaultCollatRatio() external returns (uint);
 
+    function vaultRegistryAddress() external view returns (address);
+    function vaultPermissionsAddress() external view returns (address);
+
 }

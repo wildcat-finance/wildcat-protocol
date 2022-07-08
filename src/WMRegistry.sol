@@ -5,12 +5,16 @@ import "./WMVault.sol";
 
 contract WMRegistry {
 
-    WMVault[] public wmVaults;
+    address[] public wmVaults;
 
     // EnumerableSet.AddressSet internal vaults; // do we want this?
 
     function registerVault(address _newVault) external {
-        wmVaults.push(WMVault(_newVault));
+        wmVaults.push(_newVault);
+    }
+
+    function listVaults() external view returns (address[] memory) {
+        return wmVaults;
     }
 
 }
