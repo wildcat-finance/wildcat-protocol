@@ -105,6 +105,7 @@ contract WMVault is ERC20 {
 
         underlyingERC20         = ERC20(underlying);
 
+        // TODO: repair the SymbolHelper library, it's causing reverts on vault creation
         name   = SymbolHelper.getPrefixedName("Wintermute ", underlying);
         symbol = SymbolHelper.getPrefixedSymbol("wmt", underlying);
     }
@@ -136,8 +137,6 @@ contract WMVault is ERC20 {
 	}
 
     function _mint(address to, uint256 rawAmount) internal override {
-        require(to != address(0), "ERC20: mint to the zero address");
-        require(rawAmount <= availableCapacity, "_mint: mint more than capacity");
         _accrueGlobalInterest();
         User storage user = _getUser(to);
         uint184 amount = safeCastTo184(rawAmount);
@@ -148,7 +147,6 @@ contract WMVault is ERC20 {
 	}
 
     function _burn(address to, uint256 rawAmount) internal override {
-        require(to != address(0), "ERC20: burn from the zero address");
         _accrueGlobalInterest();
         User storage user = _getUser(to);
         uint184 amount = safeCastTo184(rawAmount);
@@ -169,92 +167,104 @@ contract WMVault is ERC20 {
 
     // BEGIN: ERC4626 FUNCTIONALITY
 
-    function asset() external view returns (address assetTokenAddress) {
+    function asset() external view returns (address) {
         return underlying;
     }
 
-    function totalAssets() external view returns (uint256 totalManagedAssets) {
+    function totalAssets() external view returns (uint256) {
         return _totalSupply;
     }
 
-    function convertToShares(uint256 assets) external view returns (uint256 shares) {
+    function convertToShares(uint256 assets) external view returns (uint256) {
         return assets;
     }
 
-    function convertToAssets(uint256 shares) external view returns (uint256 assets) {
+    function convertToAssets(uint256 shares) external view returns (uint256) {
         return shares;
     }
 
-    function maxDeposit(address receiver) external view returns (uint256 maxAssets) {
+    function maxDeposit(address) external view returns (uint256) {
         return availableCapacity;
     }
     
-    function previewDeposit(uint256 assets) external view returns (uint256 shares) {
+    function previewDeposit(uint256 assets) external view returns (uint256) {
         return assets;
     }
     
-    function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver) external returns (uint256) {
+        require(IWMPermissions(wmPermissionAddress).isWhitelisted(receiver), "deposit: user not whitelisted");
+        require(receiver != address(0), "deposit: issue to the zero address");
+        require(assets <= availableCapacity, "deposit: mint more than capacity");
         underlyingERC20.safeTransferFrom(msg.sender, address(this), assets);
         _mint(receiver, assets);
         emit Deposit(msg.sender, receiver, assets, assets);
+        return assets;
     }
     
-    function maxMint(address receiver) external view returns (uint256 maxShares) {
+    function maxMint(address) external view returns (uint256) {
         return availableCapacity;
     }
     
-    function previewMint(uint256 shares) external view returns (uint256 assets) {
+    function previewMint(uint256) external view returns (uint256) {
         return availableCapacity;
     }
     
-    function mint(uint256 shares, address receiver) external returns (uint256 assets) {
-        underlyingERC20.safeTransferFrom(msg.sender, address(this), assets);
-        _mint(receiver, assets);
-        emit Deposit(msg.sender, receiver, assets, assets);
+    function mint(uint256 shares, address receiver) external returns (uint256) {
+        require(IWMPermissions(wmPermissionAddress).isWhitelisted(receiver), "mint: user not whitelisted");
+        require(receiver != address(0), "mint: issue to the zero address");
+        require(shares <= availableCapacity, "mint: mint more than capacity");
+        underlyingERC20.safeTransferFrom(msg.sender, address(this), shares);
+        _mint(receiver, shares);
+        emit Deposit(msg.sender, receiver, shares, shares);
+        return shares;
     }
     
-    function maxWithdraw(address owner) external view returns (uint256 maxAssets) {
+    function maxWithdraw(address) external view returns (uint256) {
         return capacityRemaining;
     }
     
-    function previewWithdraw(uint256 assets) external view returns (uint256 shares) {
+    function previewWithdraw(uint256 assets) external view returns (uint256) {
         return assets;
     }
     
-    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
-        require(shares <= capacityRemaining, "insufficient capacity to withdraw");
+    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256) {
+        require(assets <= capacityRemaining, "withdraw: insufficient capacity to withdraw");
+        require(receiver != address(0), "withdraw: burn from the zero address");
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - assets;
+        }
+        _burn(owner, assets);
+        emit Withdraw(msg.sender, receiver, owner, assets, assets);
+        underlyingERC20.safeTransfer(receiver, assets);
+        return assets;
+    }
+
+    function maxRedeem(address) external view returns (uint256) {
+        return capacityRemaining;
+    }
+    
+    function previewRedeem(uint256 shares) external view returns (uint256) {
+        return shares;
+    }
+
+    function redeem(uint256 shares, address receiver, address owner) external returns (uint256) {
+        require(shares <= capacityRemaining, "redeem: insufficient capacity to redeem");
+        require(receiver != address(0), "redeem: burn from the zero address");
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
         _burn(owner, shares);
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
-        underlyingERC20.safeTransfer(receiver, assets);
-    }
-
-    function maxRedeem(address owner) external view returns (uint256 maxShares) {
-        return capacityRemaining;
-    }
-    
-    function previewRedeem(uint256 shares) external view returns (uint256 assets) {
+        emit Withdraw(msg.sender, receiver, owner, shares, shares);
+        underlyingERC20.safeTransfer(receiver, shares);
         return shares;
-    }
-
-    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
-        require(shares <= capacityRemaining, "insufficient capacity to redeem");
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
-        }
-        _burn(owner, shares);
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
-        underlyingERC20.safeTransfer(receiver, assets);
     }
 
     // END: ERC4626 FUNCTIONALITY
 
     // BEGIN: Unique vault functionality
-    function maxCollateralToWithdraw() public view returns (uint256 assets) {
+    function maxCollateralToWithdraw() public view returns (uint256) {
         // TODO: how are we encoding COLLATERALISATION_RATIO? How many decimals? Could use InterestDenominator here?
         // At present we're assuming a float 0 <= x < 100
         return (availableCapacity * COLLATERALISATION_RATIO) / 100;
@@ -267,10 +277,11 @@ contract WMVault is ERC20 {
         emit CollateralWithdrawn(receiver, assets);
     }
 
-    function adjustMaximumCapacity(uint256 _newCapacity) external isWintermute() returns (uint256 assets) {
+    function adjustMaximumCapacity(uint256 _newCapacity) external isWintermute() returns (uint256) {
         require(_newCapacity > capacityRemaining, "Cannot reduce max exposure to below outstanding");
         maximumCapacity = _newCapacity;
         emit MaximumCapacityChanged(address(this), _newCapacity);
+        return _newCapacity;
     }
 
     function depositCollateral(uint256 assets) external isWintermute() {

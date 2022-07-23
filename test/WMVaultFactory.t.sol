@@ -18,10 +18,13 @@ contract VaultFactoryTest is Test {
     address internal wintermute = address(0x69);
 
     address public wlUser = address(0x42);
+    address public nonwlUser = address(0x43);
 
     WMPermissions public wmp;
     WMRegistry public wmr;
     WMVaultFactory public wmvf;
+
+    WMVault public wmDAI;
     
     IERC20 internal DAI  = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     IERC20 internal WETH = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -37,26 +40,62 @@ contract VaultFactoryTest is Test {
 
     function setUp() public {
         wmp  = new WMPermissions(wintermute);
-        wmvf = new WMVaultFactory(address(wmp)); // TODO: permission this so that only Wintermute can create it
-        
+
+        vm.prank(wintermute);
+        wmp.adjustWhitelist(wlUser, true);
+
+        wmvf = new WMVaultFactory(address(wmp));
+
         vm.prank(wintermute);
         uint saltDAI = 1;
-        wmvf.deployVault(address(DAI), 100e18, 5e16, 90, bytes32(saltDAI));
+        wmvf.deployVault(address(DAI), 100_000e18, 5e16, 90, bytes32(saltDAI));
 
-        address wmr = wmvf.vaultRegistryAddress();
+        address wmrAddr = wmvf.vaultRegistryAddress();
+        wmr = WMRegistry(wmrAddr);
 
-        address[] memory regVaults = IWMRegistry(wmr).listVaults();
-        WMVault wmDAI = WMVault(regVaults[0]);
+        address[] memory regVaults = wmr.listVaults();
+        wmDAI = WMVault(regVaults[0]);
 
-        string memory vaultName = wmDAI.name();
+        writeTokenBalance(wlUser, address(DAI), 100_000 * 1e18);
+        writeTokenBalance(nonwlUser, address(DAI), 100_000 * 1e18);
 
-        console.log(vaultName);
-
-
+        vm.prank(wlUser);
+        DAI.approve(address(wmDAI), 100_000 * 1e18);
+        
+        vm.prank(nonwlUser);
+        DAI.approve(address(wmDAI), 100_000 * 1e18);
     }
 
-    function testCreatedVaults() public {
-        assertTrue(true);
+    function test_VaultCreated() public {
+        
+        IERC20Metadata wmDAImd = IERC20Metadata(address(wmDAI));
+
+        string memory vaultName = wmDAImd.name();
+        
+        assertTrue(
+            keccak256(abi.encodePacked(vaultName)) 
+            == keccak256(abi.encodePacked("Wintermute Dai Stablecoin"))
+        );
+    }
+
+    function test_PermissionsGranted() public {
+        bool allowed = wmp.isWhitelisted(wlUser);
+        assertTrue(allowed);
+    }
+
+    function test_PermissionsNotGranted() public {
+        bool allowed = wmp.isWhitelisted(nonwlUser);
+        assertFalse(allowed);
+    }
+
+    function test_SwapWhenAllowed() public {
+        vm.prank(wlUser);
+        wmDAI.deposit(50_000e18, wlUser);
+    }
+
+    function testFail_SwapWhenNotAllowed() public {
+        vm.prank(nonwlUser);
+        wmDAI.deposit(50_000e18, nonwlUser);
     }
 
 }

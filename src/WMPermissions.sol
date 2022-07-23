@@ -24,10 +24,14 @@ contract WMPermissions {
         emit WintermuteAddressUpdated(_newWM);
     }
 
+    function isWhitelisted(address _counterparty) external view returns (bool) {
+        return whitelisted[_counterparty];
+    }
+
     // Addresses that are whitelisted can mint wmtX via X
     // An address that is no longer whitelisted can redeem, but cannot mint more
     function adjustWhitelist(address _counterparty, bool _allowed) external isWintermute() {
-        whitelisted[_counterparty] == _allowed;
+        whitelisted[_counterparty] = _allowed;
         emit CounterpartyAdjustment(_counterparty, _allowed);
     }
 
