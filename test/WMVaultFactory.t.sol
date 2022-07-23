@@ -38,8 +38,8 @@ contract VaultFactoryTest is Test {
             .checked_write(amt);
     }
 
-    function warpOneYear() public returns (uint) {
-        return now + 365 days;
+    function warpOneYear() public {
+        vm.warp(block.timestamp + 365 days);
     }
 
     function setUp() public {
@@ -108,8 +108,13 @@ contract VaultFactoryTest is Test {
         uint startBalance = wmDAI.balanceOf(wlUser);
         console.log(startBalance);
         warpOneYear();
-        uint elapsedBalance = wmDAI.balanceOf(wlUser);
-        console.log(elapsedBalance);
+        (uint a, uint b, uint c, uint d) = wmDAI.returnValues(wlUser);
+        console.log(a);
+        console.log(b);
+        console.log(c);
+        console.log(d);
+        uint endBalance = wmDAI.balanceOf(wlUser);
+        console.log(endBalance);
         assertTrue(true);
     }
 

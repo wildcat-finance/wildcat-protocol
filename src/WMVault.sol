@@ -130,6 +130,18 @@ contract WMVault is ERC20 {
         return safeCastTo184(amount + interestAccrued);
 	}
 
+/**
+    function returnValues(address account) public view returns (uint, uint, uint, uint) {
+		User storage user = users[account];
+        uint256 amount = user.balance;
+        uint256 lastTimestamp = user.lastDisbursalTimestamp;
+        uint256 timeElapsed = block.timestamp - lastTimestamp;
+		uint256 interestAccruedNumerator = timeElapsed * uint256(INTEREST_PER_SECOND);
+        uint256 interestAccrued = (amount * interestAccruedNumerator) / InterestDenominator;
+        return (INTEREST_PER_SECOND, timeElapsed, interestAccruedNumerator, interestAccrued);
+    }
+**/
+
     function _accrueGlobalInterest() internal {
         _totalSupply = _accrueInterest(_totalSupply, lastDisbursalTimestamp);
         lastDisbursalTimestamp = safeCastTo32(block.timestamp);
