@@ -38,6 +38,10 @@ contract VaultFactoryTest is Test {
             .checked_write(amt);
     }
 
+    function warpOneYear() public returns (uint) {
+        return now + 365 days;
+    }
+
     function setUp() public {
         wmp  = new WMPermissions(wintermute);
 
@@ -96,6 +100,17 @@ contract VaultFactoryTest is Test {
     function testFail_SwapWhenNotAllowed() public {
         vm.prank(nonwlUser);
         wmDAI.deposit(50_000e18, nonwlUser);
+    }
+
+    function test_withdrawInterestRemains() public {
+        vm.prank(wlUser);
+        wmDAI.deposit(50_000e18, wlUser);
+        uint startBalance = wmDAI.balanceOf(wlUser);
+        console.log(startBalance);
+        warpOneYear();
+        uint elapsedBalance = wmDAI.balanceOf(wlUser);
+        console.log(elapsedBalance);
+        assertTrue(true);
     }
 
 }
