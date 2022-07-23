@@ -105,7 +105,6 @@ contract WMVault is ERC20 {
 
         underlyingERC20         = ERC20(underlying);
 
-        // TODO: repair the SymbolHelper library, it's causing reverts on vault creation
         name   = SymbolHelper.getPrefixedName("Wintermute ", underlying);
         symbol = SymbolHelper.getPrefixedSymbol("wmt", underlying);
     }
