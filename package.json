@@ -1,8 +1,8 @@
 {
   "devDependencies": {
-    "stack-packer": "^1.1.6"
+    "stack-packer": "^1.1.7"
   },
   "scripts": {
-    "codegen": "stack-packer ./type-defs"
+    "codegen": "stack-packer ./type-defs ./src/types"
   }
 }
