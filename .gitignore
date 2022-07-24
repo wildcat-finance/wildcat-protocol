@@ -1,3 +1,4 @@
 out/
 cache/
 key.txt
+node_modules/
