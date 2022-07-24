@@ -11,7 +11,7 @@ import './CoderConstants.sol';
 
 // struct Configuration {
 //   address owner;
-//   uint96 availableCapacity;
+//   uint96 maxTotalSupply;
 // }
 type Configuration is uint256;
 
@@ -28,7 +28,7 @@ library ConfigurationCoder {
     pure
     returns (
       address owner,
-      uint256 availableCapacity
+      uint256 maxTotalSupply
     )
   {
     assembly {
@@ -36,20 +36,20 @@ library ConfigurationCoder {
         Configuration_owner_bitsAfter,
         encoded
       )
-      availableCapacity := and(MaxUint96, encoded)
+      maxTotalSupply := and(MaxUint96, encoded)
     }
   }
 
   function encode(
     address owner,
-    uint256 availableCapacity
+    uint256 maxTotalSupply
   )
     internal
     pure
     returns (Configuration encoded)
   {
     assembly {
-      if gt(availableCapacity, MaxUint96) {
+      if gt(maxTotalSupply, MaxUint96) {
         mstore(0, Panic_error_signature)
         mstore(
           Panic_error_offset,
@@ -59,7 +59,7 @@ library ConfigurationCoder {
       }
       encoded := or(
         shl(Configuration_owner_bitsAfter, owner),
-        availableCapacity
+        maxTotalSupply
       )
     }
   }
@@ -98,31 +98,31 @@ library ConfigurationCoder {
   }
 
   /*//////////////////////////////////////////////////////////////
-             Configuration.availableCapacity coders
+               Configuration.maxTotalSupply coders
 //////////////////////////////////////////////////////////////*/
 
-  function getAvailableCapacity(
+  function getMaxTotalSupply(
     Configuration encoded
   )
     internal
     pure
-    returns (uint256 availableCapacity)
+    returns (uint256 maxTotalSupply)
   {
     assembly {
-      availableCapacity := and(MaxUint96, encoded)
+      maxTotalSupply := and(MaxUint96, encoded)
     }
   }
 
-  function setAvailableCapacity(
+  function setMaxTotalSupply(
     Configuration old,
-    uint256 availableCapacity
+    uint256 maxTotalSupply
   )
     internal
     pure
     returns (Configuration updated)
   {
     assembly {
-      if gt(availableCapacity, MaxUint96) {
+      if gt(maxTotalSupply, MaxUint96) {
         mstore(0, Panic_error_signature)
         mstore(
           Panic_error_offset,
@@ -133,9 +133,9 @@ library ConfigurationCoder {
       updated := or(
         and(
           old,
-          Configuration_availableCapacity_maskOut
+          Configuration_maxTotalSupply_maskOut
         ),
-        availableCapacity
+        maxTotalSupply
       )
     }
   }

@@ -8,7 +8,7 @@ pragma solidity >=0.8.0;
 // result in corrupted reads/writes.
 // ====================================================================
 
-uint256 constant Configuration_availableCapacity_maskOut = 0xffffffffffffffffffffffffffffffffffffffff000000000000000000000000;
+uint256 constant Configuration_maxTotalSupply_maskOut = 0xffffffffffffffffffffffffffffffffffffffff000000000000000000000000;
 uint256 constant Configuration_owner_bitsAfter = 0x60;
 uint256 constant Configuration_owner_maskOut = 0x0000000000000000000000000000000000000000ffffffffffffffffffffffff;
 uint256 constant MaxInt16 = 0xffff;
