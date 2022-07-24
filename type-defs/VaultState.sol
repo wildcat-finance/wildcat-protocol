@@ -1,16 +1,23 @@
 struct VaultState {
-  // Max collateralization ratio is ~100%, enforced by setter
-  uint14 collateralizationRatioBips;
   // Max APR is ~327%
   int16 annualInterestBips;
-  // Max supply is ~160b
-  uint97 totalSupply;
-  // Max scale factor is ~1500x
-  uint97 scaleFactor;
-  uint32 lastInterestAccruedTimestamp;
+  // Max supply is ~80
+  uint96 scaledTotalSupply;
+  // Max scale factor is ~52m
+  uint112 scaleFactor;
+  uint32 lastInterestAccruedTimestamp unchecked;
 
-  group ScaleUpdateParams {
+  group NewScaleInputs {
+    get;
+
     annualInterestBips;
+    scaleFactor;
+    lastInterestAccruedTimestamp;
+  }
+
+  group NewScaleOutputs {
+    set;
+
     scaleFactor;
     lastInterestAccruedTimestamp;
   }
