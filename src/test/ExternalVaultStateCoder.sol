@@ -16,54 +16,61 @@ contract ExternalVaultStateCoder {
     external
     view
     returns (
-      uint256 collateralizationRatioBips,
       int256 annualInterestBips,
-      uint256 totalSupply,
+      uint256 scaledTotalSupply,
       uint256 scaleFactor,
       uint256 lastInterestAccruedTimestamp
     )
   {
     (
-      collateralizationRatioBips,
       annualInterestBips,
-      totalSupply,
+      scaledTotalSupply,
       scaleFactor,
       lastInterestAccruedTimestamp
     ) = VaultStateCoder.decode(_vaultState);
   }
 
   function encode(
-    uint256 collateralizationRatioBips,
     int256 annualInterestBips,
-    uint256 totalSupply,
+    uint256 scaledTotalSupply,
     uint256 scaleFactor,
     uint256 lastInterestAccruedTimestamp
   ) external {
     (_vaultState) = VaultStateCoder.encode(
-      collateralizationRatioBips,
       annualInterestBips,
-      totalSupply,
+      scaledTotalSupply,
       scaleFactor,
       lastInterestAccruedTimestamp
     );
   }
 
-  function getCollateralizationRatioBips()
+  function getNewScaleInputs()
     external
     view
-    returns (uint256 collateralizationRatioBips)
+    returns (
+      int256 annualInterestBips,
+      uint256 scaleFactor,
+      uint256 lastInterestAccruedTimestamp
+    )
   {
-    (collateralizationRatioBips) = VaultStateCoder
-      .getCollateralizationRatioBips(_vaultState);
+    (
+      annualInterestBips,
+      scaleFactor,
+      lastInterestAccruedTimestamp
+    ) = VaultStateCoder.getNewScaleInputs(
+      _vaultState
+    );
   }
 
-  function setCollateralizationRatioBips(
-    uint256 collateralizationRatioBips
+  function setNewScaleOutputs(
+    uint256 scaleFactor,
+    uint256 lastInterestAccruedTimestamp
   ) external {
     (_vaultState) = VaultStateCoder
-      .setCollateralizationRatioBips(
+      .setNewScaleOutputs(
         _vaultState,
-        collateralizationRatioBips
+        scaleFactor,
+        lastInterestAccruedTimestamp
       );
   }
 
@@ -86,20 +93,23 @@ contract ExternalVaultStateCoder {
       );
   }
 
-  function getTotalSupply()
+  function getScaledTotalSupply()
     external
     view
-    returns (uint256 totalSupply)
+    returns (uint256 scaledTotalSupply)
   {
-    (totalSupply) = VaultStateCoder
-      .getTotalSupply(_vaultState);
+    (scaledTotalSupply) = VaultStateCoder
+      .getScaledTotalSupply(_vaultState);
   }
 
-  function setTotalSupply(uint256 totalSupply)
-    external
-  {
+  function setScaledTotalSupply(
+    uint256 scaledTotalSupply
+  ) external {
     (_vaultState) = VaultStateCoder
-      .setTotalSupply(_vaultState, totalSupply);
+      .setScaledTotalSupply(
+        _vaultState,
+        scaledTotalSupply
+      );
   }
 
   function getScaleFactor()
