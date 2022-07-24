@@ -36,7 +36,7 @@ contract UncollateralizedDebtToken is ScaledBalanceToken(), WrappedAssetMetadata
   function _beforeMint(
     address to,
     uint256 amount,
-    uint256 scaledAmount
+    uint256
   ) internal virtual override {
     asset.safeTransferFrom(msg.sender, to, amount);
   }

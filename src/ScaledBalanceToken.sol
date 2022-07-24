@@ -138,7 +138,7 @@ abstract contract ScaledBalanceToken {
 
   function _getMaximumDeposit(VaultState state, uint256 scaleFactor)
     internal
-    pure
+    view
     returns (uint256)
   {
     uint256 _totalSupply = state.getScaledTotalSupply().rayMul(scaleFactor);
