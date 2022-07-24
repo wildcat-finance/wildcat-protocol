@@ -3,6 +3,6 @@
     "stack-packer": "^1.1.7"
   },
   "scripts": {
-    "codegen": "stack-packer ./type-defs ./src/types"
+    "codegen": "stack-packer ./type-defs ./src/types ./src/test"
   }
 }
