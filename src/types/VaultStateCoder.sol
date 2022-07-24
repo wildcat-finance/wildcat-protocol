@@ -10,10 +10,9 @@ import './CoderConstants.sol';
 // ====================================================================
 
 // struct VaultState {
-//   uint14 collateralizationRatioBips;
 //   int16 annualInterestBips;
-//   uint97 totalSupply;
-//   uint97 scaleFactor;
+//   uint96 scaledTotalSupply;
+//   uint112 scaleFactor;
 //   uint32 lastInterestAccruedTimestamp;
 // }
 type VaultState is uint256;
@@ -30,18 +29,13 @@ library VaultStateCoder {
     internal
     pure
     returns (
-      uint256 collateralizationRatioBips,
       int256 annualInterestBips,
-      uint256 totalSupply,
+      uint256 scaledTotalSupply,
       uint256 scaleFactor,
       uint256 lastInterestAccruedTimestamp
     )
   {
     assembly {
-      collateralizationRatioBips := shr(
-        VaultState_collateralizationRatioBips_bitsAfter,
-        encoded
-      )
       annualInterestBips := signextend(
         0x01,
         shr(
@@ -49,15 +43,15 @@ library VaultStateCoder {
           encoded
         )
       )
-      totalSupply := and(
-        MaxUint97,
+      scaledTotalSupply := and(
+        MaxUint96,
         shr(
-          VaultState_totalSupply_bitsAfter,
+          VaultState_scaledTotalSupply_bitsAfter,
           encoded
         )
       )
       scaleFactor := and(
-        MaxUint97,
+        MaxUint112,
         shr(
           VaultState_scaleFactor_bitsAfter,
           encoded
@@ -71,30 +65,20 @@ library VaultStateCoder {
   }
 
   function encode(
-    uint256 collateralizationRatioBips,
     int256 annualInterestBips,
-    uint256 totalSupply,
+    uint256 scaledTotalSupply,
     uint256 scaleFactor,
     uint256 lastInterestAccruedTimestamp
   ) internal pure returns (VaultState encoded) {
     assembly {
       if or(
-        gt(collateralizationRatioBips, MaxUint14),
+        xor(
+          annualInterestBips,
+          signextend(1, annualInterestBips)
+        ),
         or(
-          xor(
-            annualInterestBips,
-            signextend(1, annualInterestBips)
-          ),
-          or(
-            gt(totalSupply, MaxUint97),
-            or(
-              gt(scaleFactor, MaxUint97),
-              gt(
-                lastInterestAccruedTimestamp,
-                MaxUint32
-              )
-            )
-          )
+          gt(scaledTotalSupply, MaxUint96),
+          gt(scaleFactor, MaxUint112)
         )
       ) {
         mstore(0, Panic_error_signature)
@@ -106,26 +90,20 @@ library VaultStateCoder {
       }
       encoded := or(
         shl(
-          VaultState_collateralizationRatioBips_bitsAfter,
-          collateralizationRatioBips
+          VaultState_annualInterestBips_bitsAfter,
+          and(annualInterestBips, MaxInt16)
         ),
         or(
           shl(
-            VaultState_annualInterestBips_bitsAfter,
-            and(annualInterestBips, MaxInt16)
+            VaultState_scaledTotalSupply_bitsAfter,
+            scaledTotalSupply
           ),
           or(
             shl(
-              VaultState_totalSupply_bitsAfter,
-              totalSupply
+              VaultState_scaleFactor_bitsAfter,
+              scaleFactor
             ),
-            or(
-              shl(
-                VaultState_scaleFactor_bitsAfter,
-                scaleFactor
-              ),
-              lastInterestAccruedTimestamp
-            )
+            lastInterestAccruedTimestamp
           )
         )
       )
@@ -133,32 +111,56 @@ library VaultStateCoder {
   }
 
   /*//////////////////////////////////////////////////////////////
-          VaultState.collateralizationRatioBips coders
+                VaultState NewScaleInputs coders
 //////////////////////////////////////////////////////////////*/
 
-  function getCollateralizationRatioBips(
-    VaultState encoded
-  )
+  function getNewScaleInputs(VaultState encoded)
     internal
     pure
-    returns (uint256 collateralizationRatioBips)
+    returns (
+      int256 annualInterestBips,
+      uint256 scaleFactor,
+      uint256 lastInterestAccruedTimestamp
+    )
   {
     assembly {
-      collateralizationRatioBips := shr(
-        VaultState_collateralizationRatioBips_bitsAfter,
+      annualInterestBips := signextend(
+        0x01,
+        shr(
+          VaultState_annualInterestBips_bitsAfter,
+          encoded
+        )
+      )
+      scaleFactor := and(
+        MaxUint112,
+        shr(
+          VaultState_scaleFactor_bitsAfter,
+          encoded
+        )
+      )
+      lastInterestAccruedTimestamp := and(
+        MaxUint32,
         encoded
       )
     }
   }
 
-  function setCollateralizationRatioBips(
+  /*//////////////////////////////////////////////////////////////
+                VaultState NewScaleOutputs coders
+//////////////////////////////////////////////////////////////*/
+
+  function setNewScaleOutputs(
     VaultState old,
-    uint256 collateralizationRatioBips
+    uint256 scaleFactor,
+    uint256 lastInterestAccruedTimestamp
   ) internal pure returns (VaultState updated) {
     assembly {
-      if gt(
-        collateralizationRatioBips,
-        MaxUint14
+      if or(
+        gt(scaleFactor, MaxUint112),
+        gt(
+          lastInterestAccruedTimestamp,
+          MaxUint32
+        )
       ) {
         mstore(0, Panic_error_signature)
         mstore(
@@ -170,11 +172,14 @@ library VaultStateCoder {
       updated := or(
         and(
           old,
-          VaultState_collateralizationRatioBips_maskOut
+          VaultState_NewScaleOutputs_maskOut
         ),
-        shl(
-          VaultState_collateralizationRatioBips_bitsAfter,
-          collateralizationRatioBips
+        or(
+          shl(
+            VaultState_scaleFactor_bitsAfter,
+            scaleFactor
+          ),
+          lastInterestAccruedTimestamp
         )
       )
     }
@@ -232,31 +237,33 @@ library VaultStateCoder {
   }
 
   /*//////////////////////////////////////////////////////////////
-                  VaultState.totalSupply coders
+               VaultState.scaledTotalSupply coders
 //////////////////////////////////////////////////////////////*/
 
-  function getTotalSupply(VaultState encoded)
+  function getScaledTotalSupply(
+    VaultState encoded
+  )
     internal
     pure
-    returns (uint256 totalSupply)
+    returns (uint256 scaledTotalSupply)
   {
     assembly {
-      totalSupply := and(
-        MaxUint97,
+      scaledTotalSupply := and(
+        MaxUint96,
         shr(
-          VaultState_totalSupply_bitsAfter,
+          VaultState_scaledTotalSupply_bitsAfter,
           encoded
         )
       )
     }
   }
 
-  function setTotalSupply(
+  function setScaledTotalSupply(
     VaultState old,
-    uint256 totalSupply
+    uint256 scaledTotalSupply
   ) internal pure returns (VaultState updated) {
     assembly {
-      if gt(totalSupply, MaxUint97) {
+      if gt(scaledTotalSupply, MaxUint96) {
         mstore(0, Panic_error_signature)
         mstore(
           Panic_error_offset,
@@ -265,10 +272,13 @@ library VaultStateCoder {
         revert(0, Panic_error_length)
       }
       updated := or(
-        and(old, VaultState_totalSupply_maskOut),
+        and(
+          old,
+          VaultState_scaledTotalSupply_maskOut
+        ),
         shl(
-          VaultState_totalSupply_bitsAfter,
-          totalSupply
+          VaultState_scaledTotalSupply_bitsAfter,
+          scaledTotalSupply
         )
       )
     }
@@ -285,7 +295,7 @@ library VaultStateCoder {
   {
     assembly {
       scaleFactor := and(
-        MaxUint97,
+        MaxUint112,
         shr(
           VaultState_scaleFactor_bitsAfter,
           encoded
@@ -299,7 +309,7 @@ library VaultStateCoder {
     uint256 scaleFactor
   ) internal pure returns (VaultState updated) {
     assembly {
-      if gt(scaleFactor, MaxUint97) {
+      if gt(scaleFactor, MaxUint112) {
         mstore(0, Panic_error_signature)
         mstore(
           Panic_error_offset,
@@ -341,17 +351,6 @@ library VaultStateCoder {
     uint256 lastInterestAccruedTimestamp
   ) internal pure returns (VaultState updated) {
     assembly {
-      if gt(
-        lastInterestAccruedTimestamp,
-        MaxUint32
-      ) {
-        mstore(0, Panic_error_signature)
-        mstore(
-          Panic_error_offset,
-          Panic_arithmetic
-        )
-        revert(0, Panic_error_length)
-      }
       updated := or(
         and(
           old,
