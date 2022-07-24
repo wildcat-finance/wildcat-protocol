@@ -16,13 +16,12 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
 // Also 4626, but not inheriting, rather rewriting
 contract WMVault is ERC20 {
-    using SafeTransferLib for ERC20;
 
     // BEGIN: Vault specific parameters
     address internal wmPermissionAddress;
     
     address public underlying;
-    ERC20 public immutable underlyingERC20;
+    address public immutable underlyingERC20;
 
     uint256 public maximumCapacity;
     uint256 public availableCapacity;
@@ -103,7 +102,7 @@ contract WMVault is ERC20 {
         INTEREST_PER_SECOND     = ANNUAL_APR / 365 days;
         availableCapacity       = maximumCapacity;
 
-        underlyingERC20         = ERC20(underlying);
+        underlyingERC20         = underlying;
 
         name   = SymbolHelper.getPrefixedName("Wintermute ", underlying);
         symbol = SymbolHelper.getPrefixedSymbol("wmt", underlying);
@@ -206,7 +205,7 @@ contract WMVault is ERC20 {
         require(IWMPermissions(wmPermissionAddress).isWhitelisted(receiver), "deposit: user not whitelisted");
         require(receiver != address(0), "deposit: issue to the zero address");
         require(assets <= availableCapacity, "deposit: mint more than capacity");
-        underlyingERC20.safeTransferFrom(msg.sender, address(this), assets);
+        SafeTransferLib.safeTransferFrom(underlyingERC20, msg.sender, address(this), assets);
         _mint(receiver, assets);
         emit Deposit(msg.sender, receiver, assets, assets);
         return assets;
@@ -224,7 +223,7 @@ contract WMVault is ERC20 {
         require(IWMPermissions(wmPermissionAddress).isWhitelisted(receiver), "mint: user not whitelisted");
         require(receiver != address(0), "mint: issue to the zero address");
         require(shares <= availableCapacity, "mint: mint more than capacity");
-        underlyingERC20.safeTransferFrom(msg.sender, address(this), shares);
+        SafeTransferLib.safeTransferFrom(underlyingERC20, msg.sender, address(this), shares);
         _mint(receiver, shares);
         emit Deposit(msg.sender, receiver, shares, shares);
         return shares;
@@ -247,7 +246,7 @@ contract WMVault is ERC20 {
         }
         _burn(owner, assets);
         emit Withdraw(msg.sender, receiver, owner, assets, assets);
-        underlyingERC20.safeTransfer(receiver, assets);
+        SafeTransferLib.safeTransfer(underlyingERC20, receiver, assets);
         return assets;
     }
 
@@ -268,7 +267,7 @@ contract WMVault is ERC20 {
         }
         _burn(owner, shares);
         emit Withdraw(msg.sender, receiver, owner, shares, shares);
-        underlyingERC20.safeTransfer(receiver, shares);
+        SafeTransferLib.safeTransfer(underlyingERC20, receiver, shares);
         return shares;
     }
 
@@ -284,7 +283,7 @@ contract WMVault is ERC20 {
     function withdrawCollateral(address receiver, uint256 assets) external isWintermute() {
         uint256 maxAvailable = maxCollateralToWithdraw();
         require(assets <= maxAvailable, "trying to withdraw more than collat ratio allows");
-        underlyingERC20.safeTransfer(receiver, assets);
+        SafeTransferLib.safeTransfer(underlyingERC20, receiver, assets);
         emit CollateralWithdrawn(receiver, assets);
     }
 
@@ -297,7 +296,7 @@ contract WMVault is ERC20 {
 
     function depositCollateral(uint256 assets) external isWintermute() {
         // TODO: require that the token being sent is the underlying
-        underlyingERC20.safeTransferFrom(msg.sender, address(this), assets);
+        SafeTransferLib.safeTransferFrom(underlyingERC20, msg.sender, address(this), assets);
         emit CollateralDeposited(address(this), assets);
     }
     // END: Unique vault functionality

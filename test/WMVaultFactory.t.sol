@@ -108,11 +108,6 @@ contract VaultFactoryTest is Test {
         uint startBalance = wmDAI.balanceOf(wlUser);
         console.log(startBalance);
         warpOneYear();
-        (uint a, uint b, uint c, uint d) = wmDAI.returnValues(wlUser);
-        console.log(a);
-        console.log(b);
-        console.log(c);
-        console.log(d);
         uint endBalance = wmDAI.balanceOf(wlUser);
         console.log(endBalance);
         assertTrue(true);
