@@ -20,6 +20,7 @@ uint256 constant Panic_arithmetic = 0x11;
 uint256 constant Panic_error_length = 0x24;
 uint256 constant Panic_error_offset = 0x04;
 uint256 constant Panic_error_signature = 0x4e487b7100000000000000000000000000000000000000000000000000000000;
+uint256 constant VaultState_InitialState_maskOut = 0x0000ffffffffffffffffffffffff000000000000000000000000000000000000;
 uint256 constant VaultState_NewScaleInputs_maskOut = 0x0000ffffffffffffffffffffffff000000000000000000000000000000000000;
 uint256 constant VaultState_NewScaleOutputs_maskOut = 0xffffffffffffffffffffffffffff000000000000000000000000000000000000;
 uint256 constant VaultState_annualInterestBips_bitsAfter = 0xf0;

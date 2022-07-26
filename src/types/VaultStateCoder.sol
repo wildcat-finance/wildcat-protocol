@@ -186,6 +186,56 @@ library VaultStateCoder {
   }
 
   /*//////////////////////////////////////////////////////////////
+                 VaultState InitialState coders
+//////////////////////////////////////////////////////////////*/
+
+  function setInitialState(
+    VaultState old,
+    int256 annualInterestBips,
+    uint256 scaleFactor,
+    uint256 lastInterestAccruedTimestamp
+  ) internal pure returns (VaultState updated) {
+    assembly {
+      if or(
+        xor(
+          annualInterestBips,
+          signextend(1, annualInterestBips)
+        ),
+        or(
+          gt(scaleFactor, MaxUint112),
+          gt(
+            lastInterestAccruedTimestamp,
+            MaxUint32
+          )
+        )
+      ) {
+        mstore(0, Panic_error_signature)
+        mstore(
+          Panic_error_offset,
+          Panic_arithmetic
+        )
+        revert(0, Panic_error_length)
+      }
+      updated := or(
+        and(old, VaultState_InitialState_maskOut),
+        or(
+          shl(
+            VaultState_annualInterestBips_bitsAfter,
+            and(annualInterestBips, MaxInt16)
+          ),
+          or(
+            shl(
+              VaultState_scaleFactor_bitsAfter,
+              scaleFactor
+            ),
+            lastInterestAccruedTimestamp
+          )
+        )
+      )
+    }
+  }
+
+  /*//////////////////////////////////////////////////////////////
               VaultState.annualInterestBips coders
 //////////////////////////////////////////////////////////////*/
 

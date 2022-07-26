@@ -21,4 +21,12 @@ struct VaultState {
     scaleFactor;
     lastInterestAccruedTimestamp;
   }
+
+  group InitialState {
+    set;
+
+    annualInterestBips;
+    scaleFactor;
+    lastInterestAccruedTimestamp;
+  }
 }
