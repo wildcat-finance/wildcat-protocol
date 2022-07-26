@@ -13,32 +13,25 @@ import "./WMPermissions.sol";
 import "./libraries/SymbolHelper.sol";
 
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
+import {VaultStateCoder} from "./types/VaultStateCoder.sol";
 
 import "./UncollateralizedDebtToken.sol";
 
 // Also 4626, but not inheriting, rather rewriting
-contract WMVault is ERC20 {
+contract WMVault is ERC20, UncollateralizedDebtToken {
+    using VaultStateCoder for VaultState;
 
     VaultState public globalState;
 
     // BEGIN: Vault specific parameters
     address internal wmPermissionAddress;
 
-    address public immutable underlyingERC20;
-
     UncollateralizedDebtToken public immutable debtToken;
 
-    uint256 public maximumCapacity;
     uint256 public availableCapacity;
     uint256 public capacityRemaining;
-	uint32  public lastDisbursalTimestamp;
 
     uint256 internal _totalSupply;
-    
-    uint256 public COLLATERALISATION_RATIO;
-    uint256 public ANNUAL_APR; // squeeze down to a uint40
-
-    uint256 internal INTEREST_PER_SECOND;  // squeeze down to a uint40 // TODO, allow this to be negative to encourage burning
 
     uint256 constant InterestDenominator = 1e12;
 
@@ -50,20 +43,6 @@ contract WMVault is ERC20 {
 
     mapping(address => User) users;
     // END: Vault specific parameters
-
-    // BEGIN: ERC20 Metadata 
-    string public name;
-    string public symbol;
-
-    /** @dev ERC20 decimals */
-    function decimals() external view returns (uint8) {
-        try IERC20Metadata(underlying).decimals() returns (uint8 _decimals) {
-            return _decimals;
-        } catch {
-            return 18;
-        }
-    }
-    // END: ERC20 Metadata
 
     // BEGIN: Events
 
@@ -97,24 +76,19 @@ contract WMVault is ERC20 {
         // msg.sender will always be the factory, so don't need to encode this anywhere
         address vaultFactory = msg.sender;
 
-        // set vault parameters from data currently set in the factory
-        wmPermissionAddress     = IWMVaultFactory(vaultFactory).factoryPermissionRegistry();
-        underlying              = IWMVaultFactory(vaultFactory).factoryVaultUnderlying();
-        maximumCapacity         = IWMVaultFactory(vaultFactory).factoryVaultMaximumCapacity();
-        COLLATERALISATION_RATIO = IWMVaultFactory(vaultFactory).factoryVaultCollatRatio();
-        ANNUAL_APR              = IWMVaultFactory(vaultFactory).factoryVaultAnnualAPR();
+        wmPermissionAddress = IWMVaultFactory(vaultFactory).factoryPermissionRegistry();
 
-        INTEREST_PER_SECOND     = ANNUAL_APR / 365 days;
-        availableCapacity       = maximumCapacity;
+        // retrieve vault parameters from data currently set in the factory
+        address underlying              = IWMVaultFactory(vaultFactory).factoryVaultUnderlying();
+        uint256 maximumCapacity         = IWMVaultFactory(vaultFactory).factoryVaultMaximumCapacity();
+        uint256 COLLATERALISATION_RATIO = IWMVaultFactory(vaultFactory).factoryVaultCollatRatio();
+        uint256 ANNUAL_APR              = IWMVaultFactory(vaultFactory).factoryVaultAnnualAPR();
 
-        underlyingERC20         = underlying;
+        // Defining this here so that there's a query available for any front-ends
+        availableCapacity   = maximumCapacity;
 
-        name   = SymbolHelper.getPrefixedName("Wintermute ", underlying);
-        symbol = SymbolHelper.getPrefixedSymbol("wmt", underlying);
-
-        // TODO: what powers does the owner have? is it right to set it here to address(this)?
-        debtToken = new UncollateralizedDebtToken(underlying, "Wintermute ", "wmt", address(this), maximumCapacity, COLLATERALISATION_RATIO);
-
+        // TODO: make sure that wmPermissionAddress can change relevant ownership down the road
+        debtToken = new UncollateralizedDebtToken(underlying, "Wintermute ", "wmt", wmPermissionAddress, maximumCapacity, COLLATERALISATION_RATIO, ANNUAL_APR);
     }
     // END: Constructor
 
@@ -123,7 +97,7 @@ contract WMVault is ERC20 {
     }
 
     function totalSupply() external view  override returns (uint256) {
-        return _accrueInterest(_totalSupply, lastDisbursalTimestamp);
+        return _accrueInterest(_totalSupply, globalState.lastInterestAccruedTimestamp);
     }
 
     function balanceOf(address account) public view override returns (uint256) {
@@ -133,41 +107,14 @@ contract WMVault is ERC20 {
 
 	function _accrueInterest(uint256 amount, uint256 lastTimestamp) internal view returns (uint184) {
 		uint256 timeElapsed = block.timestamp - lastTimestamp;
-		uint256 interestAccruedNumerator = timeElapsed * uint256(INTEREST_PER_SECOND);
+		uint256 interestAccruedNumerator = timeElapsed * uint256(globalState.annualInterestBips);
         uint256 interestAccrued = (amount * interestAccruedNumerator) / InterestDenominator;
         return safeCastTo184(amount + interestAccrued);
 	}
 
-    /**
-    //--- START DEMO CODE
-    function getUpdatedScale() returns (uint256) {
-        uint interestPerSecond = (globalState.apr * 1e26) / 31536000;
-        uint timeElapsed = block.timestamp - globalState.lastInterestAccruedTimestamp;
-        uint newInterest = timeElapsed * interestPerSecond;
-        globalState.scaleFactor += (globalState.scaleFactor * newInterest) / 1e26;
-        return globalState.scaleFactor;
-    }
-
-    function balanceOf(address account) {
-        return (_balanceOf[account] * getUpdatedScale()) / 1e26;
-    }
-
-    function deposit(address account, uint256 amount) {
-        uint256 scaledAmount = (amount * 1e26) / getUpdatedScale();
-        _balanceOf[account] += scaledAmount;
-    }
-
-    function withdraw(address account, uint256 amount) {
-        uint256 scaledAmount = (amount * 1e26) / getUpdatedScale();
-        _balanceOf[account] += scaledAmount;
-    }
-
-    //--- END DEMO CODE
-    **/
-
     function _accrueGlobalInterest() internal {
-        _totalSupply = _accrueInterest(_totalSupply, lastDisbursalTimestamp);
-        lastDisbursalTimestamp = safeCastTo32(block.timestamp);
+        _totalSupply = _accrueInterest(_totalSupply, globalState.lastInterestAccruedTimestamp);
+        globalState.setLastInterestAccruedTimestamp(block.timestamp);
 	}
 
     function _mint(address to, uint256 rawAmount) internal override {
@@ -301,7 +248,7 @@ contract WMVault is ERC20 {
     function maxCollateralToWithdraw() public view returns (uint256) {
         // TODO: how are we encoding COLLATERALISATION_RATIO? How many decimals? Could use InterestDenominator here?
         // At present we're assuming a float 0 <= x < 100
-        return (availableCapacity * COLLATERALISATION_RATIO) / 100;
+        return (availableCapacity * collateralizationRatio) / 100;
     }
 
     function withdrawCollateral(address receiver, uint256 assets) external isWintermute() {
@@ -313,7 +260,8 @@ contract WMVault is ERC20 {
 
     function adjustMaximumCapacity(uint256 _newCapacity) external isWintermute() returns (uint256) {
         require(_newCapacity > capacityRemaining, "Cannot reduce max exposure to below outstanding");
-        maximumCapacity = _newCapacity;
+        // TODO: remove this whole function, it's part of the UncollateralizedDebtToken now
+        // maximumCapacity = _newCapacity;
         emit MaximumCapacityChanged(address(this), _newCapacity);
         return _newCapacity;
     }
