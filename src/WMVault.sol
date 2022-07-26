@@ -148,10 +148,6 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
 
     // BEGIN: ERC4626 FUNCTIONALITY
 
-    function asset() external view returns (address) {
-        return underlying;
-    }
-
     function totalAssets() external view returns (uint256) {
         return _totalSupply;
     }
@@ -176,7 +172,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
         require(IWMPermissions(wmPermissionAddress).isWhitelisted(receiver), "deposit: user not whitelisted");
         require(receiver != address(0), "deposit: issue to the zero address");
         require(assets <= availableCapacity, "deposit: mint more than capacity");
-        SafeTransferLib.safeTransferFrom(underlyingERC20, msg.sender, address(this), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), assets);
         _mint(receiver, assets);
         emit Deposit(msg.sender, receiver, assets, assets);
         return assets;
@@ -194,7 +190,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
         require(IWMPermissions(wmPermissionAddress).isWhitelisted(receiver), "mint: user not whitelisted");
         require(receiver != address(0), "mint: issue to the zero address");
         require(shares <= availableCapacity, "mint: mint more than capacity");
-        SafeTransferLib.safeTransferFrom(underlyingERC20, msg.sender, address(this), shares);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), shares);
         _mint(receiver, shares);
         emit Deposit(msg.sender, receiver, shares, shares);
         return shares;
@@ -217,7 +213,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
         }
         _burn(owner, assets);
         emit Withdraw(msg.sender, receiver, owner, assets, assets);
-        SafeTransferLib.safeTransfer(underlyingERC20, receiver, assets);
+        SafeTransferLib.safeTransfer(asset, receiver, assets);
         return assets;
     }
 
@@ -238,7 +234,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
         }
         _burn(owner, shares);
         emit Withdraw(msg.sender, receiver, owner, shares, shares);
-        SafeTransferLib.safeTransfer(underlyingERC20, receiver, shares);
+        SafeTransferLib.safeTransfer(asset, receiver, shares);
         return shares;
     }
 
@@ -254,7 +250,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
     function withdrawCollateral(address receiver, uint256 assets) external isWintermute() {
         uint256 maxAvailable = maxCollateralToWithdraw();
         require(assets <= maxAvailable, "trying to withdraw more than collat ratio allows");
-        SafeTransferLib.safeTransfer(underlyingERC20, receiver, assets);
+        SafeTransferLib.safeTransfer(asset, receiver, assets);
         emit CollateralWithdrawn(receiver, assets);
     }
 
@@ -268,7 +264,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
 
     function depositCollateral(uint256 assets) external isWintermute() {
         // TODO: require that the token being sent is the underlying
-        SafeTransferLib.safeTransferFrom(underlyingERC20, msg.sender, address(this), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), assets);
         emit CollateralDeposited(address(this), assets);
     }
     // END: Unique vault functionality
