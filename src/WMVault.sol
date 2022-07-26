@@ -19,13 +19,11 @@ import "./UncollateralizedDebtToken.sol";
 // Also 4626, but not inheriting, rather rewriting
 contract WMVault is ERC20 {
 
-    VaultState public vState;
-    Configuration public config;
+    VaultState public globalState;
 
     // BEGIN: Vault specific parameters
     address internal wmPermissionAddress;
-    
-    address public underlying;
+
     address public immutable underlyingERC20;
 
     UncollateralizedDebtToken public immutable debtToken;
@@ -140,17 +138,32 @@ contract WMVault is ERC20 {
         return safeCastTo184(amount + interestAccrued);
 	}
 
-/**
-    function returnValues(address account) public view returns (uint, uint, uint, uint) {
-		User storage user = users[account];
-        uint256 amount = user.balance;
-        uint256 lastTimestamp = user.lastDisbursalTimestamp;
-        uint256 timeElapsed = block.timestamp - lastTimestamp;
-		uint256 interestAccruedNumerator = timeElapsed * uint256(INTEREST_PER_SECOND);
-        uint256 interestAccrued = (amount * interestAccruedNumerator) / InterestDenominator;
-        return (INTEREST_PER_SECOND, timeElapsed, interestAccruedNumerator, interestAccrued);
+    /**
+    //--- START DEMO CODE
+    function getUpdatedScale() returns (uint256) {
+        uint interestPerSecond = (globalState.apr * 1e26) / 31536000;
+        uint timeElapsed = block.timestamp - globalState.lastInterestAccruedTimestamp;
+        uint newInterest = timeElapsed * interestPerSecond;
+        globalState.scaleFactor += (globalState.scaleFactor * newInterest) / 1e26;
+        return globalState.scaleFactor;
     }
-**/
+
+    function balanceOf(address account) {
+        return (_balanceOf[account] * getUpdatedScale()) / 1e26;
+    }
+
+    function deposit(address account, uint256 amount) {
+        uint256 scaledAmount = (amount * 1e26) / getUpdatedScale();
+        _balanceOf[account] += scaledAmount;
+    }
+
+    function withdraw(address account, uint256 amount) {
+        uint256 scaledAmount = (amount * 1e26) / getUpdatedScale();
+        _balanceOf[account] += scaledAmount;
+    }
+
+    //--- END DEMO CODE
+    **/
 
     function _accrueGlobalInterest() internal {
         _totalSupply = _accrueInterest(_totalSupply, lastDisbursalTimestamp);
