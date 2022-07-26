@@ -14,6 +14,8 @@ import "./libraries/SymbolHelper.sol";
 
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
+import "./UncollateralizedDebtToken.sol";
+
 // Also 4626, but not inheriting, rather rewriting
 contract WMVault is ERC20 {
 
@@ -22,6 +24,8 @@ contract WMVault is ERC20 {
     
     address public underlying;
     address public immutable underlyingERC20;
+
+    UncollateralizedDebtToken public immutable debtToken;
 
     uint256 public maximumCapacity;
     uint256 public availableCapacity;
@@ -106,6 +110,10 @@ contract WMVault is ERC20 {
 
         name   = SymbolHelper.getPrefixedName("Wintermute ", underlying);
         symbol = SymbolHelper.getPrefixedSymbol("wmt", underlying);
+
+        // TODO: what powers does the owner have? is it right to set it here to address(this)?
+        debtToken = new UncollateralizedDebtToken(underlying, "Wintermute ", "wmt", address(this), maximumCapacity, COLLATERALISATION_RATIO);
+
     }
     // END: Constructor
 
