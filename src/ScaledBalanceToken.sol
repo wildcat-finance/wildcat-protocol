@@ -14,8 +14,8 @@ abstract contract ScaledBalanceToken {
   VaultState internal _state;
   mapping(address => uint256) public scaledBalanceOf;
 
-  constructor() {
-    _state = DefaultVaultState.setScaleFactor(RayOne);
+  constructor(int256 _annualInterestBips) {
+    _state = DefaultVaultState.setInitialState(_annualInterestBips, RayOne, block.timestamp);
   }
 
   /*//////////////////////////////////////////////////////////////
