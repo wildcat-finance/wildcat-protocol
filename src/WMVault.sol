@@ -97,7 +97,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
     }
 
     function totalSupply() external view  override returns (uint256) {
-        return _accrueInterest(_totalSupply, globalState.lastInterestAccruedTimestamp);
+        return _accrueInterest(_totalSupply, globalState.getLastInterestAccruedTimestamp());
     }
 
     function balanceOf(address account) public view override returns (uint256) {
@@ -107,13 +107,13 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
 
 	function _accrueInterest(uint256 amount, uint256 lastTimestamp) internal view returns (uint184) {
 		uint256 timeElapsed = block.timestamp - lastTimestamp;
-		uint256 interestAccruedNumerator = timeElapsed * uint256(globalState.annualInterestBips);
+		uint256 interestAccruedNumerator = timeElapsed * uint256(globalState.getAnnualInterestBips());
         uint256 interestAccrued = (amount * interestAccruedNumerator) / InterestDenominator;
         return safeCastTo184(amount + interestAccrued);
 	}
 
     function _accrueGlobalInterest() internal {
-        _totalSupply = _accrueInterest(_totalSupply, globalState.lastInterestAccruedTimestamp);
+        _totalSupply = _accrueInterest(_totalSupply, globalState.getLastInterestAccruedTimestamp());
         globalState.setLastInterestAccruedTimestamp(block.timestamp);
 	}
 
