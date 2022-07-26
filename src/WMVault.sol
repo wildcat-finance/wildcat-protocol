@@ -19,6 +19,9 @@ import "./UncollateralizedDebtToken.sol";
 // Also 4626, but not inheriting, rather rewriting
 contract WMVault is ERC20 {
 
+    VaultState public vState;
+    Configuration public config;
+
     // BEGIN: Vault specific parameters
     address internal wmPermissionAddress;
     
