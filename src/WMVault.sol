@@ -117,6 +117,10 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
         globalState.setLastInterestAccruedTimestamp(block.timestamp);
 	}
 
+    function _beforeMint(address to, uint256 amount, uint256) internal override {
+        // TODO: flesh this out
+    }
+
     function _mint(address to, uint256 rawAmount) internal override {
         _accrueGlobalInterest();
         User storage user = _getUser(to);
