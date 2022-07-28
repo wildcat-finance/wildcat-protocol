@@ -18,7 +18,7 @@ import {VaultStateCoder} from "./types/VaultStateCoder.sol";
 import "./UncollateralizedDebtToken.sol";
 
 // Also 4626, but not inheriting, rather rewriting
-contract WMVault is ERC20, UncollateralizedDebtToken {
+contract WMVault is UncollateralizedDebtToken {
     using VaultStateCoder for VaultState;
 
     VaultState public globalState;
