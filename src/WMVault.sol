@@ -72,23 +72,22 @@ contract WMVault is UncollateralizedDebtToken {
 
     // BEGIN: Constructor
     // Constructor doesn't take any arguments so that the bytecode is consistent for the create2 factory
-    constructor() {
-        // msg.sender will always be the factory, so don't need to encode this anywhere
-        address vaultFactory = msg.sender;
-
-        wmPermissionAddress = IWMVaultFactory(vaultFactory).factoryPermissionRegistry();
-
-        // retrieve vault parameters from data currently set in the factory
-        address underlying              = IWMVaultFactory(vaultFactory).factoryVaultUnderlying();
-        uint256 maximumCapacity         = IWMVaultFactory(vaultFactory).factoryVaultMaximumCapacity();
-        uint256 COLLATERALISATION_RATIO = IWMVaultFactory(vaultFactory).factoryVaultCollatRatio();
-        int256 ANNUAL_APR               = IWMVaultFactory(vaultFactory).factoryVaultAnnualAPR();
+    constructor() 
+        UncollateralizedDebtToken(IWMVaultFactory(msg.sender).factoryVaultUnderlying(),
+                                  "Wintermute",
+                                  "wmt",
+                                   IWMVaultFactory(msg.sender).factoryPermissionRegistry(),
+                                   IWMVaultFactory(msg.sender).factoryVaultMaximumCapacity(),
+                                   IWMVaultFactory(msg.sender).factoryVaultCollatRatio(),
+                                   IWMVaultFactory(msg.sender).factoryVaultAnnualAPR())
+    {
+        wmPermissionAddress = IWMVaultFactory(msg.sender).factoryPermissionRegistry();
 
         // Defining this here so that there's a query available for any front-ends
-        availableCapacity   = maximumCapacity;
+        availableCapacity   = IWMVaultFactory(msg.sender).factoryVaultMaximumCapacity();
 
-        // TODO: make sure that wmPermissionAddress can change relevant ownership down the road
-        debtToken = new UncollateralizedDebtToken(underlying, "Wintermute ", "wmt", wmPermissionAddress, maximumCapacity, COLLATERALISATION_RATIO, ANNUAL_APR);
+        // TODO: how to refer to this struct now to record it in debtToken?
+        // debtToken = new UncollateralizedDebtToken(underlying, " ", "wmt", wmPermissionAddress, maximumCapacity, COLLATERALISATION_RATIO, ANNUAL_APR);
     }
     // END: Constructor
 
