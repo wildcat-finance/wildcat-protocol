@@ -96,11 +96,11 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
         return users[_user];
     }
 
-    function totalSupply() external view  override returns (uint256) {
-        return _accrueInterest(_totalSupply, globalState.getLastInterestAccruedTimestamp());
+    function totalSupply() public view override(ERC20, ScaledBalanceToken) returns (uint256) {
+        return ScaledBalanceToken.totalSupply();
     }
 
-    function balanceOf(address account) public view override returns (uint256) {
+    function balanceOf(address account) public view override(ERC20, ScaledBalanceToken) returns (uint256) {
 		User storage user = users[account];
 		return _accrueInterest(user.balance, user.lastDisbursalTimestamp);
     }
@@ -127,7 +127,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
         availableCapacity -= amount;
 	}
 
-    function _burn(address to, uint256 rawAmount) internal override {
+    function _burn(address to, uint256 rawAmount) internal override(ERC20, ScaledBalanceToken) {
         _accrueGlobalInterest();
         User storage user = _getUser(to);
         uint184 amount = safeCastTo184(rawAmount);
@@ -136,7 +136,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
         availableCapacity += amount;
 	}
 
-    function _transfer(address from, address to, uint256 rawAmount) internal override {
+    function _transfer(address from, address to, uint256 rawAmount) internal override(ERC20, ScaledBalanceToken) {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
 		uint184 amount = safeCastTo184(rawAmount);
