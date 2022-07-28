@@ -6,7 +6,7 @@ interface IWMVaultFactory {
     function factoryVaultUnderlying() external returns (address);
     function factoryPermissionRegistry() external returns (address);
     function factoryVaultMaximumCapacity() external returns (uint);
-    function factoryVaultAnnualAPR() external returns (uint);
+    function factoryVaultAnnualAPR() external returns (int);
     function factoryVaultCollatRatio() external returns (uint);
 
     function vaultRegistryAddress() external view returns (address);

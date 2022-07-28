@@ -19,7 +19,7 @@ contract WMVaultFactory {
 
     // can shave these values down to appropriate uintX later
     uint public factoryVaultMaximumCapacity = 0;
-    uint public factoryVaultAnnualAPR = 0;
+    int  public factoryVaultAnnualAPR = 0;
     uint public factoryVaultCollatRatio = 0;
 
     event WMVaultRegistered(address, address);
@@ -39,7 +39,7 @@ contract WMVaultFactory {
     function deployVault(
         address _underlying,
         uint _maxCapacity,
-        uint _annualAPR,
+        int  _annualAPR,
         uint _collatRatio,
         bytes32 _salt
     ) public isWintermute() {

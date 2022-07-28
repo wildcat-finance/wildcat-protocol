@@ -82,7 +82,7 @@ contract WMVault is ERC20, UncollateralizedDebtToken {
         address underlying              = IWMVaultFactory(vaultFactory).factoryVaultUnderlying();
         uint256 maximumCapacity         = IWMVaultFactory(vaultFactory).factoryVaultMaximumCapacity();
         uint256 COLLATERALISATION_RATIO = IWMVaultFactory(vaultFactory).factoryVaultCollatRatio();
-        uint256 ANNUAL_APR              = IWMVaultFactory(vaultFactory).factoryVaultAnnualAPR();
+        int256 ANNUAL_APR               = IWMVaultFactory(vaultFactory).factoryVaultAnnualAPR();
 
         // Defining this here so that there's a query available for any front-ends
         availableCapacity   = maximumCapacity;
