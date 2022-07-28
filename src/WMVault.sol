@@ -26,7 +26,7 @@ contract WMVault is UncollateralizedDebtToken {
     // BEGIN: Vault specific parameters
     address internal wmPermissionAddress;
 
-    UncollateralizedDebtToken public immutable debtToken;
+    //UncollateralizedDebtToken public immutable debtToken;
 
     uint256 public availableCapacity;
     uint256 public capacityRemaining;
