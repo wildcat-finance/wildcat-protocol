@@ -165,7 +165,7 @@ abstract contract ScaledBalanceToken {
     address from,
     address to,
     uint256 amount
-  ) internal {
+  ) internal virtual {
     uint256 scaleFactor = _getUpdatedScaleFactor();
     uint256 scaledAmount = amount.rayDiv(scaleFactor);
     scaledBalanceOf[from] -= scaledAmount;
@@ -219,7 +219,7 @@ abstract contract ScaledBalanceToken {
   //   _state = state;
   // }
 
-  function _burn(address account, uint256 amount) internal {
+  function _burn(address account, uint256 amount) internal virtual {
     VaultState state = _getCurrentState();
     (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
     uint256 scaledAmount = amount.rayDiv(scaleFactor);
