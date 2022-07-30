@@ -36,7 +36,8 @@ contract WMVault is UncollateralizedDebtToken {
     uint256 constant InterestDenominator = 1e12;
 
     struct User {
-        uint184 balance;
+        // TODO: was uint192
+        uint256 balance;
         uint32 lastDisbursalTimestamp;
         // Extra space unused because balance can not exceed totalSupply
     }
@@ -46,6 +47,8 @@ contract WMVault is UncollateralizedDebtToken {
 
     // BEGIN: Events
 
+   
+    
     // ERC4626
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event Withdraw(
@@ -91,25 +94,28 @@ contract WMVault is UncollateralizedDebtToken {
     }
     // END: Constructor
 
-    function _getUser(address _user) internal returns (User storage) {
+   
+    
+    function _getUser(address _user) internal view returns (User storage) {
         return users[_user];
     }
+    
+    // TODO: buggy?
+    //function balanceOf(address account) public view override returns (uint256) {
+	//	User storage user = users[account];
+	//	return _accrueInterest(user.balance, user.lastDisbursalTimestamp);
+    //}
 
-    function totalSupply() public view override(ERC20, ScaledBalanceToken) returns (uint256) {
-        return ScaledBalanceToken.totalSupply();
-    }
-
-    function balanceOf(address account) public view override(ERC20, ScaledBalanceToken) returns (uint256) {
-		User storage user = users[account];
-		return _accrueInterest(user.balance, user.lastDisbursalTimestamp);
-    }
-
-	function _accrueInterest(uint256 amount, uint256 lastTimestamp) internal view returns (uint184) {
+    function _accrueInterest(uint256 amount, uint256 lastTimestamp) internal view returns (uint256) {
 		uint256 timeElapsed = block.timestamp - lastTimestamp;
 		uint256 interestAccruedNumerator = timeElapsed * uint256(globalState.getAnnualInterestBips());
         uint256 interestAccrued = (amount * interestAccruedNumerator) / InterestDenominator;
-        return safeCastTo184(amount + interestAccrued);
+        return (amount + interestAccrued);
 	}
+    
+    //function totalSupply() public view override returns (uint256) {
+    //    return ScaledBalanceToken.totalSupply();
+    //}
 
     function _accrueGlobalInterest() internal {
         _totalSupply = _accrueInterest(_totalSupply, globalState.getLastInterestAccruedTimestamp());
@@ -119,127 +125,38 @@ contract WMVault is UncollateralizedDebtToken {
     function _mint(address to, uint256 rawAmount) internal override {
         _accrueGlobalInterest();
         User storage user = _getUser(to);
-        uint184 amount = safeCastTo184(rawAmount);
+        uint amount = rawAmount;
         user.balance += amount;
         user.lastDisbursalTimestamp = safeCastTo32(block.timestamp);
         _totalSupply += amount;
         availableCapacity -= amount;
 	}
-
-    function _burn(address to, uint256 rawAmount) internal override(ERC20, ScaledBalanceToken) {
+    
+    function _burn(address to, uint256 rawAmount) internal override {
         _accrueGlobalInterest();
         User storage user = _getUser(to);
-        uint184 amount = safeCastTo184(rawAmount);
+        uint amount = rawAmount;
         user.balance -= amount;
         _totalSupply -= amount;
         availableCapacity += amount;
-	}
+    }
 
-    function _transfer(address from, address to, uint256 rawAmount) internal override(ERC20, ScaledBalanceToken) {
+    function _transfer(address from, address to, uint256 rawAmount) internal override {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
-		uint184 amount = safeCastTo184(rawAmount);
+		uint amount = rawAmount;
 		User storage src = _getUser(from);
 		User storage dst = _getUser(to);
 		src.balance -= amount;
 		dst.balance += amount;
 	}
-
-    // BEGIN: ERC4626 FUNCTIONALITY
-
-    function totalAssets() external view returns (uint256) {
-        return _totalSupply;
-    }
-
-    function convertToShares(uint256 assets) external view returns (uint256) {
-        return assets;
-    }
-
-    function convertToAssets(uint256 shares) external view returns (uint256) {
-        return shares;
-    }
-
-    function maxDeposit(address) external view returns (uint256) {
-        return availableCapacity;
-    }
     
-    function previewDeposit(uint256 assets) external view returns (uint256) {
-        return assets;
-    }
-    
-    function deposit(uint256 assets, address receiver) external returns (uint256) {
-        require(IWMPermissions(wmPermissionAddress).isWhitelisted(receiver), "deposit: user not whitelisted");
-        require(receiver != address(0), "deposit: issue to the zero address");
-        require(assets <= availableCapacity, "deposit: mint more than capacity");
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), assets);
-        _mint(receiver, assets);
-        emit Deposit(msg.sender, receiver, assets, assets);
-        return assets;
-    }
-    
-    function maxMint(address) external view returns (uint256) {
-        return availableCapacity;
-    }
-    
-    function previewMint(uint256) external view returns (uint256) {
-        return availableCapacity;
-    }
-    
-    function mint(uint256 shares, address receiver) external returns (uint256) {
-        require(IWMPermissions(wmPermissionAddress).isWhitelisted(receiver), "mint: user not whitelisted");
-        require(receiver != address(0), "mint: issue to the zero address");
-        require(shares <= availableCapacity, "mint: mint more than capacity");
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), shares);
-        _mint(receiver, shares);
-        emit Deposit(msg.sender, receiver, shares, shares);
-        return shares;
-    }
-    
-    function maxWithdraw(address) external view returns (uint256) {
-        return capacityRemaining;
-    }
-    
-    function previewWithdraw(uint256 assets) external view returns (uint256) {
-        return assets;
-    }
-    
-    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256) {
-        require(assets <= capacityRemaining, "withdraw: insufficient capacity to withdraw");
-        require(receiver != address(0), "withdraw: burn from the zero address");
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - assets;
-        }
-        _burn(owner, assets);
-        emit Withdraw(msg.sender, receiver, owner, assets, assets);
-        SafeTransferLib.safeTransfer(asset, receiver, assets);
-        return assets;
-    }
-
-    function maxRedeem(address) external view returns (uint256) {
-        return capacityRemaining;
-    }
-    
-    function previewRedeem(uint256 shares) external view returns (uint256) {
-        return shares;
-    }
-
-    function redeem(uint256 shares, address receiver, address owner) external returns (uint256) {
-        require(shares <= capacityRemaining, "redeem: insufficient capacity to redeem");
-        require(receiver != address(0), "redeem: burn from the zero address");
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
-        }
-        _burn(owner, shares);
-        emit Withdraw(msg.sender, receiver, owner, shares, shares);
-        SafeTransferLib.safeTransfer(asset, receiver, shares);
-        return shares;
-    }
-
-    // END: ERC4626 FUNCTIONALITY
-
     // BEGIN: Unique vault functionality
+
+    function deposit(uint256 amount, address user) external returns (uint256) {
+
+    }
+
     function maxCollateralToWithdraw() public view returns (uint256) {
         // TODO: how are we encoding COLLATERALISATION_RATIO? How many decimals? Could use InterestDenominator here?
         // At present we're assuming a float 0 <= x < 100
@@ -283,5 +200,5 @@ contract WMVault is UncollateralizedDebtToken {
     // END: Typecasters
 	
 
-
+   
 }
