@@ -174,6 +174,11 @@ abstract contract ScaledBalanceToken {
     }
   }
 
+  function transfer(address recipient, uint256 amount) external returns (bool) {
+    _transfer(msg.sender, recipient, amount);
+    return true;
+  }
+
   function _getMaximumDeposit(VaultState state, uint256 scaleFactor)
     internal
     view
