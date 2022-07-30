@@ -204,20 +204,20 @@ abstract contract ScaledBalanceToken {
     _state = state;
   }
 
-  // function _mint(address to, uint256 amount) internal {
-  //   VaultState state = _getCurrentState();
-  //   (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
-  //   uint256 scaledAmount = amount.rayDiv(scaleFactor);
-  //   scaledBalanceOf[to] += scaledAmount;
-  //   unchecked {
-  //     // If user's balance did not overflow uint256, neither will totalSupply
-  //     // Coder checks for overflow of uint96
-  //     state.setScaledTotalSupply(
-  //       state.getScaledTotalSupply() + scaledAmount
-  //     );
-  //   }
-  //   _state = state;
-  // }
+  function _mint(address to, uint256 amount) internal virtual {
+     VaultState state = _getCurrentState();
+     (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
+     uint256 scaledAmount = amount.rayDiv(scaleFactor);
+     scaledBalanceOf[to] += scaledAmount;
+     unchecked {
+       // If user's balance did not overflow uint256, neither will totalSupply
+       // Coder checks for overflow of uint96
+       state.setScaledTotalSupply(
+         state.getScaledTotalSupply() + scaledAmount
+       );
+     }
+     _state = state;
+   }
 
   function _burn(address account, uint256 amount) internal virtual {
     VaultState state = _getCurrentState();
