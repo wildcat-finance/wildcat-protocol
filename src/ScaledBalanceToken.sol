@@ -172,6 +172,7 @@ abstract contract ScaledBalanceToken {
     unchecked {
       scaledBalanceOf[to] += scaledAmount;
     }
+    emit Transfer(from, to, amount);
   }
 
   function transferFrom(
@@ -236,6 +237,7 @@ abstract contract ScaledBalanceToken {
        );
      }
      _state = state;
+    emit Transfer(address(0), to, amount);
    }
 
   function _burn(address account, uint256 amount) internal virtual {
@@ -250,5 +252,6 @@ abstract contract ScaledBalanceToken {
       );
     }
     _state = state;
+    emit Transfer(account, address(0), amount);
   }
 }
