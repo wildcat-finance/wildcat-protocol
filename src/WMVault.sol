@@ -94,17 +94,9 @@ contract WMVault is UncollateralizedDebtToken {
     }
     // END: Constructor
 
-   
-    
     function _getUser(address _user) internal view returns (User storage) {
         return users[_user];
     }
-    
-    // TODO: buggy?
-    //function balanceOf(address account) public view override returns (uint256) {
-	//	User storage user = users[account];
-	//	return _accrueInterest(user.balance, user.lastDisbursalTimestamp);
-    //}
 
     function _accrueInterest(uint256 amount, uint256 lastTimestamp) internal view returns (uint256) {
 		uint256 timeElapsed = block.timestamp - lastTimestamp;
@@ -112,10 +104,6 @@ contract WMVault is UncollateralizedDebtToken {
         uint256 interestAccrued = (amount * interestAccruedNumerator) / InterestDenominator;
         return (amount + interestAccrued);
 	}
-    
-    //function totalSupply() public view override returns (uint256) {
-    //    return ScaledBalanceToken.totalSupply();
-    //}
 
     function _accrueGlobalInterest() internal {
         _totalSupply = _accrueInterest(_totalSupply, globalState.getLastInterestAccruedTimestamp());
