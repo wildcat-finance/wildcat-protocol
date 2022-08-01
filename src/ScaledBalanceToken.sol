@@ -155,7 +155,7 @@ abstract contract ScaledBalanceToken {
     return true;
   }
 
-  function _beforeMint(
+  function _handleDeposit(
     address to,
     uint256 amount,
     uint256 scaledAmount
@@ -212,7 +212,7 @@ abstract contract ScaledBalanceToken {
     (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
     actualAmount = Math.min(amount, _getMaximumDeposit(state, scaleFactor));
     uint256 scaledAmount = actualAmount.rayDiv(scaleFactor);
-    _beforeMint(to, amount, scaledAmount);
+    _handleDeposit(to, amount, scaledAmount);
     scaledBalanceOf[to] += scaledAmount;
     unchecked {
       // If user's balance did not overflow uint256, neither will totalSupply
