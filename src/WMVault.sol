@@ -118,21 +118,5 @@ contract WMVault is UncollateralizedDebtToken {
         emit CollateralDeposited(address(this), assets);
     }
     // END: Unique vault functionality
-
-    // BEGIN: Typecasters
-    function safeCastTo184(uint256 x) internal pure returns (uint184 y) {
-        require(x < 1 << 184);
-
-        y = uint184(x);
-    }
-
-    function safeCastTo32(uint256 x) internal pure returns (uint32 y) {
-        require(x < 1 << 32);
-        
-        y = uint32(x);
-    }
-    // END: Typecasters
-	
-
    
 }
