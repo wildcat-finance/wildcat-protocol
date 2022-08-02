@@ -34,7 +34,8 @@ contract UncollateralizedDebtToken is ScaledBalanceToken, WrappedAssetMetadata {
   function maxTotalSupply() public view virtual override returns (uint256) {
     return _configuration.getMaxTotalSupply();
   }
-  function _beforeMint(
+
+  function _handleDeposit(
     address to,
     uint256 amount,
     uint256

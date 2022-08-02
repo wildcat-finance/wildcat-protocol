@@ -141,8 +141,13 @@ contract WMVault is UncollateralizedDebtToken {
     
     // BEGIN: Unique vault functionality
 
-    function deposit(uint256 amount, address user) external returns (uint256) {
+    function getCurrentScaleFactor() public view returns (uint256) {
+        return globalState.getScaleFactor();
+    }
 
+    function deposit(uint256 amount, address user) external returns (uint256) {
+        require(WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender), "deposit: user not whitelisted");
+        ScaledBalanceToken._mintUpTo(user, amount);
     }
 
     function maxCollateralToWithdraw() public view returns (uint256) {

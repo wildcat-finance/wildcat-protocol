@@ -52,7 +52,7 @@ contract VaultFactoryTest is Test {
 
         vm.prank(wintermute);
         uint saltDAI = 1;
-        wmvf.deployVault(address(DAI), 100_000e18, 5e16, 90, bytes32(saltDAI));
+        wmvf.deployVault(address(DAI), 100_000e18, 500, 90, bytes32(saltDAI));
 
         address wmrAddr = wmvf.vaultRegistryAddress();
         wmr = WMRegistry(wmrAddr);
@@ -75,6 +75,8 @@ contract VaultFactoryTest is Test {
         IERC20Metadata wmDAImd = IERC20Metadata(address(wmDAI));
 
         string memory vaultName = wmDAImd.name();
+
+        console.log(vaultName);
         
         assertTrue(
             keccak256(abi.encodePacked(vaultName)) 
@@ -84,6 +86,8 @@ contract VaultFactoryTest is Test {
 
     function test_PermissionsGranted() public {
         bool allowed = wmp.isWhitelisted(wlUser);
+        uint256 scale = wmDAI.getCurrentScaleFactor();
+        console.log(scale);
         assertTrue(allowed);
     }
 
