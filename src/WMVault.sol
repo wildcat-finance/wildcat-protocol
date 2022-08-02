@@ -46,20 +46,6 @@ contract WMVault is UncollateralizedDebtToken {
     // END: Vault specific parameters
 
     // BEGIN: Events
-
-   
-    
-    // ERC4626
-    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
-    event Withdraw(
-        address indexed caller,
-        address indexed receiver,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
-    );
-
-    // Vault Specific
     event CollateralWithdrawn(address indexed recipient, uint256 assets);
     event CollateralDeposited(address indexed sender, uint256 assets);
     event MaximumCapacityChanged(address vault, uint256 assets);
