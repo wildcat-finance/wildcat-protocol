@@ -35,14 +35,6 @@ contract WMVault is UncollateralizedDebtToken {
 
     uint256 constant InterestDenominator = 1e12;
 
-    struct User {
-        // TODO: was uint192
-        uint256 balance;
-        uint32 lastDisbursalTimestamp;
-        // Extra space unused because balance can not exceed totalSupply
-    }
-
-    mapping(address => User) users;
     // END: Vault specific parameters
 
     // BEGIN: Events
@@ -80,51 +72,14 @@ contract WMVault is UncollateralizedDebtToken {
     }
     // END: Constructor
 
-    function _getUser(address _user) internal view returns (User storage) {
-        return users[_user];
-    }
-
-    function _accrueInterest(uint256 amount, uint256 lastTimestamp) internal view returns (uint256) {
-		uint256 timeElapsed = block.timestamp - lastTimestamp;
-		uint256 interestAccruedNumerator = timeElapsed * uint256(globalState.getAnnualInterestBips());
-        uint256 interestAccrued = (amount * interestAccruedNumerator) / InterestDenominator;
-        return (amount + interestAccrued);
-	}
-
-    function _accrueGlobalInterest() internal {
-        _totalSupply = _accrueInterest(_totalSupply, globalState.getLastInterestAccruedTimestamp());
-        globalState.setLastInterestAccruedTimestamp(block.timestamp);
-	}
-
     function _mint(address to, uint256 rawAmount) internal override {
-        _accrueGlobalInterest();
-        User storage user = _getUser(to);
-        uint amount = rawAmount;
-        user.balance += amount;
-        user.lastDisbursalTimestamp = safeCastTo32(block.timestamp);
-        _totalSupply += amount;
-        availableCapacity -= amount;
+        ScaledBalanceToken._mintUpTo(to, rawAmount);
 	}
     
-    function _burn(address to, uint256 rawAmount) internal override {
-        _accrueGlobalInterest();
-        User storage user = _getUser(to);
-        uint amount = rawAmount;
-        user.balance -= amount;
-        _totalSupply -= amount;
-        availableCapacity += amount;
+    function _burn(address from, uint256 rawAmount) internal override {
+        ScaledBalanceToken._burn(from, rawAmount);
     }
 
-    function _transfer(address from, address to, uint256 rawAmount) internal override {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
-		uint amount = rawAmount;
-		User storage src = _getUser(from);
-		User storage dst = _getUser(to);
-		src.balance -= amount;
-		dst.balance += amount;
-	}
-    
     // BEGIN: Unique vault functionality
 
     function getCurrentScaleFactor() public view returns (uint256) {
