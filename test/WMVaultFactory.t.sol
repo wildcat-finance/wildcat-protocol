@@ -42,6 +42,10 @@ contract VaultFactoryTest is Test {
         vm.warp(block.timestamp + 365 days);
     }
 
+    function warpOneSecond() public {
+        vm.warp(block.timestamp + 1);
+    }
+
     function setUp() public {
         wmp  = new WMPermissions(wintermute);
 

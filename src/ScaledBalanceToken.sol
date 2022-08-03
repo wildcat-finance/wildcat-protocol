@@ -39,7 +39,7 @@ abstract contract ScaledBalanceToken {
   }
 
   function getState()
-    external
+    public
     view
     returns (
       int256 annualInterestBips,

@@ -86,9 +86,13 @@ contract WMVault is UncollateralizedDebtToken {
         return globalState.getScaleFactor();
     }
 
+    function getCurrentState() external view returns (int, uint, uint, uint) {
+        return ScaledBalanceToken.getState();
+    }
+
     function deposit(uint256 amount, address user) external returns (uint256) {
         require(WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender), "deposit: user not whitelisted");
-        ScaledBalanceToken._mintUpTo(user, amount);
+        ScaledBalanceToken._mint(user, amount);
     }
 
     function maxCollateralToWithdraw() public view returns (uint256) {
