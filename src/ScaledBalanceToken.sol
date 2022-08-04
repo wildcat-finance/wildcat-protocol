@@ -67,9 +67,11 @@ abstract contract ScaledBalanceToken {
   }
 
   function _getCurrentState() internal view returns (VaultState state) {
-    (uint256 scaleFactor, bool changed) = _getCurrentScaleFactor(state);
+    (uint256 scaleFactor, bool changed) = _getCurrentScaleFactor(_state);
     if (changed) {
       state = state.setNewScaleOutputs(scaleFactor, block.timestamp);
+    } else {
+      return _state;
     }
   }
 
