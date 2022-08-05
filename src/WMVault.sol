@@ -30,6 +30,7 @@ contract WMVault is UncollateralizedDebtToken {
 
     uint256 public availableCapacity;
     uint256 public capacityRemaining;
+    uint256 public collateralWithdrawn;
 
     uint256 internal _totalSupply;
 
@@ -66,14 +67,11 @@ contract WMVault is UncollateralizedDebtToken {
 
         // Defining this here so that there's a query available for any front-ends
         availableCapacity   = IWMVaultFactory(msg.sender).factoryVaultMaximumCapacity();
-
-        // TODO: how to refer to this struct now to record it in debtToken?
-        // debtToken = new UncollateralizedDebtToken(underlying, " ", "wmt", wmPermissionAddress, maximumCapacity, COLLATERALISATION_RATIO, ANNUAL_APR);
     }
     // END: Constructor
 
     function _mint(address to, uint256 rawAmount) internal override {
-        ScaledBalanceToken._mintUpTo(to, rawAmount);
+        ScaledBalanceToken._mint(to, rawAmount);
 	}
     
     function _burn(address from, uint256 rawAmount) internal override {
@@ -81,23 +79,12 @@ contract WMVault is UncollateralizedDebtToken {
     }
 
     // BEGIN: Unique vault functionality
-
-    function getCurrentScaleFactor() public view returns (uint256) {
-        return globalState.getScaleFactor();
-    }
-
-    function getCurrentState() external view returns (int, uint, uint, uint) {
-        return ScaledBalanceToken.getState();
-    }
-
     function deposit(uint256 amount, address user) external returns (uint256) {
         require(WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender), "deposit: user not whitelisted");
-        ScaledBalanceToken._mint(user, amount);
+        _mint(user, amount);
     }
 
     function maxCollateralToWithdraw() public view returns (uint256) {
-        // TODO: how are we encoding COLLATERALISATION_RATIO? How many decimals? Could use InterestDenominator here?
-        // At present we're assuming a float 0 <= x < 100
         return (availableCapacity * collateralizationRatio) / 100;
     }
 
@@ -108,19 +95,27 @@ contract WMVault is UncollateralizedDebtToken {
         emit CollateralWithdrawn(receiver, assets);
     }
 
+    // TODO: how should the maximum capacity be represented here? flat amount of base asset? inflated per scale factor?
     function adjustMaximumCapacity(uint256 _newCapacity) external isWintermute() returns (uint256) {
         require(_newCapacity > capacityRemaining, "Cannot reduce max exposure to below outstanding");
-        // TODO: remove this whole function, it's part of the UncollateralizedDebtToken now
-        // maximumCapacity = _newCapacity;
         emit MaximumCapacityChanged(address(this), _newCapacity);
         return _newCapacity;
     }
 
     function depositCollateral(uint256 assets) external isWintermute() {
-        // TODO: require that the token being sent is the underlying
         SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), assets);
         emit CollateralDeposited(address(this), assets);
     }
     // END: Unique vault functionality
+
+    // BEGIN: State inspection functions
+    function getCurrentScaleFactor() public view returns (uint256) {
+        return globalState.getScaleFactor();
+    }
+
+    function getCurrentState() external view returns (int, uint, uint, uint) {
+        return ScaledBalanceToken.getState();
+    }
+    // END: State inspection functions
    
 }
