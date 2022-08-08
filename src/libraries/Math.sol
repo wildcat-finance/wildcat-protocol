@@ -46,6 +46,7 @@ library Math {
         mstore(Panic_error_offset, Panic_arithmetic)
         revert(0, Panic_error_length)
       }
+      z := sdiv(z, RayOne)
     }
   }
 
