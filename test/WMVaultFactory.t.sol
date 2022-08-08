@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.13;
 
-import "../lib/forge-std/src/Test.sol";
-import "../lib/forge-std/src/Vm.sol";
+import "forge-std/Test.sol";
+import "forge-std/Vm.sol";
 
 import "src/interfaces/IERC20.sol";
+import "./helpers/TestERC20.sol";
 import "src/interfaces/IWMVaultFactory.sol";
 import "src/interfaces/IWMRegistry.sol";
 
@@ -26,9 +27,15 @@ contract VaultFactoryTest is Test {
 
     WMVault public wmDAI;
     
-    IERC20 internal DAI  = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    IERC20 internal WETH = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    IERC20 internal WBTC = IERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599);
+    IERC20 internal DAI;
+    IERC20 internal WETH;
+    IERC20 internal WBTC;
+
+    constructor() {
+      DAI = IERC20(address(new TestERC20("DAI Stablecoin", "DAI", 18)));
+      WETH = IERC20(address(new TestERC20("Wrapped Ether", "WETH", 18)));
+      WBTC = IERC20(address(new TestERC20("Wrapped Bitcoin", "WBTC", 8)));
+    }
 
     function writeTokenBalance(address who, address token, uint256 amt) internal {
         stdstore
