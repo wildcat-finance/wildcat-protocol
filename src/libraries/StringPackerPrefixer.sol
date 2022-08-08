@@ -17,10 +17,15 @@ contract StringPackerPrefixer {
     // exceed 32 bytes, otherwise it will produce corrupted data.
     // In this contract, strings exceeding 31 bytes will be caught in `packString`
     assembly {
+      // Get size of prefix
       let prefixSize := mload(prefix)
+      // Add suffix size to string length
       mstore(prefix, add(prefixSize, stringSize))
+      // Load prefix value
       let prefixValue := mload(add(prefix, 0x20))
-      let prefixBits := div(prefixSize, 0x08)
+      // Get number of bits in prefix
+      let prefixBits := mul(prefixSize, 0x08)
+      // Combine prefix and suffix and write to string value
       mstore(add(prefix, 0x20), or(prefixValue, shr(prefixBits, stringValue)))
     }
   }
