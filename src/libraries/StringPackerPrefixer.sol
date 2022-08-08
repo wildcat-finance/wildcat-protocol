@@ -1,27 +1,36 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.13;
 
-uint256 constant InvalidStringSize_selector = 0xfa29c04700000000000000000000000000000000000000000000000000000000;
+uint256 constant InvalidReturnDataString_selector = 0x4cb9c00000000000000000000000000000000000000000000000000000000000;
+uint256 constant NullPrefix_selector = 0x1cf25ee800000000000000000000000000000000000000000000000000000000;
 
 contract StringPackerPrefixer {
+  error NullPrefix();
   error InvalidNullValue();
-  error InvalidStringSize();
+  error InvalidReturnDataString();
   error InvalidCompactString();
 
   /*//////////////////////////////////////////////////////////////
                           String Prefixing
   //////////////////////////////////////////////////////////////*/
 
-  function prefixString(string memory prefix, uint256 stringSize, uint256 stringValue) internal pure {
+  function _prefixString(string memory prefix, uint256 stringSize, uint256 stringValue) internal pure {
     // Do not use this function without an additional check that the new size does not
     // exceed 32 bytes, otherwise it will produce corrupted data.
-    // In this contract, strings exceeding 31 bytes will be caught in `packString`
+    // In this contract, strings exceeding 31 bytes will be caught in `_packString`
     assembly {
       // Get size of prefix
       let prefixSize := mload(prefix)
+      // Revert if prefix is null, as that will affect memory allocation
+      if iszero(prefixSize) {
+        mstore(0, NullPrefix_selector)
+        revert(0, 0x04)
+      }
       // Add suffix size to string length
-      mstore(prefix, add(prefixSize, stringSize))
-      // Load prefix value
+      let newSize := add(prefixSize, stringSize)
+      mstore(prefix, newSize)
+      // Load prefix value from next slot in memory and multiply by prefixSize > 0 to avoid
+      // reading unrelated memory if prefix is null
       let prefixValue := mload(add(prefix, 0x20))
       // Get number of bits in prefix
       let prefixBits := mul(prefixSize, 0x08)
@@ -30,19 +39,19 @@ contract StringPackerPrefixer {
     }
   }
 
-  function getPackedPrefixedReturnValue(
+  function _getPackedPrefixedReturnValue(
     string memory prefix,
     address target,
     uint256 rightPaddedFunctionSelector,
     uint256 rightPaddedGenericErrorSelector
   ) internal view returns (bytes32 packedString) {
-    (uint256 stringSize, uint256 stringValue) = getStringOrBytes32AsString(
+    (uint256 stringSize, uint256 stringValue) = _getStringOrBytes32AsString(
       target,
       rightPaddedFunctionSelector,
       rightPaddedGenericErrorSelector
     );
-    prefixString(prefix, stringSize, stringValue);
-    return packString(prefix);
+    _prefixString(prefix, stringSize, stringValue);
+    return _packString(prefix);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -84,7 +93,7 @@ contract StringPackerPrefixer {
                     External String Query Handler
   //////////////////////////////////////////////////////////////*/
 
-  function getStringOrBytes32AsString(
+  function _getStringOrBytes32AsString(
     address target,
     uint256 rightPaddedFunctionSelector,
     uint256 rightPaddedGenericErrorSelector
@@ -111,8 +120,8 @@ contract StringPackerPrefixer {
           mstore(0, rightPaddedGenericErrorSelector)
           revert(0, 0x04)
         }
-        // If the returndata is the wrong size, throw InvalidStringSize
-        mstore(0, InvalidStringSize_selector)
+        // If the returndata is the wrong size, throw InvalidReturnDataString
+        mstore(0, InvalidReturnDataString_selector)
         revert(0, 0x04)
       }
     }
@@ -139,7 +148,7 @@ contract StringPackerPrefixer {
                          Packed String Coder
   //////////////////////////////////////////////////////////////*/
 
-  function packString(string memory unpackedString)
+  function _packString(string memory unpackedString)
     internal
     pure
     returns (bytes32 packedString)
@@ -152,7 +161,7 @@ contract StringPackerPrefixer {
     }
   }
 
-  function unpackString(bytes32 packedString)
+  function _unpackString(bytes32 packedString)
     internal
     pure
     returns (string memory unpackedString)
