@@ -31,13 +31,13 @@ contract WrappedAssetMetadata is StringPackerPrefixer {
     address _asset
   ) {
     asset = _asset;
-    _packedName = getPackedPrefixedReturnValue(
+    _packedName = _getPackedPrefixedReturnValue(
       namePrefix,
       _asset,
       NameFunction_selector,
       UnknownNameQueryError_selector
     );
-    _packedSymbol = getPackedPrefixedReturnValue(
+    _packedSymbol = _getPackedPrefixedReturnValue(
       symbolPrefix,
       _asset,
       SymbolFunction_selector,
@@ -47,10 +47,10 @@ contract WrappedAssetMetadata is StringPackerPrefixer {
   }
 
   function name() external view returns (string memory) {
-    return unpackString(_packedName);
+    return _unpackString(_packedName);
   }
 
   function symbol() external view returns (string memory) {
-    return unpackString(_packedSymbol);
+    return _unpackString(_packedSymbol);
   }
 }
