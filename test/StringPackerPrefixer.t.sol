@@ -40,6 +40,13 @@ contract StringPackerPrefixerTest is Test {
   }
 
   function testGetStringOrBytes32AsString_Bytes32() external {
-    (uint256 size, uint256 value) = lib.getStringOrBytes32AsString(target, rightPaddedFunctionSelector, rightPaddedGenericErrorSelector);
+    // (uint256 size, uint256 value) = lib.getStringOrBytes32AsString(target, rightPaddedFunctionSelector, rightPaddedGenericErrorSelector);
+  }
+
+  function testPackUnpack() external {
+    string memory str = "xDAI";
+    bytes32 packed = lib.packString(str);
+    string memory str2 = lib.unpackString(packed);
+    assertEq(bytes(str), bytes(str2), "Unpacked string does not match original");
   }
 }

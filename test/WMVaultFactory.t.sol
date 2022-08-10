@@ -32,7 +32,7 @@ contract VaultFactoryTest is Test {
     IERC20 internal WBTC;
 
     constructor() {
-      DAI = IERC20(address(new TestERC20("DAI Stablecoin", "DAI", 18)));
+      DAI = IERC20(address(new TestERC20("Dai Stablecoin", "DAI", 18)));
       WETH = IERC20(address(new TestERC20("Wrapped Ether", "WETH", 18)));
       WBTC = IERC20(address(new TestERC20("Wrapped Bitcoin", "WBTC", 8)));
     }
@@ -88,14 +88,13 @@ contract VaultFactoryTest is Test {
         string memory vaultName = wmDAImd.name();
 
         // TODO: this fails, produces gibberish, seems to be a string memory problem with what's passed in
-        // console.log(vaultName);
+        console.log(vaultName);
         
-        /** 
         assertTrue(
             keccak256(abi.encodePacked(vaultName)) 
             == keccak256(abi.encodePacked("Wintermute Dai Stablecoin"))
         );
-        */
+       
     }
 
     function test_PermissionsGranted() public {
@@ -130,6 +129,8 @@ contract VaultFactoryTest is Test {
 
         // TODO: confirm that the scale factor has increased
         (,,uint scaleFactor,) = wmDAI.getCurrentState();
+        // TODO: confirm amount scale factor increased by
+        assertTrue(scaleFactor > 1e26, "Scale factor did not increase");
         console.log(scaleFactor);
 
         uint endBalance = wmDAI.balanceOf(wlUser);
