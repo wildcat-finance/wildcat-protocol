@@ -56,7 +56,7 @@ contract WMVault is UncollateralizedDebtToken {
     // Constructor doesn't take any arguments so that the bytecode is consistent for the create2 factory
     constructor() 
         UncollateralizedDebtToken(IWMVaultFactory(msg.sender).factoryVaultUnderlying(),
-                                  "Wintermute",
+                                  "Wintermute ",
                                   "wmt",
                                    IWMVaultFactory(msg.sender).factoryPermissionRegistry(),
                                    IWMVaultFactory(msg.sender).factoryVaultMaximumCapacity(),
