@@ -1,7 +1,4 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.13;
 
-interface IWMVault {
-
-
-}
+interface IWMVault {}

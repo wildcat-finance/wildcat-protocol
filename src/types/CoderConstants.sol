@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-
 // ============================== NOTICE ==============================
 // This library was automatically generated with stackpacker.
 // Be very careful about modifying it, as doing so incorrectly could
