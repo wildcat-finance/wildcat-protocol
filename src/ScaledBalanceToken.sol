@@ -29,7 +29,7 @@ abstract contract ScaledBalanceToken {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Returns the scaled balance of `account` with interest.
+   * @notice Returns the normalized balance of `account` with interest.
    */
   function balanceOf(address account) public view returns (uint256) {
     (uint256 scaleFactor, ) = _getCurrentScaleFactor(_state);
@@ -37,7 +37,7 @@ abstract contract ScaledBalanceToken {
   }
 
   /**
-   * @notice Returns the scaled total supply with interest.
+   * @notice Returns the normalized total supply with interest.
    */
   function totalSupply() public view returns (uint256) {
     VaultState state = _state;
