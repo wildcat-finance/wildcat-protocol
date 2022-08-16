@@ -7,6 +7,8 @@
     "stack-packer": "^1.1.7"
   },
   "scripts": {
-    "codegen": "stack-packer ./type-defs ./src/types ./src/test"
+    "codegen": "stack-packer ./type-defs ./src/types ./src/test",
+    "lint:check": "prettier --check 'src/**/*.sol' && solhint --config ./.solhint.json 'src/**/*.sol'",
+    "lint:fix": "prettier --write 'src/**/*.sol'"
   }
 }
