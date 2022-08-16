@@ -26,12 +26,6 @@ contract WMVault is UncollateralizedDebtToken {
     // BEGIN: Vault specific parameters
     address internal wmPermissionAddress;
 
-    //UncollateralizedDebtToken public immutable debtToken;
-
-    uint256 public availableCapacity;
-    uint256 public capacityRemaining;
-    uint256 public collateralWithdrawn;
-
     uint256 internal _totalSupply;
 
     uint256 constant InterestDenominator = 1e12;
@@ -64,19 +58,8 @@ contract WMVault is UncollateralizedDebtToken {
                                    IWMVaultFactory(msg.sender).factoryVaultAnnualAPR())
     {
         wmPermissionAddress = IWMVaultFactory(msg.sender).factoryPermissionRegistry();
-
-        // Defining this here so that there's a query available for any front-ends
-        availableCapacity   = IWMVaultFactory(msg.sender).factoryVaultMaximumCapacity();
     }
     // END: Constructor
-
-    function _mint(address to, uint256 rawAmount) internal override {
-        ScaledBalanceToken._mint(to, rawAmount);
-	}
-    
-    function _burn(address from, uint256 rawAmount) internal override {
-        ScaledBalanceToken._burn(from, rawAmount);
-    }
 
     // BEGIN: Unique vault functionality
     function deposit(uint256 amount, address user) external returns (uint256) {
@@ -84,8 +67,16 @@ contract WMVault is UncollateralizedDebtToken {
         _mint(user, amount);
     }
 
+    /**
+     * @dev Returns the maximum amount of collateral that can be withdrawn.
+     */
     function maxCollateralToWithdraw() public view returns (uint256) {
-        return (availableCapacity * collateralizationRatio) / 100;
+        uint256 minimumCollateral = (totalSupply() * collateralizationRatio) / 100;
+        uint256 collateral = IERC20(asset).balanceOf(address(this));
+        if (collateral < minimumCollateral) {
+            return 0;
+        }
+        return collateral - minimumCollateral;
     }
 
     function withdrawCollateral(address receiver, uint256 assets) external isWintermute() {
@@ -96,8 +87,10 @@ contract WMVault is UncollateralizedDebtToken {
     }
 
     // TODO: how should the maximum capacity be represented here? flat amount of base asset? inflated per scale factor?
-    function adjustMaximumCapacity(uint256 _newCapacity) external isWintermute() returns (uint256) {
-        require(_newCapacity > capacityRemaining, "Cannot reduce max exposure to below outstanding");
+    /**
+     * @dev Sets the maximum total supply - this only limits deposits and does not affect interest accrual.
+     */
+    function setMaxTotalSupply(uint256 _newCapacity) external isWintermute() returns (uint256) {
         emit MaximumCapacityChanged(address(this), _newCapacity);
         return _newCapacity;
     }
@@ -111,10 +104,6 @@ contract WMVault is UncollateralizedDebtToken {
     // BEGIN: State inspection functions
     function getCurrentScaleFactor() public view returns (uint256) {
         return globalState.getScaleFactor();
-    }
-
-    function getCurrentState() external view returns (int, uint, uint, uint) {
-        return ScaledBalanceToken.getState();
     }
     // END: State inspection functions
    
