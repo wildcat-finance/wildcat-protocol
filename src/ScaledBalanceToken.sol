@@ -19,6 +19,9 @@ abstract contract ScaledBalanceToken {
 
   event Transfer(address indexed from, address indexed to, uint256 value);
   event Approval(address indexed owner, address indexed spender, uint256 value);
+  
+  // TODO: remove, this is just for testing
+  event Debug(uint256);
 
   constructor(int256 _annualInterestBips) {
     _state = DefaultVaultState.setInitialState(_annualInterestBips, RayOne, block.timestamp);
@@ -244,14 +247,26 @@ abstract contract ScaledBalanceToken {
      (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
      uint256 scaledAmount = amount.rayDiv(scaleFactor);
      scaledBalanceOf[to] += scaledAmount;
+
+    // debuglines
+    uint scaledSupply = state.getScaledTotalSupply();
+    emit Debug(scaledSupply);
+    // end debuglines
+
      unchecked {
        // If user's balance did not overflow uint256, neither will totalSupply
        // Coder checks for overflow of uint96
        state = state.setScaledTotalSupply(
-         state.getScaledTotalSupply() + scaledAmount
-       );
+          state.getScaledTotalSupply() + scaledAmount
+        );
      }
      _state = state;
+
+    // debuglines
+    uint scaledSupply2 = _state.getScaledTotalSupply();
+    emit Debug(scaledSupply2);
+    // end debuglines
+    
     emit Transfer(address(0), to, amount);
    }
 
@@ -259,12 +274,21 @@ abstract contract ScaledBalanceToken {
     VaultState state = _getCurrentState();
     (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
     uint256 scaledAmount = amount.rayDiv(scaleFactor);
+
+    // debuglines
+    emit Debug(scaledBalanceOf[account]);
+    emit Debug(scaledAmount);
+    
+    uint scaledSupply = state.getScaledTotalSupply();
+    emit Debug(scaledSupply);
+    // end debuglines
+
     scaledBalanceOf[account] -= scaledAmount;
     unchecked {
       // If user's balance did not underflow uint256, neither will totalSupply
       state = state.setScaledTotalSupply(
-        state.getScaledTotalSupply() - scaledAmount
-      );
+          state.getScaledTotalSupply() - scaledAmount
+        );
     }
     _state = state;
     emit Transfer(account, address(0), amount);
