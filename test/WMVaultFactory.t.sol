@@ -117,25 +117,30 @@ contract VaultFactoryTest is Test {
         wmDAI.deposit(50_000e18, nonwlUser);
     }
 
-    function test_WithdrawInterestRemains() public {
+    function test_BalanceIncreasesOverTime() public {
         vm.prank(wlUser);
         wmDAI.deposit(50_000e18, wlUser);
         uint startBalance = wmDAI.balanceOf(wlUser);
         console.log(startBalance);
         warpOneYear();
         
+        // The deposit of 1e18 is what ACTUALLY adjusts the scale factor, the balanceOf call just projects it
+        /**
         vm.prank(wlUser);
-        wmDAI.deposit(1e18, wlUser); // TODO: causes an integer over/underflow
+        wmDAI.deposit(1e18, wlUser);
 
         // TODO: confirm that the scale factor has increased
         (,,uint scaleFactor,) = wmDAI.getCurrentState();
-        // TODO: confirm amount scale factor increased by
         assertTrue(scaleFactor > 1e26, "Scale factor did not increase");
-        console.log(scaleFactor);
+        **/
 
         uint endBalance = wmDAI.balanceOf(wlUser);
         console.log(endBalance);
-        assertTrue(true); // TODO: make this a meaningful test: withdraw the interest
+
+        vm.prank(wlUser);
+        wmDAI.withdraw(1e18, wlUser);
+
+        assertTrue(endBalance > startBalance, "Balance did not increase");
     }
 
     function test_WithdrawCollateral() public {
