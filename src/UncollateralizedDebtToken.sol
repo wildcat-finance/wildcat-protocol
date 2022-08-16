@@ -42,4 +42,9 @@ contract UncollateralizedDebtToken is ScaledBalanceToken, WrappedAssetMetadata {
   ) internal virtual override {
     asset.safeTransferFrom(msg.sender, to, amount);
   }
+
+  function _setMaxTotalSupply(uint256 _maxTotalSupply) internal {
+      require(_maxTotalSupply >= totalSupply(), "Cannot reduce max supply below outstanding");
+      _configuration = _configuration.setMaxTotalSupply(_maxTotalSupply);
+  }
 }
