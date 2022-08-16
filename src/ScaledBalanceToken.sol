@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
-
 import { DefaultVaultState, VaultState, VaultStateCoder } from "./types/VaultStateCoder.sol";
 import "./libraries/Math.sol";
 import "./libraries/LowGasSafeMath.sol";
@@ -19,9 +18,6 @@ abstract contract ScaledBalanceToken {
 
   event Transfer(address indexed from, address indexed to, uint256 value);
   event Approval(address indexed owner, address indexed spender, uint256 value);
-  
-  // TODO: remove, this is just for testing
-  event Debug(uint256);
 
   constructor(int256 _annualInterestBips) {
     _state = DefaultVaultState.setInitialState(_annualInterestBips, RayOne, block.timestamp);
@@ -77,11 +73,10 @@ abstract contract ScaledBalanceToken {
   }
 
   function _getCurrentState() internal view returns (VaultState state) {
-    (uint256 scaleFactor, bool changed) = _getCurrentScaleFactor(_state);
+    state = _state;
+    (uint256 scaleFactor, bool changed) = _getCurrentScaleFactor(state);
     if (changed) {
       state = state.setNewScaleOutputs(scaleFactor, block.timestamp);
-    } else {
-      return _state;
     }
   }
 
@@ -227,7 +222,7 @@ abstract contract ScaledBalanceToken {
     returns (uint256 actualAmount)
   {
     VaultState state = _getCurrentState();
-    (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
+    uint256 scaleFactor = state.getScaleFactor();
     actualAmount = Math.min(amount, _getMaximumDeposit(state, scaleFactor));
     uint256 scaledAmount = actualAmount.rayDiv(scaleFactor);
     _handleDeposit(to, amount, scaledAmount);
@@ -243,15 +238,10 @@ abstract contract ScaledBalanceToken {
   }
 
   function _mint(address to, uint256 amount) internal virtual {
-     VaultState state = _getCurrentState();
-     (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
+    VaultState state = _getCurrentState();
+    uint256 scaleFactor = state.getScaleFactor();
      uint256 scaledAmount = amount.rayDiv(scaleFactor);
      scaledBalanceOf[to] += scaledAmount;
-
-    // debuglines
-    uint scaledSupply = state.getScaledTotalSupply();
-    emit Debug(scaledSupply);
-    // end debuglines
 
      unchecked {
        // If user's balance did not overflow uint256, neither will totalSupply
@@ -261,27 +251,14 @@ abstract contract ScaledBalanceToken {
         );
      }
      _state = state;
-
-    // debuglines
-    uint scaledSupply2 = _state.getScaledTotalSupply();
-    emit Debug(scaledSupply2);
-    // end debuglines
     
     emit Transfer(address(0), to, amount);
    }
 
   function _burn(address account, uint256 amount) internal virtual {
     VaultState state = _getCurrentState();
-    (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
+    uint256 scaleFactor = state.getScaleFactor();
     uint256 scaledAmount = amount.rayDiv(scaleFactor);
-
-    // debuglines
-    emit Debug(scaledBalanceOf[account]);
-    emit Debug(scaledAmount);
-    
-    uint scaledSupply = state.getScaledTotalSupply();
-    emit Debug(scaledSupply);
-    // end debuglines
 
     scaledBalanceOf[account] -= scaledAmount;
     unchecked {
