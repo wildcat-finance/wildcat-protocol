@@ -15,6 +15,7 @@ abstract contract ScaledBalanceToken {
 
   VaultState internal _state;
   mapping(address => uint256) public scaledBalanceOf;
+  mapping(address => mapping(address => uint256)) public allowance;
 
   event Transfer(address indexed from, address indexed to, uint256 value);
   event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -27,12 +28,18 @@ abstract contract ScaledBalanceToken {
                           External Getters
   //////////////////////////////////////////////////////////////*/
 
+  /**
+   * @notice Returns the scaled balance of `account` with interest.
+   */
   function balanceOf(address account) public view returns (uint256) {
     (uint256 scaleFactor, ) = _getCurrentScaleFactor(_state);
     return scaledBalanceOf[account].rayMul(scaleFactor);
   }
 
-  function totalSupply() external view returns (uint256) {
+  /**
+   * @notice Returns the scaled total supply with interest.
+   */
+  function totalSupply() public view returns (uint256) {
     VaultState state = _state;
     (uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
     return state.getScaledTotalSupply().rayMul(scaleFactor);
@@ -75,6 +82,10 @@ abstract contract ScaledBalanceToken {
     }
   }
 
+  /**
+   * @dev Returns scale factor at current time, with interest applied since the
+   * previous accrual but without updating the state.
+   */
   function _getCurrentScaleFactor(VaultState state)
     internal
     view
@@ -123,20 +134,6 @@ abstract contract ScaledBalanceToken {
   /*//////////////////////////////////////////////////////////////
                             ERC20 Actions
   //////////////////////////////////////////////////////////////*/
-  
-  mapping(address => mapping(address => uint256)) public allowance;
-
-  function _approve(
-    address owner,
-    address spender,
-    uint256 amount
-  ) internal {
-    require(owner != address(0), "ERC20: approve from the zero address");
-    require(spender != address(0), "ERC20: approve to the zero address");
-
-    allowance[owner][spender] = amount;
-    emit Approval(owner, spender, amount);
-  }
 
   function approve(address spender, uint256 amount) external returns (bool) {
     _approve(msg.sender, spender, amount);
@@ -162,20 +159,6 @@ abstract contract ScaledBalanceToken {
     uint256 amount,
     uint256 scaledAmount
   ) internal virtual {}
-
-  function _transfer(
-    address from,
-    address to,
-    uint256 amount
-  ) internal virtual {
-    uint256 scaleFactor = _getUpdatedScaleFactor();
-    uint256 scaledAmount = amount.rayDiv(scaleFactor);
-    scaledBalanceOf[from] -= scaledAmount;
-    unchecked {
-      scaledBalanceOf[to] += scaledAmount;
-    }
-    emit Transfer(from, to, amount);
-  }
 
   function transferFrom(
     address sender,
@@ -206,6 +189,36 @@ abstract contract ScaledBalanceToken {
     return _maxTotalSupply.subMinZero(_totalSupply);
   }
 
+  /*//////////////////////////////////////////////////////////////
+                       Internal ERC20 Actions
+  //////////////////////////////////////////////////////////////*/
+
+  function _approve(
+    address owner,
+    address spender,
+    uint256 amount
+  ) internal {
+    require(owner != address(0), "ERC20: approve from the zero address");
+    require(spender != address(0), "ERC20: approve to the zero address");
+
+    allowance[owner][spender] = amount;
+    emit Approval(owner, spender, amount);
+  }
+
+  function _transfer(
+    address from,
+    address to,
+    uint256 amount
+  ) internal virtual {
+    uint256 scaleFactor = _getUpdatedScaleFactor();
+    uint256 scaledAmount = amount.rayDiv(scaleFactor);
+    scaledBalanceOf[from] -= scaledAmount;
+    unchecked {
+      scaledBalanceOf[to] += scaledAmount;
+    }
+    emit Transfer(from, to, amount);
+  }
+
   function _mintUpTo(address to, uint256 amount)
     internal
     returns (uint256 actualAmount)
@@ -219,7 +232,7 @@ abstract contract ScaledBalanceToken {
     unchecked {
       // If user's balance did not overflow uint256, neither will totalSupply
       // Coder checks for overflow of uint96
-      state.setScaledTotalSupply(
+      state = state.setScaledTotalSupply(
         state.getScaledTotalSupply() + scaledAmount
       );
     }
@@ -234,7 +247,7 @@ abstract contract ScaledBalanceToken {
      unchecked {
        // If user's balance did not overflow uint256, neither will totalSupply
        // Coder checks for overflow of uint96
-       state.setScaledTotalSupply(
+       state = state.setScaledTotalSupply(
          state.getScaledTotalSupply() + scaledAmount
        );
      }
@@ -249,7 +262,7 @@ abstract contract ScaledBalanceToken {
     scaledBalanceOf[account] -= scaledAmount;
     unchecked {
       // If user's balance did not underflow uint256, neither will totalSupply
-      state.setScaledTotalSupply(
+      state = state.setScaledTotalSupply(
         state.getScaledTotalSupply() - scaledAmount
       );
     }
