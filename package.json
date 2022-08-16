@@ -1,5 +1,9 @@
 {
   "devDependencies": {
+    "prettier": "^2.7.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.24",
+    "solhint": "^3.3.7",
+    "solhint-plugin-prettier": "^0.0.5",
     "stack-packer": "^1.1.7"
   },
   "scripts": {
