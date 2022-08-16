@@ -145,18 +145,14 @@ contract VaultFactoryTest is Test {
 
     function test_WithdrawCollateral() public {
         
+        vm.prank(wlUser);
+        wmDAI.deposit(50_000e18, wlUser);
+
         // TODO: re-represent maxCollateralToWithdraw in terms of amounts deposited, not availableCapacity
         uint availableCollateral = wmDAI.maxCollateralToWithdraw();
         console.log(availableCollateral); 
 
-        vm.prank(wlUser);
-        wmDAI.deposit(50_000e18, wlUser);
-
-        // TODO: confirm that the amount of collateral available to withdraw is now 90% of what was deposited
-        // TODO: scale this with scaleFactor so it's not represented in the base asset
-        uint availableCollateral2 = wmDAI.maxCollateralToWithdraw();
-        console.log(availableCollateral2);
-        assertTrue(true);
+        assertTrue(false);
     }
 
 }
