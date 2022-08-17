@@ -67,6 +67,15 @@ contract WMVault is UncollateralizedDebtToken {
 	// END: Constructor
 
 	// BEGIN: Unique vault functionality
+	function depositUpTo(uint256 amount, address user) external {
+		require(
+			WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender),
+			'deposit: user not whitelisted'
+		);
+		uint actualAmount = _mintUpTo(user, amount);
+		SafeTransferLib.safeTransferFrom(asset, user, address(this), actualAmount);
+	}
+
 	function deposit(uint256 amount, address user) external {
 		require(
 			WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender),
