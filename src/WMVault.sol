@@ -100,7 +100,7 @@ contract WMVault is UncollateralizedDebtToken {
 	 * @dev Returns the maximum amount of collateral that can be withdrawn.
 	 */
 	function maxCollateralToWithdraw() public view returns (uint256) {
-		uint256 maximumToWithdraw = (ScaledBalanceToken.totalSupply() * collateralizationRatio) / 100;
+		uint256 maximumToWithdraw = (totalSupply() * collateralizationRatio) / 100;
 		uint256 collateral = IERC20(asset).balanceOf(address(this));
 		if (collateralWithdrawn > maximumToWithdraw) {
 			return 0;
