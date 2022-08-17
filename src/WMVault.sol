@@ -73,6 +73,7 @@ contract WMVault is UncollateralizedDebtToken {
 			'deposit: user not whitelisted'
 		);
 		_mint(user, amount);
+		SafeTransferLib.safeTransferFrom(asset, user, address(this), amount);
 	}
 
 	function withdraw(uint256 amount, address user) external {
