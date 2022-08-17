@@ -121,13 +121,15 @@ contract VaultFactoryTest is Test {
         assertTrue(endBalance > startBalance, "Balance did not increase");
     }
 
-    // TODO: we're expecting this to fail, 61,000 is more than the vault expects
+    // TODO: we're expecting this to only deposit up to the vault deposit limit
+    // but it looks like the _mintUpTo function is just returning whatever it's given
+    // and ignoring the minimum
     function test_depositUpToLimitOnly() public {
         vm.prank(wlUser);
         wmDAI.deposit(61_000e18, wlUser);
         uint startBalance = wmDAI.balanceOf(wlUser);
         console.log(startBalance);
-        assertTrue(false);
+        assertTrue(startBalance == 60_000e18, "Too much has been deposited");
     }
 
     function test_WithdrawCollateralImmediate() public {
