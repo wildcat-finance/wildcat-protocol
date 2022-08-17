@@ -30,6 +30,8 @@ contract WMVault is UncollateralizedDebtToken {
 
 	uint256 constant InterestDenominator = 1e12;
 
+	uint256 internal collateralWithdrawn;
+
 	// END: Vault specific parameters
 
 	// BEGIN: Events
@@ -72,7 +74,7 @@ contract WMVault is UncollateralizedDebtToken {
 			WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender),
 			'deposit: user not whitelisted'
 		);
-		uint actualAmount = _mintUpTo(user, amount);
+		uint actualAmount = ScaledBalanceToken._mintUpTo(user, amount);
 		SafeTransferLib.safeTransferFrom(asset, user, address(this), actualAmount);
 	}
 
@@ -93,22 +95,20 @@ contract WMVault is UncollateralizedDebtToken {
 		_burn(user, amount);
 	}
 
-	event DebugEvent(uint);
 
 	/**
 	 * @dev Returns the maximum amount of collateral that can be withdrawn.
 	 */
-	function maxCollateralToWithdraw() public returns (uint256) {
-		uint256 minimumCollateral = (ScaledBalanceToken.totalSupply() * collateralizationRatio) / 100;
+	function maxCollateralToWithdraw() public view returns (uint256) {
+		uint256 maximumToWithdraw = (ScaledBalanceToken.totalSupply() * collateralizationRatio) / 100;
 		uint256 collateral = IERC20(asset).balanceOf(address(this));
-		
-		emit DebugEvent(minimumCollateral);
-		emit DebugEvent(collateral);
-
-		if (collateral < minimumCollateral) {
+		if (collateralWithdrawn > maximumToWithdraw) {
 			return 0;
 		}
-		return collateral - minimumCollateral;
+		if (maximumToWithdraw - collateralWithdrawn > collateral) {
+			return collateral;
+		}
+		return maximumToWithdraw - collateralWithdrawn;
 	}
 
 	function withdrawCollateral(address receiver, uint256 assets)
@@ -121,6 +121,7 @@ contract WMVault is UncollateralizedDebtToken {
 			'trying to withdraw more than collat ratio allows'
 		);
 		SafeTransferLib.safeTransfer(asset, receiver, assets);
+		collateralWithdrawn += assets;
 		emit CollateralWithdrawn(receiver, assets);
 	}
 
