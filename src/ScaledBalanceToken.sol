@@ -248,24 +248,13 @@ abstract contract ScaledBalanceToken {
 			);
 		}
 		_state = state;
+		emit Transfer(address(0), to, actualAmount);
 	}
 
 	function _mint(address to, uint256 amount) internal virtual {
-		VaultState state = _getCurrentState();
-		uint256 scaleFactor = state.getScaleFactor();
-		uint256 scaledAmount = amount.rayDiv(scaleFactor);
-		scaledBalanceOf[to] += scaledAmount;
-
-		unchecked {
-			// If user's balance did not overflow uint256, neither will totalSupply
-			// Coder checks for overflow of uint96
-			state = state.setScaledTotalSupply(
-				state.getScaledTotalSupply() + scaledAmount
-			);
-		}
-		_state = state;
-
-		emit Transfer(address(0), to, amount);
+    if (_mintUpTo(to, amount) != amount) {
+      _panicOverflow();
+    }
 	}
 
 	function _burn(address account, uint256 amount) internal virtual {
@@ -283,4 +272,12 @@ abstract contract ScaledBalanceToken {
 		_state = state;
 		emit Transfer(account, address(0), amount);
 	}
+
+  function _panicOverflow() internal pure {
+    assembly {
+        mstore(0, Panic_error_signature)
+				mstore(Panic_error_offset, Panic_arithmetic)
+				revert(0, Panic_error_length)
+    }
+  }
 }
