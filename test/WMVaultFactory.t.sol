@@ -31,7 +31,7 @@ contract VaultFactoryTest is Test {
     address public wlUser = address(0x42);
     address public nonwlUser = address(0x43);
 
-    WMPermissions public wmp;
+    WMPermissions public perms;
     WMRegistry public wmr;
     WMVaultFactory public wmvf;
 
@@ -69,12 +69,12 @@ contract VaultFactoryTest is Test {
     }
 
     function setUp() public {
-        wmp  = new WMPermissions(wintermute);
+        perms  = new WMPermissions(wintermute);
 
         vm.prank(wintermute);
-        wmp.adjustWhitelist(wlUser, true);
+        perms.adjustWhitelist(wlUser, true);
 
-        wmvf = new WMVaultFactory(address(wmp));
+        wmvf = new WMVaultFactory(address(perms));
 
         vm.prank(wintermute);
         bytes32 saltDAI = bytes32(uint256(1));
@@ -125,12 +125,12 @@ contract VaultFactoryTest is Test {
     }
 
     function test_PermissionsGranted() public {
-        bool allowed = wmp.isWhitelisted(wlUser);
+        bool allowed = perms.isWhitelisted(wlUser);
         assertTrue(allowed);
     }
 
     function test_PermissionsNotGranted() public {
-        bool allowed = wmp.isWhitelisted(nonwlUser);
+        bool allowed = perms.isWhitelisted(nonwlUser);
         assertFalse(allowed);
     }
 
