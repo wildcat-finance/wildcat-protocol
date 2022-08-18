@@ -145,6 +145,14 @@ contract VaultFactoryTest is Test {
         wmDAI.deposit(50_000e18, nonwlUser);
     }
 
+    function test_DepositWithoutAllowance() public {
+        vm.startPrank(wlUser);
+        DAI.approve(address(wmDAI), 0);
+        vm.expectRevert('TRANSFER_FROM_FAILED');
+        wmDAI.deposit(50_000e18, nonwlUser);
+        vm.stopPrank();
+    }
+
     function test_BalanceIncreasesOverTime() public {
         vm.prank(wlUser);
         wmDAI.deposit(50_000e18, wlUser);
