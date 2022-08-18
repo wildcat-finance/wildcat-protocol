@@ -6,6 +6,9 @@ import "forge-std/Vm.sol";
 import "./helpers/Metadata.sol";
 import "./helpers/ExternalStringPackerPrefixer.sol";
 
+uint256 constant NameFunction_selector = 0x06fdde0300000000000000000000000000000000000000000000000000000000;
+uint256 constant UnknownNameQueryError_selector = 0xed3df7ad00000000000000000000000000000000000000000000000000000000;
+
 contract StringPackerPrefixerTest is Test {
   Bytes32Metadata internal bytes32Metadata = new Bytes32Metadata();
   StringMetadata internal stringMetadata = new StringMetadata();
@@ -40,7 +43,12 @@ contract StringPackerPrefixerTest is Test {
   }
 
   function testGetStringOrBytes32AsString_Bytes32() external {
-    // (uint256 size, uint256 value) = lib.getStringOrBytes32AsString(target, rightPaddedFunctionSelector, rightPaddedGenericErrorSelector);
+    (uint256 size, uint256 value) = lib.getStringOrBytes32AsString(address(bytes32Metadata), NameFunction_selector, UnknownNameQueryError_selector);
+    assertEq(size, 5);
+    assertEq(value, 0x4d616b6572000000000000000000000000000000000000000000000000000000);
+    (size, value) = lib.getStringOrBytes32AsString(address(stringMetadata), NameFunction_selector, UnknownNameQueryError_selector);
+    assertEq(size, 5);
+    assertEq(value, 0x4d616b6572000000000000000000000000000000000000000000000000000000);
   }
 
   function testPackUnpack() external {
