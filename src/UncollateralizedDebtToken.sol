@@ -10,6 +10,10 @@ contract UncollateralizedDebtToken is ScaledBalanceToken, WrappedAssetMetadata {
 	using ConfigurationCoder for Configuration;
 	using SafeTransferLib for address;
 
+  error NewMaxSupplyTooLow();
+
+	event MaxSupplyUpdated(address vault, uint256 assets);
+
 	uint256 public immutable collateralizationRatio;
 
 	Configuration internal _configuration;
@@ -43,14 +47,14 @@ contract UncollateralizedDebtToken is ScaledBalanceToken, WrappedAssetMetadata {
 		uint256 amount,
 		uint256
 	) internal virtual override {
-		asset.safeTransferFrom(msg.sender, to, amount);
+		asset.safeTransferFrom(msg.sender, address(this), amount);
 	}
 
 	function _setMaxTotalSupply(uint256 _maxTotalSupply) internal {
-		require(
-			_maxTotalSupply >= totalSupply(),
-			'Cannot reduce max supply below outstanding'
-		);
+		if (_maxTotalSupply < totalSupply()) {
+      revert NewMaxSupplyTooLow();
+    }
 		_configuration = _configuration.setMaxTotalSupply(_maxTotalSupply);
+		emit MaxSupplyUpdated(address(this), _maxTotalSupply);
 	}
 }
