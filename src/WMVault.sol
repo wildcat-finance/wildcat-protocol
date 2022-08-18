@@ -21,6 +21,8 @@ import './UncollateralizedDebtToken.sol';
 contract WMVault is UncollateralizedDebtToken {
 	using VaultStateCoder for VaultState;
 
+  error NotWhitelisted();
+
 	VaultState public globalState;
 
 	// BEGIN: Vault specific parameters
@@ -79,12 +81,10 @@ contract WMVault is UncollateralizedDebtToken {
 	}
 
 	function deposit(uint256 amount, address user) external {
-		require(
-			WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender),
-			'deposit: user not whitelisted'
-		);
+    if (!WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender)) {
+      revert NotWhitelisted();
+    }
 		_mint(user, amount);
-		SafeTransferLib.safeTransferFrom(asset, user, address(this), amount);
 	}
 
 	function withdraw(uint256 amount, address user) external {
