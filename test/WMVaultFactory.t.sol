@@ -33,7 +33,7 @@ contract VaultFactoryTest is Test {
 
     WMPermissions public perms;
     WMRegistry public registry;
-    WMVaultFactory public wmvf;
+    WMVaultFactory public factory;
 
     WMVault public wmDAI;
     
@@ -74,19 +74,19 @@ contract VaultFactoryTest is Test {
         vm.prank(wintermute);
         perms.adjustWhitelist(wlUser, true);
 
-        wmvf = new WMVaultFactory(address(perms));
+        factory = new WMVaultFactory(address(perms));
 
         vm.prank(wintermute);
         bytes32 saltDAI = bytes32(uint256(1));
-        address returnedVaultAddress = wmvf.deployVault(address(DAI), DefaultMaximumSupply, DefaultAPRBips, DefaultCollateralizationRatio, saltDAI);
+        address returnedVaultAddress = factory.deployVault(address(DAI), DefaultMaximumSupply, DefaultAPRBips, DefaultCollateralizationRatio, saltDAI);
         wmDAI = WMVault(returnedVaultAddress);
 
         // Verify vault was deployed to correct address
-        assertEq(_getVaultAddress(address(wmvf), saltDAI), returnedVaultAddress);
+        assertEq(_getVaultAddress(address(factory), saltDAI), returnedVaultAddress);
         // Verify factory computes correct address
-        assertEq(wmvf.computeVaultAddress(saltDAI), returnedVaultAddress);
+        assertEq(factory.computeVaultAddress(saltDAI), returnedVaultAddress);
 
-        address wmrAddr = wmvf.vaultRegistryAddress();
+        address wmrAddr = factory.vaultRegistryAddress();
         registry = WMRegistry(wmrAddr);
 
         address[] memory regVaults = registry.listVaults();
