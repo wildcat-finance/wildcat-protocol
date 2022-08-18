@@ -9,12 +9,16 @@ import './WMVault.sol';
 import './WMRegistry.sol';
 
 contract WMVaultFactory {
+  error NotWintermute();
+
 	address internal wmPermissionAddress;
 
 	IWMRegistry internal wmRegistry;
 
   bytes32 public immutable VaultInitCodeHash = keccak256(type(WMVault).creationCode);
 
+  // todo Set these all to 1 in constructor, reset to 1 after each deploy
+  // to minimize writes from 0->1 (does this actually matter when it goes 0->1->0 in same tx?)
 	address public factoryVaultUnderlying = address(0x00);
 	address public factoryPermissionRegistry = address(0x00);
 
@@ -26,8 +30,9 @@ contract WMVaultFactory {
 	event WMVaultRegistered(address, address);
 
 	modifier isWintermute() {
-		address wintermute = IWMPermissions(wmPermissionAddress).wintermute();
-		require(msg.sender == wintermute);
+		if (msg.sender != IWMPermissions(wmPermissionAddress).wintermute()) {
+      revert NotWintermute();
+    }
 		_;
 	}
 
