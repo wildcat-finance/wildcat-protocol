@@ -10,6 +10,8 @@ abstract contract ScaledBalanceToken {
 	using Math for int256;
 	using LowGasSafeMath for uint256;
 
+  error MaxSupplyExceeded();
+
 	VaultState internal _state;
 	mapping(address => uint256) public scaledBalanceOf;
 	mapping(address => mapping(address => uint256)) public allowance;
@@ -253,7 +255,7 @@ abstract contract ScaledBalanceToken {
 
 	function _mint(address to, uint256 amount) internal virtual {
     if (_mintUpTo(to, amount) != amount) {
-      _panicOverflow();
+      revert MaxSupplyExceeded();
     }
 	}
 
@@ -272,12 +274,4 @@ abstract contract ScaledBalanceToken {
 		_state = state;
 		emit Transfer(account, address(0), amount);
 	}
-
-  function _panicOverflow() internal pure {
-    assembly {
-        mstore(0, Panic_error_signature)
-				mstore(Panic_error_offset, Panic_arithmetic)
-				revert(0, Panic_error_length)
-    }
-  }
 }
