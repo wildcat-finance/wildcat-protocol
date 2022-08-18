@@ -151,24 +151,19 @@ contract VaultFactoryTest is Test {
 
         warpOneYear();
         uint256 interest = uint256(startBalance.rayMul(DefaultInterestPerSecondRay * SecondsIn365Days));
-        
-        // The deposit of 1e18 is what ACTUALLY adjusts the scale factor, the balanceOf call just projects it
-        /**
-        vm.prank(wlUser);
-        wmDAI.deposit(1e18, wlUser);
-
-        // TODO: confirm that the scale factor has increased
-        (,,uint scaleFactor,) = wmDAI.getCurrentState();
-        assertTrue(scaleFactor > 1e26, "Scale factor did not increase");
-        **/
 
         uint endBalance = wmDAI.balanceOf(wlUser);
         assertEq(endBalance, startBalance + interest);
+        assertTrue(endBalance > startBalance, "Balance did not increase");
+        
+        // The deposit of 1e18 is what ACTUALLY adjusts the scale factor, the balanceOf call just projects it
+        vm.prank(wlUser);
+        wmDAI.withdraw(2_499e18, wlUser);
+
+        assertEq(wmDAI.balanceOf(wlUser), (startBalance + interest) - 2_499e18);
 
         vm.prank(wlUser);
         wmDAI.withdraw(1e18, wlUser);
-
-        assertTrue(endBalance > startBalance, "Balance did not increase");
     }
 
     function test_WithdrawCollateral() public {
