@@ -4,12 +4,10 @@ import { DefaultVaultState, VaultState, VaultStateCoder } from './types/VaultSta
 import './libraries/Math.sol';
 import './libraries/LowGasSafeMath.sol';
 
-uint256 constant SecondsIn365Days = 31536000;
-uint256 constant RayBipsNumerator = 1e22;
-
 abstract contract ScaledBalanceToken {
 	using VaultStateCoder for VaultState;
 	using Math for uint256;
+	using Math for int256;
 	using LowGasSafeMath for uint256;
 
 	VaultState internal _state;
@@ -108,13 +106,8 @@ abstract contract ScaledBalanceToken {
 		bool changed = timeElapsed > 0;
 		if (changed) {
 			int256 newInterest;
+      int256 interestPerSecond = annualInterestBips.annualBipsToRayPerSecond();
 			assembly {
-				// Convert annual bips to fraction of 1e26 - (bips * 1e22) / 31536000
-				// Multiply by 1e22 = multiply by 1e26 and divide by 10000
-				let interestPerSecond := sdiv(
-					mul(annualInterestBips, RayBipsNumerator),
-					SecondsIn365Days
-				)
 				// Calculate interest accrued since last update
 				newInterest := mul(timeElapsed, interestPerSecond)
 			}
