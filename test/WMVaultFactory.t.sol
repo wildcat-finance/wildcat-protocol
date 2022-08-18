@@ -32,7 +32,7 @@ contract VaultFactoryTest is Test {
     address public nonwlUser = address(0x43);
 
     WMPermissions public perms;
-    WMRegistry public wmr;
+    WMRegistry public registry;
     WMVaultFactory public wmvf;
 
     WMVault public wmDAI;
@@ -87,9 +87,9 @@ contract VaultFactoryTest is Test {
         assertEq(wmvf.computeVaultAddress(saltDAI), returnedVaultAddress);
 
         address wmrAddr = wmvf.vaultRegistryAddress();
-        wmr = WMRegistry(wmrAddr);
+        registry = WMRegistry(wmrAddr);
 
-        address[] memory regVaults = wmr.listVaults();
+        address[] memory regVaults = registry.listVaults();
 
         // Verify registry pushes vault address
         assertEq(regVaults.length, 1);
