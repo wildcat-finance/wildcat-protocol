@@ -5,6 +5,8 @@ import '../types/CoderConstants.sol';
 
 uint256 constant OneEth = 1e18;
 uint256 constant RayOne = 1e26;
+uint256 constant RayBipsNumerator = 1e22;
+int256 constant SecondsIn365Days = 31536000;
 
 library Math {
 	function avg(uint256 a, uint256 b) internal pure returns (uint256 c) {
@@ -63,4 +65,15 @@ library Math {
 			c := add(valueIfFalse, mul(condition, sub(valueIfTrue, valueIfFalse)))
 		}
 	}
+
+  function annualBipsToRayPerSecond(int256 annualBips) internal pure returns (int256 rayPerSecond) {
+    assembly {
+        // Convert annual bips to fraction of 1e26 - (bips * 1e22) / 31536000
+				// Multiply by 1e22 = multiply by 1e26 and divide by 10000
+				rayPerSecond := sdiv(
+					mul(annualBips, RayBipsNumerator),
+					SecondsIn365Days
+				)
+    }
+  }
 }
