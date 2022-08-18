@@ -139,8 +139,9 @@ contract VaultFactoryTest is Test {
         wmDAI.deposit(50_000e18, wlUser);
     }
 
-    function testFail_SwapWhenNotAllowed() public {
+    function test_DepositWithoutWhitelist() public {
         vm.prank(nonwlUser);
+        vm.expectRevert(WMVault.NotWhitelisted.selector);
         wmDAI.deposit(50_000e18, nonwlUser);
     }
 
