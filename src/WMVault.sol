@@ -2,20 +2,15 @@
 pragma solidity ^0.8.13;
 
 import './interfaces/IERC20.sol';
-import './interfaces/IERC20Metadata.sol';
 import './interfaces/IWMPermissions.sol';
-import './interfaces/IWMVault.sol';
 import './interfaces/IWMVaultFactory.sol';
-
-import './ERC20.sol';
-import './WMPermissions.sol';
-
-import './libraries/SymbolHelper.sol';
-
 import { SafeTransferLib } from './libraries/SafeTransferLib.sol';
 import { VaultStateCoder } from './types/VaultStateCoder.sol';
 
 import './UncollateralizedDebtToken.sol';
+
+
+uint256 constant InterestDenominator = 1e12;
 
 // Also 4626, but not inheriting, rather rewriting
 contract WMVault is UncollateralizedDebtToken {
@@ -26,11 +21,7 @@ contract WMVault is UncollateralizedDebtToken {
 	VaultState public globalState;
 
 	// BEGIN: Vault specific parameters
-	address internal wmPermissionAddress;
-
-	uint256 internal _totalSupply;
-
-	uint256 constant InterestDenominator = 1e12;
+	IWMPermissions public immutable wmPermissions;
 
 	uint256 internal collateralWithdrawn;
 
@@ -39,15 +30,21 @@ contract WMVault is UncollateralizedDebtToken {
 	// BEGIN: Events
 	event CollateralWithdrawn(address indexed recipient, uint256 assets);
 	event CollateralDeposited(address indexed sender, uint256 assets);
-	event MaximumCapacityChanged(address vault, uint256 assets);
 	// END: Events
 
 	// BEGIN: Modifiers
 	modifier isWintermute() {
-		address wintermute = IWMPermissions(wmPermissionAddress).wintermute();
+		address wintermute = wmPermissions.wintermute();
 		require(msg.sender == wintermute);
 		_;
 	}
+
+  modifier isWhitelisted() {
+    if (!wmPermissions.isWhitelisted(msg.sender)) {
+      revert NotWhitelisted();
+    }
+    _;
+  }
 
 	// END: Modifiers
 
@@ -64,34 +61,24 @@ contract WMVault is UncollateralizedDebtToken {
 			IWMVaultFactory(msg.sender).factoryVaultAnnualAPR()
 		)
 	{
-		wmPermissionAddress = IWMVaultFactory(msg.sender)
-			.factoryPermissionRegistry();
+		wmPermissions = IWMPermissions(
+      IWMVaultFactory(msg.sender).factoryPermissionRegistry()
+    );
 	}
 
 	// END: Constructor
 
 	// BEGIN: Unique vault functionality
-	function depositUpTo(uint256 amount, address user) external {
-		require(
-			WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender),
-			'deposit: user not whitelisted'
-		);
+	function depositUpTo(uint256 amount, address user) external isWhitelisted {
 		uint actualAmount = ScaledBalanceToken._mintUpTo(user, amount);
 		SafeTransferLib.safeTransferFrom(asset, user, address(this), actualAmount);
 	}
 
-	function deposit(uint256 amount, address user) external {
-    if (!WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender)) {
-      revert NotWhitelisted();
-    }
+	function deposit(uint256 amount, address user) external isWhitelisted {
 		_mint(user, amount);
 	}
 
-	function withdraw(uint256 amount, address user) external {
-		require(
-			WMPermissions(wmPermissionAddress).isWhitelisted(msg.sender),
-			'deposit: user not whitelisted'
-		);
+	function withdraw(uint256 amount, address user) external isWhitelisted {
 		_burn(user, amount);
 	}
 
@@ -134,7 +121,7 @@ contract WMVault is UncollateralizedDebtToken {
 		isWintermute
 		returns (uint256)
 	{
-		emit MaximumCapacityChanged(address(this), _newCapacity);
+		_setMaxTotalSupply(_newCapacity);
 		return _newCapacity;
 	}
 
