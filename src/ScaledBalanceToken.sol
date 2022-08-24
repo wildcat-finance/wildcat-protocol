@@ -147,9 +147,7 @@ abstract contract ScaledBalanceToken {
   //////////////////////////////////////////////////////////////*/
 
 	function approve(address spender, uint256 amount) external returns (bool) {
-		allowance[msg.sender][spender] = amount;
-
-		emit Approval(msg.sender, spender, amount);
+		_approve(msg.sender, spender, amount);
 
 		return true;
 	}
@@ -164,8 +162,7 @@ abstract contract ScaledBalanceToken {
 		// Saves gas for unlimited approvals.
 		if (allowed != type(uint256).max) {
 			uint256 newAllowance = allowed - amount;
-			allowance[sender][msg.sender] = newAllowance;
-			emit Approval(sender, msg.sender, newAllowance);
+			_approve(sender, msg.sender, newAllowance);
 		}
 
 		_transfer(sender, recipient, amount);
@@ -178,9 +175,18 @@ abstract contract ScaledBalanceToken {
 		return true;
 	}
 
-	/*//////////////////////////////////////////////////////////////
-                     Internal Actions & Getters
+  /*//////////////////////////////////////////////////////////////
+                          Internal Actions
   //////////////////////////////////////////////////////////////*/
+
+	function _approve(
+		address owner,
+		address spender,
+		uint256 amount
+	) internal virtual {
+		allowance[owner][spender] = amount;
+		emit Approval(owner, spender, amount);
+	}
 
 	function _transfer(
 		address from,
@@ -204,7 +210,7 @@ abstract contract ScaledBalanceToken {
 		uint256 scaleFactor = state.getScaleFactor();
 		actualAmount = Math.min(amount, _getMaximumDeposit(state, scaleFactor));
 		uint256 scaledAmount = actualAmount.rayDiv(scaleFactor);
-		_handleDeposit(to, amount, scaledAmount);
+		_pullDeposit(amount);
 		scaledBalanceOf[to] += scaledAmount;
 		unchecked {
 			// If user's balance did not overflow uint256, neither will totalSupply
@@ -239,9 +245,5 @@ abstract contract ScaledBalanceToken {
 		emit Transfer(account, address(0), amount);
 	}
 
-	function _handleDeposit(
-		address to,
-		uint256 amount,
-		uint256 scaledAmount
-	) internal virtual {}
+	function _pullDeposit(uint256 amount) internal virtual {}
 }
