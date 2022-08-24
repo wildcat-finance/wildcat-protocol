@@ -2,22 +2,26 @@
 pragma solidity ^0.8.13;
 import { DefaultVaultState, VaultState, VaultStateCoder } from './types/VaultStateCoder.sol';
 import './libraries/Math.sol';
-import './libraries/LowGasSafeMath.sol';
 
 abstract contract ScaledBalanceToken {
 	using VaultStateCoder for VaultState;
 	using Math for uint256;
 	using Math for int256;
-	using LowGasSafeMath for uint256;
 
-  error MaxSupplyExceeded();
-
-	VaultState internal _state;
-	mapping(address => uint256) public scaledBalanceOf;
-	mapping(address => mapping(address => uint256)) public allowance;
+	error MaxSupplyExceeded();
 
 	event Transfer(address indexed from, address indexed to, uint256 value);
 	event Approval(address indexed owner, address indexed spender, uint256 value);
+
+	VaultState internal _state;
+
+	/*//////////////////////////////////////////////////////////////
+                            ERC20 Storage
+  //////////////////////////////////////////////////////////////*/
+
+	mapping(address => uint256) public scaledBalanceOf;
+
+	mapping(address => mapping(address => uint256)) public allowance;
 
 	constructor(int256 _annualInterestBips) {
 		_state = DefaultVaultState.setInitialState(
@@ -108,7 +112,7 @@ abstract contract ScaledBalanceToken {
 		bool changed = timeElapsed > 0;
 		if (changed) {
 			int256 newInterest;
-      int256 interestPerSecond = annualInterestBips.annualBipsToRayPerSecond();
+			int256 interestPerSecond = annualInterestBips.annualBipsToRayPerSecond();
 			assembly {
 				// Calculate interest accrued since last update
 				newInterest := mul(timeElapsed, interestPerSecond)
@@ -139,38 +143,14 @@ abstract contract ScaledBalanceToken {
 	}
 
 	/*//////////////////////////////////////////////////////////////
-                            ERC20 Actions
+                             ERC20 LOGIC
   //////////////////////////////////////////////////////////////*/
 
 	function approve(address spender, uint256 amount) external returns (bool) {
-		_approve(msg.sender, spender, amount);
-		return true;
-	}
+		allowance[msg.sender][spender] = amount;
 
-	function increaseAllowance(address spender, uint256 addedValue)
-		external
-		returns (bool)
-	{
-		_approve(
-			msg.sender,
-			spender,
-			allowance[msg.sender][spender].add(addedValue)
-		);
-		return true;
-	}
+		emit Approval(msg.sender, spender, amount);
 
-	function decreaseAllowance(address spender, uint256 subtractedValue)
-		external
-		returns (bool)
-	{
-		_approve(
-			msg.sender,
-			spender,
-			allowance[msg.sender][spender].sub(
-				subtractedValue,
-				'ERC20: decreased allowance below zero'
-			)
-		);
 		return true;
 	}
 
@@ -179,15 +159,17 @@ abstract contract ScaledBalanceToken {
 		address recipient,
 		uint256 amount
 	) external returns (bool) {
+		uint256 allowed = allowance[sender][msg.sender];
+
+		// Saves gas for unlimited approvals.
+		if (allowed != type(uint256).max) {
+			uint256 newAllowance = allowed - amount;
+			allowance[sender][msg.sender] = newAllowance;
+			emit Approval(sender, msg.sender, newAllowance);
+		}
+
 		_transfer(sender, recipient, amount);
-		_approve(
-			sender,
-			msg.sender,
-			allowance[sender][msg.sender].sub(
-				amount,
-				'ERC20: transfer amount exceeds allowance'
-			)
-		);
+
 		return true;
 	}
 
@@ -196,21 +178,9 @@ abstract contract ScaledBalanceToken {
 		return true;
 	}
 
-  /*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                      Internal Actions & Getters
   //////////////////////////////////////////////////////////////*/
-
-	function _approve(
-		address owner,
-		address spender,
-		uint256 amount
-	) internal {
-		require(owner != address(0), 'ERC20: approve from the zero address');
-		require(spender != address(0), 'ERC20: approve to the zero address');
-
-		allowance[owner][spender] = amount;
-		emit Approval(owner, spender, amount);
-	}
 
 	function _transfer(
 		address from,
@@ -248,9 +218,9 @@ abstract contract ScaledBalanceToken {
 	}
 
 	function _mint(address to, uint256 amount) internal virtual {
-    if (_mintUpTo(to, amount) != amount) {
-      revert MaxSupplyExceeded();
-    }
+		if (_mintUpTo(to, amount) != amount) {
+			revert MaxSupplyExceeded();
+		}
 	}
 
 	function _burn(address account, uint256 amount) internal virtual {
