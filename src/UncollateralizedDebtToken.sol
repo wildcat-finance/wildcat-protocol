@@ -5,18 +5,26 @@ import './WrappedAssetMetadata.sol';
 import './ScaledBalanceToken.sol';
 import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.sol';
 import './libraries/SafeTransferLib.sol';
+import './ERC2612.sol';
 
-contract UncollateralizedDebtToken is ScaledBalanceToken, WrappedAssetMetadata {
+contract UncollateralizedDebtToken is
+	ScaledBalanceToken,
+	WrappedAssetMetadata,
+	ERC2612
+{
 	using ConfigurationCoder for Configuration;
 	using SafeTransferLib for address;
 
-  error NewMaxSupplyTooLow();
-
+	error NewMaxSupplyTooLow();
 	event MaxSupplyUpdated(address vault, uint256 assets);
 
 	uint256 public immutable collateralizationRatio;
 
 	Configuration internal _configuration;
+
+	/*//////////////////////////////////////////////////////////////
+                             Constructor
+  //////////////////////////////////////////////////////////////*/
 
 	constructor(
 		address _asset,
@@ -29,6 +37,7 @@ contract UncollateralizedDebtToken is ScaledBalanceToken, WrappedAssetMetadata {
 	)
 		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
 		ScaledBalanceToken(_annualInterestBips)
+		ERC2612(name(), 'v1')
 	{
 		collateralizationRatio = _collateralizationRatio;
 		_configuration = ConfigurationCoder.encode(_owner, _maximumCapacity);
@@ -38,23 +47,31 @@ contract UncollateralizedDebtToken is ScaledBalanceToken, WrappedAssetMetadata {
 		return _configuration.getOwner();
 	}
 
+	function _setMaxTotalSupply(uint256 _maxTotalSupply) internal {
+		if (_maxTotalSupply < totalSupply()) {
+			revert NewMaxSupplyTooLow();
+		}
+		_configuration = _configuration.setMaxTotalSupply(_maxTotalSupply);
+		emit MaxSupplyUpdated(address(this), _maxTotalSupply);
+	}
+
+  /*//////////////////////////////////////////////////////////////
+                      Abstract Parent Overrides
+  //////////////////////////////////////////////////////////////*/
+
+	function _approve(
+		address from,
+		address spender,
+		uint256 amount
+	) internal virtual override(ScaledBalanceToken, ERC2612) {
+		ScaledBalanceToken._approve(from, spender, amount);
+	}
+
 	function maxTotalSupply() public view virtual override returns (uint256) {
 		return _configuration.getMaxTotalSupply();
 	}
 
-	function _handleDeposit(
-		address to,
-		uint256 amount,
-		uint256
-	) internal virtual override {
+	function _pullDeposit(uint256 amount) internal virtual override {
 		asset.safeTransferFrom(msg.sender, address(this), amount);
-	}
-
-	function _setMaxTotalSupply(uint256 _maxTotalSupply) internal {
-		if (_maxTotalSupply < totalSupply()) {
-      revert NewMaxSupplyTooLow();
-    }
-		_configuration = _configuration.setMaxTotalSupply(_maxTotalSupply);
-		emit MaxSupplyUpdated(address(this), _maxTotalSupply);
 	}
 }
