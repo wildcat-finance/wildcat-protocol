@@ -128,6 +128,16 @@ abstract contract ScaledBalanceToken {
 		return (scaleFactor, changed);
 	}
 
+	function _getMaximumDeposit(VaultState state, uint256 scaleFactor)
+		internal
+		view
+		returns (uint256)
+	{
+		uint256 _totalSupply = state.getScaledTotalSupply().rayMul(scaleFactor);
+		uint256 _maxTotalSupply = maxTotalSupply();
+		return _maxTotalSupply.subMinZero(_totalSupply);
+	}
+
 	/*//////////////////////////////////////////////////////////////
                             ERC20 Actions
   //////////////////////////////////////////////////////////////*/
@@ -164,12 +174,6 @@ abstract contract ScaledBalanceToken {
 		return true;
 	}
 
-	function _handleDeposit(
-		address to,
-		uint256 amount,
-		uint256 scaledAmount
-	) internal virtual {}
-
 	function transferFrom(
 		address sender,
 		address recipient,
@@ -192,18 +196,8 @@ abstract contract ScaledBalanceToken {
 		return true;
 	}
 
-	function _getMaximumDeposit(VaultState state, uint256 scaleFactor)
-		internal
-		view
-		returns (uint256)
-	{
-		uint256 _totalSupply = state.getScaledTotalSupply().rayMul(scaleFactor);
-		uint256 _maxTotalSupply = maxTotalSupply();
-		return _maxTotalSupply.subMinZero(_totalSupply);
-	}
-
-	/*//////////////////////////////////////////////////////////////
-                       Internal ERC20 Actions
+  /*//////////////////////////////////////////////////////////////
+                     Internal Actions & Getters
   //////////////////////////////////////////////////////////////*/
 
 	function _approve(
@@ -274,4 +268,10 @@ abstract contract ScaledBalanceToken {
 		_state = state;
 		emit Transfer(account, address(0), amount);
 	}
+
+	function _handleDeposit(
+		address to,
+		uint256 amount,
+		uint256 scaledAmount
+	) internal virtual {}
 }
