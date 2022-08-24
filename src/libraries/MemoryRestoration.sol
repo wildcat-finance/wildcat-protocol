@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.13;
 
+/**
+ * @dev Utility functions for reusing memory that's already been
+ * allocated. Primarily useful for saving gas on abi encoding of
+ * small calldata/event buffers.
+ */
 contract MemoryRestoration {
   modifier RestoreOneWord(uint256 slot1) {
     uint256 cachedValue;
