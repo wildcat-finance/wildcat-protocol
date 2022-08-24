@@ -10,8 +10,6 @@ import { VaultStateCoder } from './types/VaultStateCoder.sol';
 import './UncollateralizedDebtToken.sol';
 
 
-uint256 constant InterestDenominator = 1e12;
-
 // Also 4626, but not inheriting, rather rewriting
 contract WMVault is UncollateralizedDebtToken {
 	using VaultStateCoder for VaultState;
