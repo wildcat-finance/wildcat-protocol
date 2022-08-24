@@ -46,11 +46,11 @@ contract WrappedAssetMetadata is StringPackerPrefixer {
 		decimals = IERC20Metadata(_asset).decimals();
 	}
 
-	function name() external view returns (string memory) {
+	function name() public view returns (string memory) {
 		return _unpackString(_packedName);
 	}
 
-	function symbol() external view returns (string memory) {
+	function symbol() public view returns (string memory) {
 		return _unpackString(_packedSymbol);
 	}
 }
