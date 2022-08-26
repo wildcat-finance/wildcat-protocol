@@ -16,8 +16,6 @@ contract WMVault is UncollateralizedDebtToken {
 
   error NotWhitelisted();
 
-	VaultState public globalState;
-
 	// BEGIN: Vault specific parameters
 	IWMPermissions public immutable wmPermissions;
 
@@ -67,19 +65,6 @@ contract WMVault is UncollateralizedDebtToken {
 	// END: Constructor
 
 	// BEGIN: Unique vault functionality
-	function depositUpTo(uint256 amount, address user) external isWhitelisted {
-		uint actualAmount = ScaledBalanceToken._mintUpTo(user, amount);
-		SafeTransferLib.safeTransferFrom(asset, user, address(this), actualAmount);
-	}
-
-	function deposit(uint256 amount, address user) external isWhitelisted {
-		_mint(user, amount);
-	}
-
-	function withdraw(uint256 amount, address user) external isWhitelisted {
-		_burn(user, amount);
-	}
-
 
 	/**
 	 * @dev Returns the maximum amount of collateral that can be withdrawn.
@@ -108,19 +93,6 @@ contract WMVault is UncollateralizedDebtToken {
 		SafeTransferLib.safeTransfer(asset, receiver, assets);
 		collateralWithdrawn += assets;
 		emit CollateralWithdrawn(receiver, assets);
-	}
-
-	// TODO: how should the maximum capacity be represented here? flat amount of base asset? inflated per scale factor?
-	/**
-	 * @dev Sets the maximum total supply - this only limits deposits and does not affect interest accrual.
-	 */
-	function setMaxTotalSupply(uint256 _newCapacity)
-		external
-		isWintermute
-		returns (uint256)
-	{
-		_setMaxTotalSupply(_newCapacity);
-		return _newCapacity;
 	}
 
 	function depositCollateral(uint256 assets) external isWintermute {
