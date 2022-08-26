@@ -38,7 +38,7 @@ abstract contract ScaledBalanceToken {
 	/**
 	 * @notice Returns the normalized balance of `account` with interest.
 	 */
-	function balanceOf(address account) public view returns (uint256) {
+	function balanceOf(address account) public view virtual returns (uint256) {
 		(uint256 scaleFactor, ) = _getCurrentScaleFactor(_state);
 		return scaledBalanceOf[account].rayMul(scaleFactor);
 	}
@@ -46,7 +46,7 @@ abstract contract ScaledBalanceToken {
 	/**
 	 * @notice Returns the normalized total supply with interest.
 	 */
-	function totalSupply() public view returns (uint256) {
+	function totalSupply() public view virtual returns (uint256) {
 		VaultState state = _state;
 		(uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
 		return state.getScaledTotalSupply().rayMul(scaleFactor);
@@ -146,7 +146,7 @@ abstract contract ScaledBalanceToken {
                              ERC20 LOGIC
   //////////////////////////////////////////////////////////////*/
 
-	function approve(address spender, uint256 amount) external returns (bool) {
+	function approve(address spender, uint256 amount) external virtual returns (bool) {
 		_approve(msg.sender, spender, amount);
 
 		return true;
@@ -156,7 +156,7 @@ abstract contract ScaledBalanceToken {
 		address sender,
 		address recipient,
 		uint256 amount
-	) external returns (bool) {
+	) external virtual returns (bool) {
 		uint256 allowed = allowance[sender][msg.sender];
 
 		// Saves gas for unlimited approvals.
@@ -170,7 +170,7 @@ abstract contract ScaledBalanceToken {
 		return true;
 	}
 
-	function transfer(address recipient, uint256 amount) external returns (bool) {
+	function transfer(address recipient, uint256 amount) external virtual returns (bool) {
 		_transfer(msg.sender, recipient, amount);
 		return true;
 	}
