@@ -10,7 +10,7 @@ import './libraries/Math.sol';
 
 int256 constant MinimumAnnualInterestRateBips = -10000;
 
-contract ScaledBalanceToken is WrappedAssetMetadata, ERC2612 {
+contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	using SafeTransferLib for address;
 	using VaultStateCoder for VaultState;
 	using ConfigurationCoder for Configuration;
