@@ -65,6 +65,10 @@ abstract contract ScaledBalanceToken {
 		return _state.decode();
 	}
 
+  function getCurrentScaleFactor() public view returns (uint256 scaleFactor) {
+		(scaleFactor,) = _getCurrentScaleFactor(_state);
+	}
+
 	function maxTotalSupply() public view virtual returns (uint256);
 
 	/*//////////////////////////////////////////////////////////////
