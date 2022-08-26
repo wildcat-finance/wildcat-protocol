@@ -9,12 +9,11 @@ import { VaultStateCoder } from './types/VaultStateCoder.sol';
 
 import './UncollateralizedDebtToken.sol';
 
-
 // Also 4626, but not inheriting, rather rewriting
 contract WMVault is UncollateralizedDebtToken {
 	using VaultStateCoder for VaultState;
 
-  error NotWhitelisted();
+	error NotWhitelisted();
 
 	// BEGIN: Vault specific parameters
 	IWMPermissions public immutable wmPermissions;
@@ -35,12 +34,12 @@ contract WMVault is UncollateralizedDebtToken {
 		_;
 	}
 
-  modifier isWhitelisted() {
-    if (!wmPermissions.isWhitelisted(msg.sender)) {
-      revert NotWhitelisted();
-    }
-    _;
-  }
+	modifier isWhitelisted() {
+		if (!wmPermissions.isWhitelisted(msg.sender)) {
+			revert NotWhitelisted();
+		}
+		_;
+	}
 
 	// END: Modifiers
 
@@ -58,8 +57,8 @@ contract WMVault is UncollateralizedDebtToken {
 		)
 	{
 		wmPermissions = IWMPermissions(
-      IWMVaultFactory(msg.sender).factoryPermissionRegistry()
-    );
+			IWMVaultFactory(msg.sender).factoryPermissionRegistry()
+		);
 	}
 
 	// END: Constructor

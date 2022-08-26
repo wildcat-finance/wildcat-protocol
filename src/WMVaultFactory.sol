@@ -9,16 +9,17 @@ import './WMVault.sol';
 import './WMRegistry.sol';
 
 contract WMVaultFactory {
-  error NotWintermute();
+	error NotWintermute();
 
 	address internal wmPermissionAddress;
 
 	IWMRegistry internal wmRegistry;
 
-  bytes32 public immutable VaultInitCodeHash = keccak256(type(WMVault).creationCode);
+	bytes32 public immutable VaultInitCodeHash =
+		keccak256(type(WMVault).creationCode);
 
-  // todo Set these all to 1 in constructor, reset to 1 after each deploy
-  // to minimize writes from 0->1 (does this actually matter when it goes 0->1->0 in same tx?)
+	// todo Set these all to 1 in constructor, reset to 1 after each deploy
+	// to minimize writes from 0->1 (does this actually matter when it goes 0->1->0 in same tx?)
 	address public factoryVaultUnderlying = address(0x00);
 	address public factoryPermissionRegistry = address(0x00);
 
@@ -31,8 +32,8 @@ contract WMVaultFactory {
 
 	modifier isWintermute() {
 		if (msg.sender != IWMPermissions(wmPermissionAddress).wintermute()) {
-      revert NotWintermute();
-    }
+			revert NotWintermute();
+		}
 		_;
 	}
 
@@ -75,7 +76,21 @@ contract WMVaultFactory {
 		return address(wmRegistry);
 	}
 
-  function computeVaultAddress(bytes32 salt) external view returns (address) {
-    return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, VaultInitCodeHash)))));
-  }
+	function computeVaultAddress(bytes32 salt) external view returns (address) {
+		return
+			address(
+				uint160(
+					uint256(
+						keccak256(
+							abi.encodePacked(
+								bytes1(0xff),
+								address(this),
+								salt,
+								VaultInitCodeHash
+							)
+						)
+					)
+				)
+			);
+	}
 }

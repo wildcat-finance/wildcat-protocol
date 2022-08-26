@@ -66,14 +66,15 @@ library Math {
 		}
 	}
 
-  function annualBipsToRayPerSecond(int256 annualBips) internal pure returns (int256 rayPerSecond) {
-    assembly {
-        // Convert annual bips to fraction of 1e26 - (bips * 1e22) / 31536000
-				// Multiply by 1e22 = multiply by 1e26 and divide by 10000
-				rayPerSecond := sdiv(
-					mul(annualBips, RayBipsNumerator),
-					SecondsIn365Days
-				)
-    }
-  }
+	function annualBipsToRayPerSecond(int256 annualBips)
+		internal
+		pure
+		returns (int256 rayPerSecond)
+	{
+		assembly {
+			// Convert annual bips to fraction of 1e26 - (bips * 1e22) / 31536000
+			// Multiply by 1e22 = multiply by 1e26 and divide by 10000
+			rayPerSecond := sdiv(mul(annualBips, RayBipsNumerator), SecondsIn365Days)
+		}
+	}
 }

@@ -18,17 +18,17 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	using Math for int256;
 
 	error MaxSupplyExceeded();
-  error NotOwner();
+	error NotOwner();
 	error NewMaxSupplyTooLow();
-  // @todo Is this a reasonable limit?
-  /// @notice Error thrown when interest rate is lower than -100%
-  error InterestRateTooLow();
+	// @todo Is this a reasonable limit?
+	/// @notice Error thrown when interest rate is lower than -100%
+	error InterestRateTooLow();
 
 	event Transfer(address indexed from, address indexed to, uint256 value);
 	event Approval(address indexed owner, address indexed spender, uint256 value);
 	event MaxSupplyUpdated(uint256 assets);
 
-  /*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                         Storage and Constants
   //////////////////////////////////////////////////////////////*/
 
@@ -40,14 +40,14 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 
 	mapping(address => mapping(address => uint256)) public allowance;
 
-  /*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                               Modifiers
   //////////////////////////////////////////////////////////////*/
 
-  modifier onlyOwner {
-    if (msg.sender != owner()) revert NotOwner();
-    _;
-  }
+	modifier onlyOwner() {
+		if (msg.sender != owner()) revert NotOwner();
+		_;
+	}
 
 	constructor(
 		address _asset,
@@ -55,14 +55,14 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		string memory symbolPrefix,
 		address _owner,
 		uint256 _maxTotalSupply,
-    int256 _annualInterestBips
-  )
+		int256 _annualInterestBips
+	)
 		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
 		ERC2612(name(), 'v1')
-  {
-    if (_annualInterestBips < MinimumAnnualInterestRateBips) {
-      revert InterestRateTooLow();
-    }
+	{
+		if (_annualInterestBips < MinimumAnnualInterestRateBips) {
+			revert InterestRateTooLow();
+		}
 		_state = DefaultVaultState.setInitialState(
 			_annualInterestBips,
 			RayOne,
@@ -71,7 +71,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		_configuration = ConfigurationCoder.encode(_owner, _maxTotalSupply);
 	}
 
-  /*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                          Management Actions
   //////////////////////////////////////////////////////////////*/
 
@@ -80,20 +80,24 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	 * @dev Sets the maximum total supply - this only limits deposits and does not affect interest accrual.
 	 */
 	function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyOwner {
-    // Ensure new maxTotalSupply is not less than current totalSupply
+		// Ensure new maxTotalSupply is not less than current totalSupply
 		if (_maxTotalSupply < totalSupply()) {
 			revert NewMaxSupplyTooLow();
 		}
-    // Store new configuration with updated maxTotalSupply
+		// Store new configuration with updated maxTotalSupply
 		_configuration = _configuration.setMaxTotalSupply(_maxTotalSupply);
 		emit MaxSupplyUpdated(_maxTotalSupply);
 	}
 
-  /*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                              Mint & Burn
   //////////////////////////////////////////////////////////////*/
 
-  function depositUpTo(uint256 amount, address user) external virtual returns (uint256 actualAmount) {
+	function depositUpTo(uint256 amount, address user)
+		external
+		virtual
+		returns (uint256 actualAmount)
+	{
 		actualAmount = _mintUpTo(user, amount);
 	}
 
@@ -145,8 +149,8 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		return _state.decode();
 	}
 
-  function currentScaleFactor() public view returns (uint256 scaleFactor) {
-		(scaleFactor,) = _getCurrentScaleFactor(_state);
+	function currentScaleFactor() public view returns (uint256 scaleFactor) {
+		(scaleFactor, ) = _getCurrentScaleFactor(_state);
 	}
 
 	function maxTotalSupply() public view virtual returns (uint256) {
@@ -232,7 +236,11 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
                              ERC20 LOGIC
   //////////////////////////////////////////////////////////////*/
 
-	function approve(address spender, uint256 amount) external virtual returns (bool) {
+	function approve(address spender, uint256 amount)
+		external
+		virtual
+		returns (bool)
+	{
 		_approve(msg.sender, spender, amount);
 
 		return true;
@@ -256,12 +264,16 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		return true;
 	}
 
-	function transfer(address recipient, uint256 amount) external virtual returns (bool) {
+	function transfer(address recipient, uint256 amount)
+		external
+		virtual
+		returns (bool)
+	{
 		_transfer(msg.sender, recipient, amount);
 		return true;
 	}
 
-  /*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                           Internal Actions
   //////////////////////////////////////////////////////////////*/
 
@@ -292,24 +304,24 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		internal
 		returns (uint256 actualAmount)
 	{
-    // Get current scale factor
+		// Get current scale factor
 		VaultState state = _getCurrentState();
 		uint256 scaleFactor = state.getScaleFactor();
 
-    // Reduce amount if it would exceed totalSupply
+		// Reduce amount if it would exceed totalSupply
 		actualAmount = Math.min(amount, _getMaximumDeposit(state, scaleFactor));
 
-    // Scale the actual mint amount
+		// Scale the actual mint amount
 		uint256 scaledAmount = actualAmount.rayDiv(scaleFactor);
 
-    // Transfer final amount from caller
+		// Transfer final amount from caller
 		asset.safeTransferFrom(msg.sender, address(this), amount);
 
-    // Increase user's balance
+		// Increase user's balance
 		scaledBalanceOf[to] += scaledAmount;
 		emit Transfer(address(0), to, actualAmount);
 
-    // Increase scaledTotalSupply
+		// Increase scaledTotalSupply
 		unchecked {
 			// If user's balance did not overflow uint256, neither will totalSupply
 			// Coder checks for overflow of uint96
