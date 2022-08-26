@@ -15,12 +15,23 @@ contract UncollateralizedDebtToken is
 	using ConfigurationCoder for Configuration;
 	using SafeTransferLib for address;
 
+  error NotOwner();
 	error NewMaxSupplyTooLow();
-	event MaxSupplyUpdated(address vault, uint256 assets);
+
+	event MaxSupplyUpdated(uint256 assets);
 
 	uint256 public immutable collateralizationRatio;
 
 	Configuration internal _configuration;
+
+  /*//////////////////////////////////////////////////////////////
+                              Modifiers
+  //////////////////////////////////////////////////////////////*/
+
+  modifier onlyOwner {
+    if (msg.sender != owner()) revert NotOwner();
+    _;
+  }
 
 	/*//////////////////////////////////////////////////////////////
                              Constructor
@@ -43,22 +54,29 @@ contract UncollateralizedDebtToken is
 		_configuration = ConfigurationCoder.encode(_owner, _maximumCapacity);
 	}
 
-	function owner() external view returns (address) {
+	function owner() public view returns (address) {
 		return _configuration.getOwner();
 	}
 
-	function _setMaxTotalSupply(uint256 _maxTotalSupply) internal {
+	// TODO: how should the maximum capacity be represented here? flat amount of base asset? inflated per scale factor?
+	/**
+	 * @dev Sets the maximum total supply - this only limits deposits and does not affect interest accrual.
+	 */
+	function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyOwner {
+    // Ensure new maxTotalSupply is not less than current totalSupply
 		if (_maxTotalSupply < totalSupply()) {
 			revert NewMaxSupplyTooLow();
 		}
+    // Store new configuration with updated maxTotalSupply
 		_configuration = _configuration.setMaxTotalSupply(_maxTotalSupply);
-		emit MaxSupplyUpdated(address(this), _maxTotalSupply);
+		emit MaxSupplyUpdated(_maxTotalSupply);
 	}
 
   /*//////////////////////////////////////////////////////////////
                       Abstract Parent Overrides
   //////////////////////////////////////////////////////////////*/
 
+  // Tells ERC2612 to use ScaledBalanceToken's _approve function
 	function _approve(
 		address from,
 		address spender,
