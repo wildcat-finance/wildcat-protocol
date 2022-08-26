@@ -73,6 +73,22 @@ contract UncollateralizedDebtToken is
 	}
 
   /*//////////////////////////////////////////////////////////////
+                             Mint & Burn
+  //////////////////////////////////////////////////////////////*/
+
+  function depositUpTo(uint256 amount, address user) external virtual returns (uint256 actualAmount) {
+		actualAmount = ScaledBalanceToken._mintUpTo(user, amount);
+	}
+
+	function deposit(uint256 amount, address user) external virtual {
+		_mint(user, amount);
+	}
+
+	function withdraw(uint256 amount, address user) external virtual {
+		_burn(user, amount);
+	}
+
+  /*//////////////////////////////////////////////////////////////
                       Abstract Parent Overrides
   //////////////////////////////////////////////////////////////*/
 
