@@ -32,8 +32,6 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
                         Storage and Constants
   //////////////////////////////////////////////////////////////*/
 
-	address public immutable asset;
-
 	VaultState internal _state;
 
 	Configuration internal _configuration;
@@ -62,7 +60,6 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
 		ERC2612(name(), 'v1')
   {
-    asset = _asset;
 		_state = DefaultVaultState.setInitialState(
 			_annualInterestBips,
 			RayOne,
