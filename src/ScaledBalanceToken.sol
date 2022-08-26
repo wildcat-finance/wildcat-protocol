@@ -1,39 +1,119 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
+
+import './WrappedAssetMetadata.sol';
+import './ERC2612.sol';
 import { DefaultVaultState, VaultState, VaultStateCoder } from './types/VaultStateCoder.sol';
+import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.sol';
+import './libraries/SafeTransferLib.sol';
 import './libraries/Math.sol';
 
-abstract contract ScaledBalanceToken {
+int256 constant MinimumAnnualInterestRateBips = -10000;
+
+contract ScaledBalanceToken is WrappedAssetMetadata, ERC2612 {
+	using SafeTransferLib for address;
 	using VaultStateCoder for VaultState;
+	using ConfigurationCoder for Configuration;
 	using Math for uint256;
 	using Math for int256;
 
 	error MaxSupplyExceeded();
+  error NotOwner();
+	error NewMaxSupplyTooLow();
+  // @todo Is this a reasonable limit?
+  /// @notice Error thrown when interest rate is lower than -100%
+  error InterestRateTooLow();
 
 	event Transfer(address indexed from, address indexed to, uint256 value);
 	event Approval(address indexed owner, address indexed spender, uint256 value);
+	event MaxSupplyUpdated(uint256 assets);
+
+  /*//////////////////////////////////////////////////////////////
+                        Storage and Constants
+  //////////////////////////////////////////////////////////////*/
+
+	address public immutable asset;
 
 	VaultState internal _state;
 
-	/*//////////////////////////////////////////////////////////////
-                            ERC20 Storage
-  //////////////////////////////////////////////////////////////*/
+	Configuration internal _configuration;
 
 	mapping(address => uint256) public scaledBalanceOf;
 
 	mapping(address => mapping(address => uint256)) public allowance;
 
-	constructor(int256 _annualInterestBips) {
+  /*//////////////////////////////////////////////////////////////
+                              Modifiers
+  //////////////////////////////////////////////////////////////*/
+
+  modifier onlyOwner {
+    if (msg.sender != owner()) revert NotOwner();
+    _;
+  }
+
+	constructor(
+		address _asset,
+		string memory namePrefix,
+		string memory symbolPrefix,
+		address _owner,
+		uint256 _maxTotalSupply,
+    int256 _annualInterestBips
+  )
+		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
+		ERC2612(name(), 'v1')
+  {
+    asset = _asset;
 		_state = DefaultVaultState.setInitialState(
 			_annualInterestBips,
 			RayOne,
 			block.timestamp
 		);
+		_configuration = ConfigurationCoder.encode(_owner, _maxTotalSupply);
+	}
+
+  /*//////////////////////////////////////////////////////////////
+                         Management Actions
+  //////////////////////////////////////////////////////////////*/
+
+	// TODO: how should the maximum capacity be represented here? flat amount of base asset? inflated per scale factor?
+	/**
+	 * @dev Sets the maximum total supply - this only limits deposits and does not affect interest accrual.
+	 */
+	function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyOwner {
+    // Ensure new maxTotalSupply is not less than current totalSupply
+		if (_maxTotalSupply < totalSupply()) {
+			revert NewMaxSupplyTooLow();
+		}
+    // Store new configuration with updated maxTotalSupply
+		_configuration = _configuration.setMaxTotalSupply(_maxTotalSupply);
+		emit MaxSupplyUpdated(_maxTotalSupply);
+	}
+
+  /*//////////////////////////////////////////////////////////////
+                             Mint & Burn
+  //////////////////////////////////////////////////////////////*/
+
+  function depositUpTo(uint256 amount, address user) external virtual returns (uint256 actualAmount) {
+		actualAmount = _mintUpTo(user, amount);
+	}
+
+	function deposit(uint256 amount, address user) external virtual {
+		if (_mintUpTo(user, amount) != amount) {
+			revert MaxSupplyExceeded();
+		}
+	}
+
+	function withdraw(uint256 amount, address user) external virtual {
+		_burn(user, amount);
 	}
 
 	/*//////////////////////////////////////////////////////////////
                           External Getters
   //////////////////////////////////////////////////////////////*/
+
+	function owner() public view returns (address) {
+		return _configuration.getOwner();
+	}
 
 	/**
 	 * @notice Returns the normalized balance of `account` with interest.
@@ -69,7 +149,9 @@ abstract contract ScaledBalanceToken {
 		(scaleFactor,) = _getCurrentScaleFactor(_state);
 	}
 
-	function maxTotalSupply() public view virtual returns (uint256);
+	function maxTotalSupply() public view virtual returns (uint256) {
+		return _configuration.getMaxTotalSupply();
+	}
 
 	/*//////////////////////////////////////////////////////////////
                        Internal State Handlers
@@ -184,12 +266,12 @@ abstract contract ScaledBalanceToken {
   //////////////////////////////////////////////////////////////*/
 
 	function _approve(
-		address owner,
+		address _owner,
 		address spender,
 		uint256 amount
-	) internal virtual {
-		allowance[owner][spender] = amount;
-		emit Approval(owner, spender, amount);
+	) internal virtual override {
+		allowance[_owner][spender] = amount;
+		emit Approval(_owner, spender, amount);
 	}
 
 	function _transfer(
@@ -221,7 +303,7 @@ abstract contract ScaledBalanceToken {
 		uint256 scaledAmount = actualAmount.rayDiv(scaleFactor);
 
     // Transfer final amount from caller
-		_pullDeposit(amount);
+		asset.safeTransferFrom(msg.sender, address(this), amount);
 
     // Increase user's balance
 		scaledBalanceOf[to] += scaledAmount;
@@ -236,12 +318,6 @@ abstract contract ScaledBalanceToken {
 			);
 		}
 		_state = state;
-	}
-
-	function _mint(address to, uint256 amount) internal virtual {
-		if (_mintUpTo(to, amount) != amount) {
-			revert MaxSupplyExceeded();
-		}
 	}
 
 	function _burn(address account, uint256 amount) internal virtual {
@@ -259,6 +335,4 @@ abstract contract ScaledBalanceToken {
 		_state = state;
 		emit Transfer(account, address(0), amount);
 	}
-
-	function _pullDeposit(uint256 amount) internal virtual {}
 }
