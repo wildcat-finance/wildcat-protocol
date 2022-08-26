@@ -206,12 +206,24 @@ abstract contract ScaledBalanceToken {
 		internal
 		returns (uint256 actualAmount)
 	{
+    // Get current scale factor
 		VaultState state = _getCurrentState();
 		uint256 scaleFactor = state.getScaleFactor();
+
+    // Reduce amount if it would exceed totalSupply
 		actualAmount = Math.min(amount, _getMaximumDeposit(state, scaleFactor));
+
+    // Scale the actual mint amount
 		uint256 scaledAmount = actualAmount.rayDiv(scaleFactor);
+
+    // Transfer final amount from caller
 		_pullDeposit(amount);
+
+    // Increase user's balance
 		scaledBalanceOf[to] += scaledAmount;
+		emit Transfer(address(0), to, actualAmount);
+
+    // Increase scaledTotalSupply
 		unchecked {
 			// If user's balance did not overflow uint256, neither will totalSupply
 			// Coder checks for overflow of uint96
@@ -220,7 +232,6 @@ abstract contract ScaledBalanceToken {
 			);
 		}
 		_state = state;
-		emit Transfer(address(0), to, actualAmount);
 	}
 
 	function _mint(address to, uint256 amount) internal virtual {
