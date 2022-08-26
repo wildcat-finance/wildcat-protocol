@@ -103,8 +103,8 @@ contract WMVault is UncollateralizedDebtToken {
 	// END: Unique vault functionality
 
 	// BEGIN: State inspection functions
-	function getCurrentScaleFactor() public view returns (uint256) {
-		return globalState.getScaleFactor();
+	function getCurrentScaleFactor() public view returns (uint256 scaleFactor) {
+		(scaleFactor,) = _getCurrentScaleFactor(_state);
 	}
 	// END: State inspection functions
 }
