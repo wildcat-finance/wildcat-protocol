@@ -8,7 +8,7 @@ import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.so
 import './libraries/SafeTransferLib.sol';
 import './libraries/Math.sol';
 
-int256 constant MinimumAnnualInterestRateBips = -10000;
+int256 constant MinimumAnnualInterestBips = -10000;
 
 contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	using SafeTransferLib for address;
@@ -60,7 +60,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
 		ERC2612(name(), 'v1')
 	{
-		if (_annualInterestBips < MinimumAnnualInterestRateBips) {
+		if (_annualInterestBips < MinimumAnnualInterestBips) {
 			revert InterestRateTooLow();
 		}
 		_state = DefaultVaultState.setInitialState(
@@ -77,7 +77,8 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 
 	// TODO: how should the maximum capacity be represented here? flat amount of base asset? inflated per scale factor?
 	/**
-	 * @dev Sets the maximum total supply - this only limits deposits and does not affect interest accrual.
+	 * @dev Sets the maximum total supply - this only limits deposits and
+	 * does not affect interest accrual.
 	 */
 	function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyOwner {
 		// Ensure new maxTotalSupply is not less than current totalSupply
@@ -87,6 +88,16 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		// Store new configuration with updated maxTotalSupply
 		_configuration = _configuration.setMaxTotalSupply(_maxTotalSupply);
 		emit MaxSupplyUpdated(_maxTotalSupply);
+	}
+
+	function setAnnualInterestBips(int256 _annualInterestBips)
+		external
+		onlyOwner
+	{
+		if (_annualInterestBips < MinimumAnnualInterestBips) {
+			revert InterestRateTooLow();
+		}
+		_state = _getCurrentState().setAnnualInterestBips(_annualInterestBips);
 	}
 
 	/*//////////////////////////////////////////////////////////////
