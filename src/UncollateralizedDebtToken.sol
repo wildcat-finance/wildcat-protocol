@@ -60,6 +60,9 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
 		ERC2612(name(), 'v1')
   {
+    if (_annualInterestBips < MinimumAnnualInterestRateBips) {
+      revert InterestRateTooLow();
+    }
 		_state = DefaultVaultState.setInitialState(
 			_annualInterestBips,
 			RayOne,
@@ -129,7 +132,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		return state.getScaledTotalSupply().rayMul(scaleFactor);
 	}
 
-	function getState()
+	function stateParameters()
 		public
 		view
 		returns (
@@ -142,7 +145,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		return _state.decode();
 	}
 
-  function getCurrentScaleFactor() public view returns (uint256 scaleFactor) {
+  function currentScaleFactor() public view returns (uint256 scaleFactor) {
 		(scaleFactor,) = _getCurrentScaleFactor(_state);
 	}
 
