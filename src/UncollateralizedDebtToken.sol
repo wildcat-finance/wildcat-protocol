@@ -8,7 +8,7 @@ import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.so
 import './libraries/SafeTransferLib.sol';
 import './libraries/Math.sol';
 
-int256 constant MinimumAnnualInterestBips = -10000;
+int256 constant MinimumAnnualInterestBips = 0;
 
 contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	using SafeTransferLib for address;
