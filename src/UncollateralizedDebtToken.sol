@@ -104,22 +104,65 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
                              Mint & Burn
   //////////////////////////////////////////////////////////////*/
 
-	function depositUpTo(uint256 amount, address user)
-		external
+	function depositUpTo(uint256 amount, address to)
+		public
 		virtual
 		returns (uint256 actualAmount)
 	{
-		actualAmount = _mintUpTo(user, amount);
+		// Get current scale factor
+		VaultState state = _getCurrentState();
+		uint256 scaleFactor = state.getScaleFactor();
+
+		// Reduce amount if it would exceed totalSupply
+		actualAmount = Math.min(amount, _getMaximumDeposit(state, scaleFactor));
+
+		// Scale the actual mint amount
+		uint256 scaledAmount = actualAmount.rayDiv(scaleFactor);
+
+		// Transfer deposit from caller
+		asset.safeTransferFrom(msg.sender, address(this), amount);
+
+		// Increase user's balance
+		scaledBalanceOf[to] += scaledAmount;
+		emit Transfer(address(0), to, actualAmount);
+
+		// Increase supply
+		unchecked {
+			// If user's balance did not overflow uint256, neither will supply
+			// Coder checks for overflow of uint96
+			state = state.setScaledTotalSupply(
+				state.getScaledTotalSupply() + scaledAmount
+			);
+		}
+		_state = state;
 	}
 
-	function deposit(uint256 amount, address user) external virtual {
-		if (_mintUpTo(user, amount) != amount) {
+	function deposit(uint256 amount, address to) external virtual {
+		if (depositUpTo(amount, to) != amount) {
 			revert MaxSupplyExceeded();
 		}
 	}
 
-	function withdraw(uint256 amount, address user) external virtual {
-		_burn(user, amount);
+	function withdraw(uint256 amount, address to) external virtual {
+    // Scale `amount`
+		VaultState state = _getCurrentState();
+		uint256 scaleFactor = state.getScaleFactor();
+		uint256 scaledAmount = amount.rayDiv(scaleFactor);
+
+    // Reduce caller's balance
+		scaledBalanceOf[msg.sender] -= scaledAmount;
+		emit Transfer(msg.sender, address(0), amount);
+
+    // Reduce supply
+		unchecked {
+			// If user's balance did not underflow, neither will supply
+			_state = state.setScaledTotalSupply(
+				state.getScaledTotalSupply() - scaledAmount
+			);
+		}
+
+		// Transfer withdrawn assets to `user`
+		asset.safeTransfer(to, amount);
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -243,8 +286,8 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		return _maxTotalSupply.subMinZero(_totalSupply);
 	}
 
-	/*//////////////////////////////////////////////////////////////
-                             ERC20 LOGIC
+  /*//////////////////////////////////////////////////////////////
+                            ERC20 Actions
   //////////////////////////////////////////////////////////////*/
 
 	function approve(address spender, uint256 amount)
@@ -284,10 +327,6 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		return true;
 	}
 
-	/*//////////////////////////////////////////////////////////////
-                          Internal Actions
-  //////////////////////////////////////////////////////////////*/
-
 	function _approve(
 		address _owner,
 		address spender,
@@ -309,53 +348,5 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 			scaledBalanceOf[to] += scaledAmount;
 		}
 		emit Transfer(from, to, amount);
-	}
-
-	function _mintUpTo(address to, uint256 amount)
-		internal
-		returns (uint256 actualAmount)
-	{
-		// Get current scale factor
-		VaultState state = _getCurrentState();
-		uint256 scaleFactor = state.getScaleFactor();
-
-		// Reduce amount if it would exceed totalSupply
-		actualAmount = Math.min(amount, _getMaximumDeposit(state, scaleFactor));
-
-		// Scale the actual mint amount
-		uint256 scaledAmount = actualAmount.rayDiv(scaleFactor);
-
-		// Transfer final amount from caller
-		asset.safeTransferFrom(msg.sender, address(this), amount);
-
-		// Increase user's balance
-		scaledBalanceOf[to] += scaledAmount;
-		emit Transfer(address(0), to, actualAmount);
-
-		// Increase scaledTotalSupply
-		unchecked {
-			// If user's balance did not overflow uint256, neither will totalSupply
-			// Coder checks for overflow of uint96
-			state = state.setScaledTotalSupply(
-				state.getScaledTotalSupply() + scaledAmount
-			);
-		}
-		_state = state;
-	}
-
-	function _burn(address account, uint256 amount) internal virtual {
-		VaultState state = _getCurrentState();
-		uint256 scaleFactor = state.getScaleFactor();
-		uint256 scaledAmount = amount.rayDiv(scaleFactor);
-
-		scaledBalanceOf[account] -= scaledAmount;
-		unchecked {
-			// If user's balance did not underflow uint256, neither will totalSupply
-			state = state.setScaledTotalSupply(
-				state.getScaledTotalSupply() - scaledAmount
-			);
-		}
-		_state = state;
-		emit Transfer(account, address(0), amount);
 	}
 }
