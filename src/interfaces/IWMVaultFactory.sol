@@ -15,4 +15,8 @@ interface IWMVaultFactory {
 	function vaultRegistryAddress() external view returns (address);
 
 	function vaultPermissionsAddress() external view returns (address);
+
+	function factoryVaultNamePrefix() external view returns (string memory);
+	
+	function factoryVaultSymbolPrefix() external view returns (string memory);
 }

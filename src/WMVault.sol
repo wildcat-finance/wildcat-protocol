@@ -48,8 +48,8 @@ contract WMVault is UncollateralizedDebtToken {
 	constructor()
 		UncollateralizedDebtToken(
 			IWMVaultFactory(msg.sender).factoryVaultUnderlying(),
-			'Wintermute ',
-			'wmt',
+			IWMVaultFactory(msg.sender).factoryVaultNamePrefix(),
+			IWMVaultFactory(msg.sender).factoryVaultSymbolPrefix(),
 			IWMVaultFactory(msg.sender).factoryPermissionRegistry(),
 			IWMVaultFactory(msg.sender).factoryVaultMaximumCapacity(),
 			IWMVaultFactory(msg.sender).factoryVaultCollatRatio(),

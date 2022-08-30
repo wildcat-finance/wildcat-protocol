@@ -28,6 +28,9 @@ contract WMVaultFactory {
 	int256 public factoryVaultAnnualAPR = 0;
 	uint256 public factoryVaultCollatRatio = 0;
 
+	string public factoryVaultNamePrefix = "";
+	string public factoryVaultSymbolPrefix = "";
+
 	event WMVaultRegistered(address, address);
 
 	modifier isWintermute() {
@@ -48,6 +51,8 @@ contract WMVaultFactory {
 		uint256 _maxCapacity,
 		int256 _annualAPR,
 		uint256 _collatRatio,
+		string memory _namePrefix,
+		string memory _symbolPrefix,
 		bytes32 _salt
 	) public isWintermute returns (address vault) {
 		// Set variables for vault creation
@@ -56,6 +61,8 @@ contract WMVaultFactory {
 		factoryVaultMaximumCapacity = _maxCapacity;
 		factoryVaultAnnualAPR = _annualAPR;
 		factoryVaultCollatRatio = _collatRatio;
+		factoryVaultNamePrefix = _namePrefix;
+		factoryVaultSymbolPrefix = _symbolPrefix;
 
 		vault = address(new WMVault{ salt: _salt }());
 		wmRegistry.registerVault(vault);
@@ -66,6 +73,8 @@ contract WMVaultFactory {
 		factoryVaultMaximumCapacity = 0;
 		factoryVaultAnnualAPR = 0;
 		factoryVaultCollatRatio = 0;
+		factoryVaultNamePrefix = "";
+		factoryVaultSymbolPrefix = "";
 	}
 
 	function vaultPermissionsAddress() external view returns (address) {
