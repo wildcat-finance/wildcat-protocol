@@ -6,9 +6,9 @@ import 'forge-std/Vm.sol';
 
 import './TestERC20.sol';
 
-import 'src/WMPermissions.sol';
-import 'src/WMRegistry.sol';
-import 'src/WMVaultFactory.sol';
+import 'src/WildcatPermissions.sol';
+import 'src/WildcatRegistry.sol';
+import 'src/WildcatVaultFactory.sol';
 
 uint256 constant DefaultMaximumSupply = 100_000e18;
 int256 constant DefaultAPRBips = 500;
@@ -25,24 +25,24 @@ contract BaseVaultTest is Test {
 		DefaultAPRBips.annualBipsToRayPerSecond();
 
 	bytes32 internal immutable VaultInitCodeHash =
-		keccak256(type(WMVault).creationCode);
+		keccak256(type(WildcatVault).creationCode);
 
-	address internal wintermute = address(0x69);
+	address internal wildcatController = address(0x69);
 	address internal wlUser = address(0x42);
 	address internal nonwlUser = address(0x43);
 
-	WMPermissions internal perms;
-	WMRegistry internal registry;
-	WMVaultFactory internal factory;
+	WildcatPermissions internal perms;
+	WildcatRegistry internal registry;
+	WildcatVaultFactory internal factory;
 
 	TestERC20 internal DAI;
-	WMVault internal wmDAI;
+	WildcatVault internal wcDAI;
 
 	function _resetContracts() internal {
 		DAI = new TestERC20('Dai Stablecoin', 'DAI', 18);
-		perms = new WMPermissions(wintermute);
-		factory = new WMVaultFactory(address(perms));
-		registry = WMRegistry(factory.vaultRegistryAddress());
+		perms = new WildcatPermissions(wildcatController);
+		factory = new WildcatVaultFactory(address(perms));
+		registry = Wildcategistry(factory.vaultRegistryAddress());
 	}
 
 	function _getVaultAddress(address factory, bytes32 salt)
@@ -93,15 +93,17 @@ contract BaseVaultTest is Test {
 			DefaultMaximumSupply,
 			DefaultAPRBips,
 			DefaultCollateralizationRatio,
+			"Wintermute ",
+			"wm",
 			DaiSalt
 		);
-		wmDAI = WMVault(returnedVaultAddress);
+		wcDAI = WildcatVault(returnedVaultAddress);
 	}
 
 	function setUp() public {
 		_resetContracts();
 
-		vm.startPrank(wintermute);
+		vm.startPrank(wildcatController);
 		perms.adjustWhitelist(wlUser, true);
 		_deployDAIVault();
 		vm.stopPrank();
@@ -109,7 +111,7 @@ contract BaseVaultTest is Test {
 		DAI.mint(wlUser, 100_000e18);
 		DAI.mint(nonwlUser, 100_000e18);
 
-		_approve(wlUser, address(wmDAI), DefaultMaximumSupply);
-    _approve(nonwlUser, address(wmDAI), DefaultMaximumSupply);
+		_approve(wlUser, address(wcDAI), DefaultMaximumSupply);
+    _approve(nonwlUser, address(wcDAI), DefaultMaximumSupply);
 	}
 }
