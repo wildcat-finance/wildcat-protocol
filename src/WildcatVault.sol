@@ -2,8 +2,8 @@
 pragma solidity ^0.8.13;
 
 import './interfaces/IERC20.sol';
-import './interfaces/IWMPermissions.sol';
-import './interfaces/IWMVaultFactory.sol';
+import './interfaces/IWildcatPermissions.sol';
+import './interfaces/IWildcatVaultFactory.sol';
 import { SafeTransferLib } from './libraries/SafeTransferLib.sol';
 import { VaultStateCoder } from './types/VaultStateCoder.sol';
 
@@ -16,7 +16,7 @@ contract WMVault is UncollateralizedDebtToken {
 	error NotWhitelisted();
 
 	// BEGIN: Vault specific parameters
-	IWMPermissions public immutable wmPermissions;
+	IWildcatPermissions public immutable wcPermissions;
 
 	uint256 internal collateralWithdrawn;
 
@@ -28,14 +28,14 @@ contract WMVault is UncollateralizedDebtToken {
 	// END: Events
 
 	// BEGIN: Modifiers
-	modifier isWintermute() {
-		address wintermute = wmPermissions.wintermute();
-		require(msg.sender == wintermute);
+	modifier isWildcatController() {
+		address controller = wcPermissions.controller();
+		require(msg.sender == controller);
 		_;
 	}
 
 	modifier isWhitelisted() {
-		if (!wmPermissions.isWhitelisted(msg.sender)) {
+		if (!wcPermissions.isWhitelisted(msg.sender)) {
 			revert NotWhitelisted();
 		}
 		_;
@@ -47,17 +47,17 @@ contract WMVault is UncollateralizedDebtToken {
 	// Constructor doesn't take any arguments so that the bytecode is consistent for the create2 factory
 	constructor()
 		UncollateralizedDebtToken(
-			IWMVaultFactory(msg.sender).factoryVaultUnderlying(),
-			'Wintermute ',
-			'wmt',
-			IWMVaultFactory(msg.sender).factoryPermissionRegistry(),
-			IWMVaultFactory(msg.sender).factoryVaultMaximumCapacity(),
-			IWMVaultFactory(msg.sender).factoryVaultCollatRatio(),
-			IWMVaultFactory(msg.sender).factoryVaultAnnualAPR()
+			IWildcatVaultFactory(msg.sender).factoryVaultUnderlying(),
+			IWildcatVaultFactory(msg.sender).factoryVaultNamePrefix(),
+			IWildcatVaultFactory(msg.sender).factoryVaultSymbolPrefix(),
+			IWildcatVaultFactory(msg.sender).factoryPermissionRegistry(),
+			IWildcatVaultFactory(msg.sender).factoryVaultMaximumCapacity(),
+			IWildcatVaultFactory(msg.sender).factoryVaultCollatRatio(),
+			IWildcatVaultFactory(msg.sender).factoryVaultAnnualAPR()
 		)
 	{
-		wmPermissions = IWMPermissions(
-			IWMVaultFactory(msg.sender).factoryPermissionRegistry()
+		wcPermissions = IWildcatPermissions(
+			IWildcatVaultFactory(msg.sender).factoryPermissionRegistry()
 		);
 	}
 
@@ -82,7 +82,7 @@ contract WMVault is UncollateralizedDebtToken {
 
 	function withdrawCollateral(address receiver, uint256 assets)
 		external
-		isWintermute
+		isWildcatController
 	{
 		uint256 maxAvailable = maxCollateralToWithdraw();
 		require(
@@ -94,7 +94,7 @@ contract WMVault is UncollateralizedDebtToken {
 		emit CollateralWithdrawn(receiver, assets);
 	}
 
-	function depositCollateral(uint256 assets) external isWintermute {
+	function depositCollateral(uint256 assets) external isWildcatController {
 		SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), assets);
 		emit CollateralDeposited(address(this), assets);
 	}

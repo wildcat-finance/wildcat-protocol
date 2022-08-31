@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.13;
 
-interface IWMVaultFactory {
+interface IWildcatVaultFactory {
 	function factoryVaultUnderlying() external returns (address);
 
 	function factoryPermissionRegistry() external returns (address);
@@ -15,4 +15,8 @@ interface IWMVaultFactory {
 	function vaultRegistryAddress() external view returns (address);
 
 	function vaultPermissionsAddress() external view returns (address);
+
+	function factoryVaultNamePrefix() external view returns (string memory);
+	
+	function factoryVaultSymbolPrefix() external view returns (string memory);
 }
