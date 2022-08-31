@@ -17,9 +17,15 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	using Math for uint256;
 	using Math for int256;
 
+  /// @notice Error thrown when deposit exceeds maxTotalSupply
 	error MaxSupplyExceeded();
+
+  /// @notice Error thrown when non-owner tries accessing owner-only actions
 	error NotOwner();
+
+  /// @notice Error thrown when new maxTotalSupply lower than totalSupply
 	error NewMaxSupplyTooLow();
+
 	// @todo Is this a reasonable limit?
 	/// @notice Error thrown when interest rate is lower than -100%
 	error InterestRateTooLow();
