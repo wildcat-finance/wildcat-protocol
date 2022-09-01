@@ -30,6 +30,9 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	/// @notice Error thrown when interest rate is lower than -100%
 	error InterestRateTooLow();
 
+  /// @notice Error thrown when collateralization ratio higher than 100%
+  error CollateralizationRatioTooHigh();
+
 	event Transfer(address indexed from, address indexed to, uint256 value);
 	event Approval(address indexed owner, address indexed spender, uint256 value);
 	event MaxSupplyUpdated(uint256 assets);
@@ -46,6 +49,8 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 
 	mapping(address => mapping(address => uint256)) public allowance;
 
+  uint256 public immutable collateralizationRatioBips;
+
 	/*//////////////////////////////////////////////////////////////
                               Modifiers
   //////////////////////////////////////////////////////////////*/
@@ -61,7 +66,8 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		string memory symbolPrefix,
 		address _owner,
 		uint256 _maxTotalSupply,
-		int256 _annualInterestBips
+		int256 _annualInterestBips,
+    uint256 _collateralizationRatioBips
 	)
 		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
 		ERC2612(name(), 'v1')
@@ -75,6 +81,10 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 			block.timestamp
 		);
 		_configuration = ConfigurationCoder.encode(_owner, _maxTotalSupply);
+    if (_collateralizationRatioBips > 10000) {
+      revert CollateralizationRatioTooHigh();
+    }
+    collateralizationRatioBips = _collateralizationRatioBips;
 	}
 
 	/*//////////////////////////////////////////////////////////////
