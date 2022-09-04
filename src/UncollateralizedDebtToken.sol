@@ -49,7 +49,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 
 	mapping(address => mapping(address => uint256)) public allowance;
 
-  uint256 public immutable collateralizationRatioBips;
+  	uint256 public immutable collateralizationRatioBips;
 
 	/*//////////////////////////////////////////////////////////////
                               Modifiers
@@ -67,7 +67,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		address _owner,
 		uint256 _maxTotalSupply,
 		int256 _annualInterestBips,
-    uint256 _collateralizationRatioBips
+    	uint256 _collateralizationRatioBips
 	)
 		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
 		ERC2612(name(), 'v1')

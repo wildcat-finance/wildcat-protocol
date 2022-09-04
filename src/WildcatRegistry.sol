@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.13;
 
-import './WMVault.sol';
+import './WildcatVault.sol';
 
 contract WildcatRegistry {
 	address[] public wildcatVaults;

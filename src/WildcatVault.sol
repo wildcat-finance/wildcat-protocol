@@ -10,7 +10,7 @@ import { VaultStateCoder } from './types/VaultStateCoder.sol';
 import './UncollateralizedDebtToken.sol';
 
 // Also 4626, but not inheriting, rather rewriting
-contract WMVault is UncollateralizedDebtToken {
+contract WildcatVault is UncollateralizedDebtToken {
 	using VaultStateCoder for VaultState;
 
 	error NotWhitelisted();
@@ -52,8 +52,8 @@ contract WMVault is UncollateralizedDebtToken {
 			IWildcatVaultFactory(msg.sender).factoryVaultSymbolPrefix(),
 			IWildcatVaultFactory(msg.sender).factoryPermissionRegistry(),
 			IWildcatVaultFactory(msg.sender).factoryVaultMaximumCapacity(),
-			IWildcatVaultFactory(msg.sender).factoryVaultCollatRatio(),
-			IWildcatVaultFactory(msg.sender).factoryVaultAnnualAPR()
+			IWildcatVaultFactory(msg.sender).factoryVaultAnnualAPR(),
+			IWildcatVaultFactory(msg.sender).factoryVaultCollatRatio()
 		)
 	{
 		wcPermissions = IWildcatPermissions(
@@ -69,7 +69,7 @@ contract WMVault is UncollateralizedDebtToken {
 	 * @dev Returns the maximum amount of collateral that can be withdrawn.
 	 */
 	function maxCollateralToWithdraw() public view returns (uint256) {
-		uint256 maximumToWithdraw = (totalSupply() * collateralizationRatio) / 100;
+		uint256 maximumToWithdraw = (totalSupply() * collateralizationRatioBips) / 100;
 		uint256 collateral = IERC20(asset).balanceOf(address(this));
 		if (collateralWithdrawn > maximumToWithdraw) {
 			return 0;

@@ -61,8 +61,8 @@ contract WildcatVaultFactory {
 		factoryVaultNamePrefix      = _namePrefix;
 		factoryVaultSymbolPrefix    = _symbolPrefix;
 
-		vault = address(new WMVault{ salt: _salt }());
-		wmRegistry.registerVault(vault);
+		vault = address(new WildcatVault{ salt: _salt }());
+		wcRegistry.registerVault(vault);
 
 		// Reset variables for gas refund
 		factoryVaultUnderlying      = address(0x00);
