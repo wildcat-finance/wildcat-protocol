@@ -12,32 +12,32 @@ contract VaultFactoryTest is BaseVaultTest {
     using Math for int256;
 
     function test_DeployVaultAsNotWintermute() external {
-      vm.expectRevert(WMVaultFactory.NotWintermute.selector);
+      vm.expectRevert(WildcatVaultFactory.NotController.selector);
       _deployDAIVault();
     }
 
     function test_DeployVaultToExpectedAddress() external {
-      vm.prank(wintermute);
-      assertEq(_getVaultAddress(address(factory), DaiSalt), address(wmDAI));
-      assertEq(factory.computeVaultAddress(DaiSalt), address(wmDAI));
+      vm.prank(wildcatController);
+      assertEq(_getVaultAddress(address(factory), DaiSalt), address(wcDAI));
+      assertEq(factory.computeVaultAddress(DaiSalt), address(wcDAI));
     }
 
     function test_DeployVaultData() public {
         // Names set with correct prefixes
-        assertEq(wmDAI.name(), "Wintermute Dai Stablecoin");
-        assertEq(wmDAI.symbol(), "wmtDAI");
+        assertEq(wcDAI.name(), "Wintermute Dai Stablecoin");
+        assertEq(wcDAI.symbol(), "wmtDAI");
        
         // Constructor arguments pulled from factory are correct
         // and initial values match expected
-        assertEq(wmDAI.asset(), address(DAI));
-        assertEq(wmDAI.totalSupply(), 0);
-        assertEq(wmDAI.maxTotalSupply(), DefaultMaximumSupply);
+        assertEq(wcDAI.asset(), address(DAI));
+        assertEq(wcDAI.totalSupply(), 0);
+        assertEq(wcDAI.maxTotalSupply(), DefaultMaximumSupply);
         (
           int256 annualInterestBips,
           uint256 scaledTotalSupply,
           uint256 scaleFactor,
           uint256 lastInterestAccruedTimestamp
-        ) = wmDAI.getState();
+        ) = wcDAI.stateParameters();
         assertEq(annualInterestBips, DefaultAPRBips);
         assertEq(scaledTotalSupply, 0);
         assertEq(scaleFactor, RayOne);
@@ -46,7 +46,7 @@ contract VaultFactoryTest is BaseVaultTest {
         // Vault added to registry
         address[] memory regVaults = registry.listVaults();
         assertEq(regVaults.length, 1);
-        assertEq(regVaults[0], address(wmDAI));
+        assertEq(regVaults[0], address(wcDAI));
     }
 
     function test_PermissionsGranted() public {

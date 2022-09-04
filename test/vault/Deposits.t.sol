@@ -31,7 +31,7 @@ contract DepositsTest is BaseVaultTest {
       wcDAI.deposit(DefaultMaximumSupply, wlUser);
       DAI.mint(wlUser, 1);
       DAI.approve(address(wcDAI), 1);
-      vm.expectRevert(ScaledBalanceToken.MaxSupplyExceeded.selector);
+      vm.expectRevert(UncollateralizedDebtToken.MaxSupplyExceeded.selector);
       wcDAI.deposit(1, wlUser);
       vm.stopPrank();
     }

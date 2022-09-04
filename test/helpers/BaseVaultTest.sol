@@ -42,10 +42,10 @@ contract BaseVaultTest is Test {
 		DAI = new TestERC20('Dai Stablecoin', 'DAI', 18);
 		perms = new WildcatPermissions(wildcatController);
 		factory = new WildcatVaultFactory(address(perms));
-		registry = Wildcategistry(factory.vaultRegistryAddress());
+		registry = WildcatRegistry(factory.vaultRegistryAddress());
 	}
 
-	function _getVaultAddress(address factory, bytes32 salt)
+	function _getVaultAddress(address _factory, bytes32 _salt)
 		internal
 		view
 		returns (address)
@@ -55,7 +55,7 @@ contract BaseVaultTest is Test {
 				uint160(
 					uint256(
 						keccak256(
-							abi.encodePacked(bytes1(0xff), factory, salt, VaultInitCodeHash)
+							abi.encodePacked(bytes1(0xff), _factory, _salt, VaultInitCodeHash)
 						)
 					)
 				)
