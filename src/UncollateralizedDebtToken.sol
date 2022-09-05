@@ -107,7 +107,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	}
 
 	function setAnnualInterestBips(int256 _annualInterestBips)
-		external
+		public
 		onlyOwner
 	{
 		if (_annualInterestBips < MinimumAnnualInterestBips) {
