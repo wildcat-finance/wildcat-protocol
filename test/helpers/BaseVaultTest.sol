@@ -94,7 +94,7 @@ contract BaseVaultTest is Test {
 			DefaultAPRBips,
 			DefaultCollateralizationRatio,
 			"Wintermute ",
-			"wm",
+			"wmt",
 			DaiSalt
 		);
 		wcDAI = WildcatVault(returnedVaultAddress);
