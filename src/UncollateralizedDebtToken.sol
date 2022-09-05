@@ -219,6 +219,10 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		return _state.decode();
 	}
 
+	function currentAnnualInterestBips() public view returns (int256 annualBips) {
+		(annualBips,,,) = stateParameters();
+	}
+
 	function currentScaleFactor() public view returns (uint256 scaleFactor) {
 		(scaleFactor, ) = _getCurrentScaleFactor(_state);
 	}
