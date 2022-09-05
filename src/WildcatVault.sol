@@ -25,6 +25,7 @@ contract WildcatVault is UncollateralizedDebtToken {
 	// BEGIN: Events
 	event CollateralWithdrawn(address indexed recipient, uint256 assets);
 	event CollateralDeposited(address indexed sender, uint256 assets);
+	event VaultClosed(uint256 timestamp);
 	// END: Events
 
 	// BEGIN: Modifiers
@@ -97,6 +98,17 @@ contract WildcatVault is UncollateralizedDebtToken {
 	function depositCollateral(uint256 assets) external isWildcatController {
 		SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), assets);
 		emit CollateralDeposited(address(this), assets);
+	}
+
+	/**
+	* @dev Sets the vault APR to 0% and transfers the outstanding balance for full redemption
+	 */
+	function closeVault() external isWildcatController {
+		setAnnualInterestBips(0);
+		uint currentlyHeld = IERC20(asset).balanceOf(address(this));
+		uint outstanding = totalSupply() - currentlyHeld;
+		SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), outstanding);
+		emit VaultClosed(block.timestamp);
 	}
 
 	// END: Unique vault functionality
