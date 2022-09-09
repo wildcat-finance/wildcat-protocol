@@ -11,7 +11,7 @@ import 'src/WildcatRegistry.sol';
 import 'src/WildcatVaultFactory.sol';
 
 uint256 constant DefaultMaximumSupply = 100_000e18;
-int256 constant DefaultAPRBips = 500;
+uint256 constant DefaultAPRBips = 500;
 uint256 constant DefaultCollateralizationRatio = 90;
 
 bytes32 constant DaiSalt = bytes32(uint256(1));
@@ -19,9 +19,8 @@ bytes32 constant DaiSalt = bytes32(uint256(1));
 contract BaseVaultTest is Test {
 	using stdStorage for StdStorage;
 	using Math for uint256;
-	using Math for int256;
 
-	int256 internal immutable DefaultInterestPerSecondRay =
+	uint256 internal immutable DefaultInterestPerSecondRay =
 		DefaultAPRBips.annualBipsToRayPerSecond();
 
 	bytes32 internal immutable VaultInitCodeHash =

@@ -33,7 +33,7 @@ contract VaultFactoryTest is BaseVaultTest {
         assertEq(wcDAI.totalSupply(), 0);
         assertEq(wcDAI.maxTotalSupply(), DefaultMaximumSupply);
         (
-          int256 annualInterestBips,
+          uint256 annualInterestBips,
           uint256 scaledTotalSupply,
           uint256 scaleFactor,
           uint256 lastInterestAccruedTimestamp

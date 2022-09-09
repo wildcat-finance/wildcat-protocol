@@ -12,11 +12,11 @@ contract DepositsTest is BaseVaultTest {
                           deposit() errors
   //////////////////////////////////////////////////////////////*/
 
-    function testDeposit_NotWhitelisted() public {
-        vm.prank(nonwlUser);
-        vm.expectRevert(WildcatVault.NotWhitelisted.selector);
-        wcDAI.deposit(50_000e18, nonwlUser);
-    }
+    // function testDeposit_NotWhitelisted() public {
+    //     vm.prank(nonwlUser);
+    //     vm.expectRevert(WildcatVault.NotWhitelisted.selector);
+    //     wcDAI.deposit(50_000e18, nonwlUser);
+    // }
 
     function testDeposit_TransferFail() public {
         vm.startPrank(wlUser);
