@@ -18,6 +18,8 @@ contract WildcatVault is UncollateralizedDebtToken {
 	// BEGIN: Vault specific parameters
 	IWildcatPermissions public immutable wcPermissions;
 
+	uint256 internal immutable vaultFeePercentage = 10;
+
 	uint256 internal collateralWithdrawn;
 
 	// END: Vault specific parameters
