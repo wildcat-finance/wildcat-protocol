@@ -22,7 +22,7 @@ contract WildcatVaultFactory {
 	address public factoryPermissionRegistry   = address(0x00);
 
 	uint256 public factoryVaultMaximumCapacity = 0;
-	int256 public factoryVaultAnnualAPR        = 0;
+	uint256 public factoryVaultAnnualAPR        = 0;
 	uint256 public factoryVaultCollatRatio     = 0;
 
 	string public factoryVaultNamePrefix       = "";
@@ -46,7 +46,7 @@ contract WildcatVaultFactory {
 	function deployVault(
 		address _underlying,
 		uint256 _maxCapacity,
-		int256 _annualAPR,
+		uint256 _annualAPR,
 		uint256 _collatRatio,
 		string memory _namePrefix,
 		string memory _symbolPrefix,

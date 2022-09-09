@@ -16,7 +16,7 @@ contract ExternalVaultStateCoder {
 		external
 		view
 		returns (
-			int256 annualInterestBips,
+			uint256 annualInterestBips,
 			uint256 scaledTotalSupply,
 			uint256 scaleFactor,
 			uint256 lastInterestAccruedTimestamp
@@ -31,7 +31,7 @@ contract ExternalVaultStateCoder {
 	}
 
 	function encode(
-		int256 annualInterestBips,
+		uint256 annualInterestBips,
 		uint256 scaledTotalSupply,
 		uint256 scaleFactor,
 		uint256 lastInterestAccruedTimestamp
@@ -48,7 +48,7 @@ contract ExternalVaultStateCoder {
 		external
 		view
 		returns (
-			int256 annualInterestBips,
+			uint256 annualInterestBips,
 			uint256 scaleFactor,
 			uint256 lastInterestAccruedTimestamp
 		)
@@ -74,12 +74,12 @@ contract ExternalVaultStateCoder {
 	function getAnnualInterestBips()
 		external
 		view
-		returns (int256 annualInterestBips)
+		returns (uint256 annualInterestBips)
 	{
 		(annualInterestBips) = VaultStateCoder.getAnnualInterestBips(_vaultState);
 	}
 
-	function setAnnualInterestBips(int256 annualInterestBips) external {
+	function setAnnualInterestBips(uint256 annualInterestBips) external {
 		(_vaultState) = VaultStateCoder.setAnnualInterestBips(
 			_vaultState,
 			annualInterestBips

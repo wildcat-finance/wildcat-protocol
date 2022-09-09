@@ -8,14 +8,11 @@ import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.so
 import './libraries/SafeTransferLib.sol';
 import './libraries/Math.sol';
 
-int256 constant MinimumAnnualInterestBips = 0;
-
 contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	using SafeTransferLib for address;
 	using VaultStateCoder for VaultState;
 	using ConfigurationCoder for Configuration;
 	using Math for uint256;
-	using Math for int256;
 
   /// @notice Error thrown when deposit exceeds maxTotalSupply
 	error MaxSupplyExceeded();
@@ -66,15 +63,12 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		string memory symbolPrefix,
 		address _owner,
 		uint256 _maxTotalSupply,
-		int256 _annualInterestBips,
-    	uint256 _collateralizationRatioBips
+		uint256 _annualInterestBips,
+    uint256 _collateralizationRatioBips
 	)
 		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
 		ERC2612(name(), 'v1')
 	{
-		if (_annualInterestBips < MinimumAnnualInterestBips) {
-			revert InterestRateTooLow();
-		}
 		_state = DefaultVaultState.setInitialState(
 			_annualInterestBips,
 			RayOne,
@@ -106,13 +100,10 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		emit MaxSupplyUpdated(_maxTotalSupply);
 	}
 
-	function setAnnualInterestBips(int256 _annualInterestBips)
+	function setAnnualInterestBips(uint256 _annualInterestBips)
 		public
 		onlyOwner
 	{
-		if (_annualInterestBips < MinimumAnnualInterestBips) {
-			revert InterestRateTooLow();
-		}
 		_state = _getCurrentState().setAnnualInterestBips(_annualInterestBips);
 	}
 
@@ -210,7 +201,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		public
 		view
 		returns (
-			int256 annualInterestBips,
+			uint256 annualInterestBips,
 			uint256 scaledTotalSupply,
 			uint256 scaleFactor,
 			uint256 lastInterestAccruedTimestamp
@@ -219,7 +210,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		return _state.decode();
 	}
 
-	function currentAnnualInterestBips() public view returns (int256 annualBips) {
+	function currentAnnualInterestBips() public view returns (uint256 annualBips) {
 		(annualBips,,,) = stateParameters();
 	}
 
@@ -265,7 +256,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		)
 	{
 		(
-			int256 annualInterestBips,
+			uint256 annualInterestBips,
 			uint256 scaleFactor,
 			uint256 lastInterestAccruedTimestamp
 		) = state.getNewScaleInputs();
@@ -275,23 +266,14 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		}
 		bool changed = timeElapsed > 0;
 		if (changed) {
-			int256 newInterest;
-			int256 interestPerSecond = annualInterestBips.annualBipsToRayPerSecond();
+			uint256 newInterest;
+			uint256 interestPerSecond = annualInterestBips.annualBipsToRayPerSecond();
 			assembly {
 				// Calculate interest accrued since last update
 				newInterest := mul(timeElapsed, interestPerSecond)
 			}
-			// Calculate change to scale factor
-			int256 scaleFactorChange = scaleFactor.rayMul(newInterest);
-			assembly {
-				scaleFactor := add(scaleFactor, scaleFactorChange)
-				// Total scaleFactor must not underflow
-				if slt(scaleFactor, 0) {
-					mstore(0, Panic_error_signature)
-					mstore(Panic_error_offset, Panic_arithmetic)
-					revert(0, Panic_error_length)
-				}
-			}
+			// Calculate new scale factor
+      scaleFactor += scaleFactor.rayMul(newInterest);
 		}
 		return (scaleFactor, changed);
 	}

@@ -8,7 +8,7 @@ interface IWildcatVaultFactory {
 
 	function factoryVaultMaximumCapacity() external returns (uint256);
 
-	function factoryVaultAnnualAPR() external returns (int256);
+	function factoryVaultAnnualAPR() external returns (uint256);
 
 	function factoryVaultCollatRatio() external returns (uint256);
 
