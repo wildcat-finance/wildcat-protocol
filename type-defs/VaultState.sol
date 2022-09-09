@@ -1,6 +1,6 @@
 struct VaultState {
-  // Max APR is ~327%
-  int16 annualInterestBips;
+  // Max APR is ~655%
+  uint16 annualInterestBips;
   // Max supply is ~80
   uint96 scaledTotalSupply;
   // Max scale factor is ~52m

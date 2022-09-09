@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
+
 // ============================== NOTICE ==============================
 // This library was automatically generated with stackpacker.
 // Be very careful about modifying it, as doing so incorrectly could
@@ -10,9 +11,9 @@ pragma solidity >=0.8.0;
 uint256 constant Configuration_maxTotalSupply_maskOut = 0xffffffffffffffffffffffffffffffffffffffff000000000000000000000000;
 uint256 constant Configuration_owner_bitsAfter = 0x60;
 uint256 constant Configuration_owner_maskOut = 0x0000000000000000000000000000000000000000ffffffffffffffffffffffff;
-uint256 constant MaxInt16 = 0xffff;
 uint256 constant MaxUint112 = 0xffffffffffffffffffffffffffff;
-uint256 constant MaxUint160 = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+uint256 constant MaxUint16 = 0xffff;
+uint256 constant MaxUint160 = 0xffffffffffffffffffffffffffffffffffffffff;
 uint256 constant MaxUint32 = 0xffffffff;
 uint256 constant MaxUint96 = 0xffffffffffffffffffffffff;
 uint256 constant Panic_arithmetic = 0x11;
