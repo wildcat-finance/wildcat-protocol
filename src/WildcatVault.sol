@@ -97,6 +97,11 @@ contract WildcatVault is UncollateralizedDebtToken {
 
 	function depositCollateral(uint256 assets) external isWildcatController {
 		SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), assets);
+		if (assets > collateralWithdrawn) {
+			collateralWithdrawn = 0;
+		} else {
+			collateralWithdrawn -= assets;
+		}
 		emit CollateralDeposited(address(this), assets);
 	}
 
