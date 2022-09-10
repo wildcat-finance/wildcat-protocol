@@ -9,13 +9,7 @@ contract WildcatPermissions {
 	mapping(address => mapping(address => bool)) public whitelisted;
 
 	modifier isArchController() {
-		require((msg.sender == archController), 'inappropriate permissions');
-		_;
-	}
-
-	modifier isArchOrVaultController(address _vault) {
-		require(msg.sender == archController
-			|| msg.sender == vaultController[_vault], 'inappropriate permissions');
+		require((msg.sender == archController), 'isArchController: inappropriate permissions');
 		_;
 	}
 
@@ -62,7 +56,7 @@ contract WildcatPermissions {
 	// An address that is no longer whitelisted can redeem, but cannot mint more
 	function adjustWhitelist(address _vault, address _counterparty, bool _allowed)
 		external
-		isArchOrVaultController(_vault)
+		isArchController
 	{
 		whitelisted[_vault][_counterparty] = _allowed;
 		emit CounterpartyAdjustment(_vault, _counterparty, _allowed);
