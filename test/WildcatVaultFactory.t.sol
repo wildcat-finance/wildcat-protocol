@@ -12,7 +12,7 @@ contract VaultFactoryTest is BaseVaultTest {
     using Math for int256;
 
     function test_DeployVaultAsNotWintermute() external {
-      vm.expectRevert(WildcatVaultFactory.NotController.selector);
+      vm.expectRevert(); // TODO: be more specific with the type of revert
       _deployDAIVault();
     }
 
