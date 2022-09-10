@@ -39,7 +39,7 @@ contract WildcatPermissions {
 
 	function registerVaultController(address _vault, address _controller) external {
 		require(vaultController[_vault] == address(0x00)
-			&& approvedController[_controller], "inappropriate permissions");
+			 && approvedController[_controller], "registerVaultController: inappropriate permissions");
 		vaultController[_vault] = _controller;
 		emit VaultControllerRegistered(_vault, _controller);
 	}
