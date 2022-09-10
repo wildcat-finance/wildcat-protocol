@@ -13,7 +13,6 @@ import './WildcatVault.sol';
 import './WildcatRegistry.sol';
 
 contract WildcatVaultFactory {
-	error NotController();
 
 	IWildcatRegistry internal wcRegistry;
 	IWildcatPermissions internal wcPermissions;
@@ -61,7 +60,7 @@ contract WildcatVaultFactory {
 		bytes32 _salt
 	) public returns (address vault) {
 
-		require(validatedVaults[_vaultOwner][_underlying], "vault not validated");
+		require(validatedVaults[_vaultOwner][_underlying], "deployVault: vault not validated");
 
 		// Set variables for vault creation
 		factoryVaultUnderlying      = _underlying;
