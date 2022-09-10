@@ -2,38 +2,69 @@
 pragma solidity ^0.8.13;
 
 contract WildcatPermissions {
-	address public controller;
-	mapping(address => bool) public whitelisted;
+	address public archController;
+	mapping(address => bool) public approvedController;
+	mapping(address => address) public vaultController;
 
-	modifier isController() {
-		require(msg.sender == controller, 'isController: not controller');
+	mapping(address => mapping(address => bool)) public whitelisted;
+
+	modifier isArchController() {
+		require((msg.sender == archController), 'inappropriate permissions');
 		_;
 	}
 
-	event ControllerAddressUpdated(address);
-	event CounterpartyAdjustment(address, bool);
-
-	constructor(address _controller) {
-		controller = _controller;
-		emit ControllerAddressUpdated(_controller);
+	modifier isArchOrVaultController(address _vault) {
+		require(msg.sender == archController
+			|| msg.sender == vaultController[_vault], 'inappropriate permissions');
+		_;
 	}
 
-	function updateController(address _newController) external isController {
-		controller = _newController;
-		emit ControllerAddressUpdated(_newController);
+	event ArchControllerAddressUpdated(address);
+	event CounterpartyAdjustment(address, address, bool);
+	event ApprovedControllerAdded(address);
+	event VaultControllerRegistered(address, address);
+
+	constructor(address _archcontroller) {
+		archController = _archcontroller;
+		emit ArchControllerAddressUpdated(_archcontroller);
 	}
 
-	function isWhitelisted(address _counterparty) external view returns (bool) {
-		return whitelisted[_counterparty];
+	function updateArchController(address _newArchController) external isArchController {
+		archController = _newArchController;
+		emit ArchControllerAddressUpdated(_newArchController);
 	}
 
-	// Addresses that are whitelisted can mint wmtX via X
+	function addApprovedController(address _controller) external isArchController {
+		approvedController[_controller] = true;
+		emit ApprovedControllerAdded(_controller);
+	}
+
+	function isApprovedController(address _controller) external view returns (bool) {
+		return approvedController[_controller];
+	}
+
+	function registerVaultController(address _vault, address _controller) external {
+		require(vaultController[_vault] == address(0x00)
+			&& approvedController[_controller], "inappropriate permissions");
+		vaultController[_vault] = _controller;
+		emit VaultControllerRegistered(_vault, _controller);
+	}
+
+	function isVaultController(address _vault) external view returns (address) {
+		return vaultController[_vault];
+	}
+
+	function isWhitelisted(address _vault, address _counterparty) external view returns (bool) {
+		return whitelisted[_vault][_counterparty];
+	}
+
+	// Addresses that are whitelisted can mint
 	// An address that is no longer whitelisted can redeem, but cannot mint more
-	function adjustWhitelist(address _counterparty, bool _allowed)
+	function adjustWhitelist(address _vault, address _counterparty, bool _allowed)
 		external
-		isController
+		isArchOrVaultController(_vault)
 	{
-		whitelisted[_counterparty] = _allowed;
-		emit CounterpartyAdjustment(_counterparty, _allowed);
+		whitelisted[_vault][_counterparty] = _allowed;
+		emit CounterpartyAdjustment(_vault, _counterparty, _allowed);
 	}
 }

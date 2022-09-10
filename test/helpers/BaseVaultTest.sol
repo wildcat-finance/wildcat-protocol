@@ -27,6 +27,7 @@ contract BaseVaultTest is Test {
 		keccak256(type(WildcatVault).creationCode);
 
 	address internal wildcatController = address(0x69);
+	address internal wintermuteController = address(0x70);
 	address internal wlUser = address(0x42);
 	address internal nonwlUser = address(0x43);
 
@@ -88,6 +89,7 @@ contract BaseVaultTest is Test {
 
 	function _deployDAIVault() internal {
 		address returnedVaultAddress = factory.deployVault(
+			wintermuteController,
 			address(DAI),
 			DefaultMaximumSupply,
 			DefaultAPRBips,
@@ -102,15 +104,19 @@ contract BaseVaultTest is Test {
 	function setUp() public {
 		_resetContracts();
 
+		// TODO: pay the vault validation toll from one of the wl addresses
 		vm.startPrank(wildcatController);
-		perms.adjustWhitelist(wlUser, true);
+		perms.addApprovedController(wintermuteController);
+		vm.stopPrank();
+		vm.startPrank(wintermuteController);
 		_deployDAIVault();
+		perms.adjustWhitelist(address(wcDAI), wlUser, true);
 		vm.stopPrank();
 
 		DAI.mint(wlUser, 100_000e18);
 		DAI.mint(nonwlUser, 100_000e18);
 
 		_approve(wlUser, address(wcDAI), DefaultMaximumSupply);
-    _approve(nonwlUser, address(wcDAI), DefaultMaximumSupply);
+    	_approve(nonwlUser, address(wcDAI), DefaultMaximumSupply);
 	}
 }

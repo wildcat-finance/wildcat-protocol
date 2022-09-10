@@ -50,12 +50,12 @@ contract VaultFactoryTest is BaseVaultTest {
     }
 
     function test_PermissionsGranted() public {
-        bool allowed = perms.isWhitelisted(wlUser);
+        bool allowed = perms.isWhitelisted(address(wcDAI), wlUser);
         assertTrue(allowed);
     }
 
     function test_PermissionsNotGranted() public {
-        bool allowed = perms.isWhitelisted(nonwlUser);
+        bool allowed = perms.isWhitelisted(address(wcDAI), nonwlUser);
         assertFalse(allowed);
     }
 

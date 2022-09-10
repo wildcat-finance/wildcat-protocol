@@ -31,14 +31,14 @@ contract WildcatVault is UncollateralizedDebtToken {
 	// END: Events
 
 	// BEGIN: Modifiers
-	modifier isWildcatController() {
-		address controller = wcPermissions.controller();
-		require(msg.sender == controller);
+	modifier isVaultController() {
+		address vaultController = wcPermissions.isVaultController(address(this)); 
+		require(msg.sender == vaultController);
 		_;
 	}
 
 	modifier isWhitelisted() {
-		if (!wcPermissions.isWhitelisted(msg.sender)) {
+		if (!wcPermissions.isWhitelisted(address(this), msg.sender)) {
 			revert NotWhitelisted();
 		}
 		_;
@@ -85,7 +85,7 @@ contract WildcatVault is UncollateralizedDebtToken {
 
 	function withdrawCollateral(address receiver, uint256 assets)
 		external
-		isWildcatController
+		isVaultController
 	{
 		uint256 maxAvailable = maxCollateralToWithdraw();
 		require(
@@ -97,7 +97,7 @@ contract WildcatVault is UncollateralizedDebtToken {
 		emit CollateralWithdrawn(receiver, assets);
 	}
 
-	function depositCollateral(uint256 assets) external isWildcatController {
+	function depositCollateral(uint256 assets) external isVaultController {
 		SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), assets);
 		if (assets > collateralWithdrawn) {
 			collateralWithdrawn = 0;
@@ -110,7 +110,7 @@ contract WildcatVault is UncollateralizedDebtToken {
 	/**
 	* @dev Sets the vault APR to 0% and transfers the outstanding balance for full redemption
 	 */
-	function closeVault() external isWildcatController {
+	function closeVault() external isVaultController {
 		setAnnualInterestBips(0);
 		uint currentlyHeld = IERC20(asset).balanceOf(address(this));
 		uint outstanding = totalSupply() - currentlyHeld;
