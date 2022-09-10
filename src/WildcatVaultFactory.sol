@@ -35,7 +35,7 @@ contract WildcatVaultFactory {
 
 	mapping(address => mapping (address => bool)) validatedVaults;
 	IERC20 erc20USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-	uint256 vaultValidationFee = 1e18;
+	uint256 vaultValidationFee = 0;
 
 	constructor(address _permissions) {
 		wcPermissionAddress = _permissions;
