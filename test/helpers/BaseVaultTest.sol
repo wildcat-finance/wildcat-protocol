@@ -107,9 +107,14 @@ contract BaseVaultTest is Test {
 		// TODO: pay the vault validation toll from one of the wl addresses
 		vm.startPrank(wildcatController);
 		perms.addApprovedController(wintermuteController);
+		factory.validateVaultDeployment(wintermuteController, address(DAI));
 		vm.stopPrank();
+
 		vm.startPrank(wintermuteController);
 		_deployDAIVault();
+		vm.stopPrank();
+
+		vm.startPrank(wildcatController);
 		perms.adjustWhitelist(address(wcDAI), wlUser, true);
 		vm.stopPrank();
 
