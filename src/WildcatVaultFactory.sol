@@ -15,8 +15,6 @@ import './WildcatRegistry.sol';
 contract WildcatVaultFactory {
 	error NotController();
 
-	address internal wcPermissionAddress;
-
 	IWildcatRegistry internal wcRegistry;
 	IWildcatPermissions internal wcPermissions;
 
@@ -38,16 +36,16 @@ contract WildcatVaultFactory {
 	uint256 vaultValidationFee = 0;
 
 	constructor(address _permissions) {
-		wcPermissionAddress = _permissions;
+		wcPermissions = IWildcatPermissions(_permissions);
 		WildcatRegistry registry = new WildcatRegistry{ salt: bytes32(0x0) }();
 		wcRegistry = IWildcatRegistry(address(registry));
 	}
 
 	// Note: anyone can pay this fee on behalf of a vault controller, provided they're approved
 	function validateVaultDeployment(address _controller, address _underlying) external {
-		require(IWildcatPermissions(wcPermissionAddress).isApprovedController(_controller),
+		require(wcPermissions.isApprovedController(_controller),
 				"given controller is not approved by wildcat to deploy");
-		address controller = IWildcatPermissions(wcPermissionAddress).archController();
+		address controller = wcPermissions.archController();
 		SafeTransferLib.safeTransferFrom(address(erc20USDC), msg.sender, controller, vaultValidationFee);
 		validatedVaults[_controller][_underlying] = true;
 	}
@@ -67,7 +65,7 @@ contract WildcatVaultFactory {
 
 		// Set variables for vault creation
 		factoryVaultUnderlying      = _underlying;
-		factoryPermissionRegistry   = wcPermissionAddress;
+		factoryPermissionRegistry   = address(wcPermissions);
 		factoryVaultMaximumCapacity = _maxCapacity;
 		factoryVaultAnnualAPR       = _annualAPR;
 		factoryVaultCollatRatio     = _collatRatio;
@@ -89,7 +87,7 @@ contract WildcatVaultFactory {
 	}
 
 	function vaultPermissionsAddress() external view returns (address) {
-		return wcPermissionAddress;
+		return address(wcPermissions);
 	}
 
 	function vaultRegistryAddress() external view returns (address) {
