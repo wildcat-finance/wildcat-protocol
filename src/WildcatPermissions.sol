@@ -19,6 +19,7 @@ contract WildcatPermissions {
 	event CounterpartyAdjustment(address, address, bool);
 	event ApprovedControllerAdded(address);
 	event VaultControllerRegistered(address, address);
+	event VaultControllerModified(address, address);
 
 	constructor(address _archcontroller) {
 		archController = _archcontroller;
@@ -51,6 +52,13 @@ contract WildcatPermissions {
 			 && approvedController[_controller], "registerVaultController: inappropriate permissions");
 		vaultController[_vault] = _controller;
 		emit VaultControllerRegistered(_vault, _controller);
+	}
+
+	function modifyVaultController(address _vault, address _newController) external isArchController {
+		require(vaultController[_vault] != address(0x00)
+			 && approvedController[_newController], "modifyVaultController: inappropriate permissions");
+		vaultController[_vault] = _newController;
+		emit VaultControllerModified(_vault, _newController);
 	}
 
 	function isVaultController(address _vault) external view returns (address) {
