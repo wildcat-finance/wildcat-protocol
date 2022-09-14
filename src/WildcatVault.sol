@@ -28,7 +28,7 @@ contract WildcatVault is UncollateralizedDebtToken {
 	event CollateralWithdrawn(address indexed recipient, uint256 assets);
 	event CollateralDeposited(address indexed sender, uint256 assets);
 	event VaultClosed(uint256 timestamp);
-	event FeesCollected(uint recipient, uint256 assets);
+	event FeesCollected(address recipient, uint256 assets);
 	// END: Events
 
 	// BEGIN: Modifiers
