@@ -47,6 +47,9 @@ contract WildcatPermissions {
 		return approvedController[_controller];
 	}
 
+	// NOTE: this currently enables bypass of vault registration fee if you calculate the vault address in advance
+	// NOTE: perhaps introduce a variable that flips on and off during vault creation within the factory
+	// NOTE: [would require a variable in here dictating the address of the vault factory]
 	function registerVaultController(address _vault, address _controller) external {
 		require(vaultController[_vault] == address(0x00)
 			 && approvedController[_controller], "registerVaultController: inappropriate permissions");
