@@ -28,6 +28,7 @@ contract WildcatVault is UncollateralizedDebtToken {
 	event CollateralWithdrawn(address indexed recipient, uint256 assets);
 	event CollateralDeposited(address indexed sender, uint256 assets);
 	event VaultClosed(uint256 timestamp);
+	event FeesCollected(uint recipient, uint256 assets);
 	// END: Events
 
 	// BEGIN: Modifiers
@@ -116,6 +117,14 @@ contract WildcatVault is UncollateralizedDebtToken {
 		uint outstanding = totalSupply() - currentlyHeld;
 		SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), outstanding);
 		emit VaultClosed(block.timestamp);
+	}
+
+	function retrieveFees() external {
+		address recipient = wcPermissions.archRecipient();
+		uint feesToCollect = balanceOf(recipient);
+		SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), feesToCollect);
+		emit FeesCollected(recipient, feesToCollect);
+
 	}
 
 	// END: Unique vault functionality
