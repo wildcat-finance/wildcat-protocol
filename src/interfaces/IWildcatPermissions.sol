@@ -5,6 +5,9 @@ interface IWildcatPermissions {
 	function archController() external view returns (address);
 	function updateArchController(address _newArchController) external;
 
+	function archRecipient() external view returns (address);
+	function updateArchRecipient(address _newArchRecipient) external;
+
 	function addApprovedController(address _controller) external;
 	function isApprovedController(address _controller) external view returns (bool);
 

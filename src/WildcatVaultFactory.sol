@@ -44,8 +44,8 @@ contract WildcatVaultFactory {
 	function validateVaultDeployment(address _controller, address _underlying) external {
 		require(wcPermissions.isApprovedController(_controller),
 				"given controller is not approved by wildcat to deploy");
-		address controller = wcPermissions.archController();
-		SafeTransferLib.safeTransferFrom(address(erc20USDC), msg.sender, controller, vaultValidationFee);
+		address recipient = wcPermissions.archRecipient();
+		SafeTransferLib.safeTransferFrom(address(erc20USDC), msg.sender, recipient, vaultValidationFee);
 		validatedVaults[_controller][_underlying] = true;
 	}
 

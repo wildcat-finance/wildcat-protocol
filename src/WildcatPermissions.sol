@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 contract WildcatPermissions {
 	address public archController;
+	address public archRecipient;
 	mapping(address => bool) public approvedController;
 	mapping(address => address) public vaultController;
 
@@ -14,18 +15,26 @@ contract WildcatPermissions {
 	}
 
 	event ArchControllerAddressUpdated(address);
+	event ArchRecipientAddressUpdated(address);
 	event CounterpartyAdjustment(address, address, bool);
 	event ApprovedControllerAdded(address);
 	event VaultControllerRegistered(address, address);
 
 	constructor(address _archcontroller) {
 		archController = _archcontroller;
+		archRecipient = _archcontroller;
 		emit ArchControllerAddressUpdated(_archcontroller);
+		emit ArchRecipientAddressUpdated(_archcontroller);
 	}
 
 	function updateArchController(address _newArchController) external isArchController {
 		archController = _newArchController;
 		emit ArchControllerAddressUpdated(_newArchController);
+	}
+
+	function updateArchRecipient(address _newArchRecipient) external isArchController {
+		archRecipient = _newArchRecipient;
+		emit ArchRecipientAddressUpdated(_newArchRecipient);
 	}
 
 	function addApprovedController(address _controller) external isArchController {
