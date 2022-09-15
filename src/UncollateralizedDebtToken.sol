@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import './interfaces/IERC20.sol';
 import './WrappedAssetMetadata.sol';
 import './ERC2612.sol';
 import { DefaultVaultState, VaultState, VaultStateCoder } from './types/VaultStateCoder.sol';
@@ -30,6 +31,9 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
   /// @notice Error thrown when collateralization ratio higher than 100%
   error CollateralizationRatioTooHigh();
 
+  /// @notice Error thrown when interest fee set higher than 100%
+  error InterestFeeTooHigh();
+
 	event Transfer(address indexed from, address indexed to, uint256 value);
 	event Approval(address indexed owner, address indexed spender, uint256 value);
 	event MaxSupplyUpdated(uint256 assets);
@@ -42,11 +46,17 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 
 	Configuration internal _configuration;
 
+  address public feeRecipient;
+
+  uint96 public accruedProtocolFees;
+
 	mapping(address => uint256) public scaledBalanceOf;
 
 	mapping(address => mapping(address => uint256)) public allowance;
 
-  	uint256 public immutable collateralizationRatioBips;
+  uint256 public immutable collateralizationRatioBips;
+
+  uint256 public immutable interestFeeBips;
 
 	/*//////////////////////////////////////////////////////////////
                               Modifiers
@@ -64,7 +74,8 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		address _owner,
 		uint256 _maxTotalSupply,
 		uint256 _annualInterestBips,
-    uint256 _collateralizationRatioBips
+    uint256 _collateralizationRatioBips,
+    uint256 _interestFeeBips
 	)
 		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
 		ERC2612(name(), 'v1')
@@ -75,10 +86,14 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 			block.timestamp
 		);
 		_configuration = ConfigurationCoder.encode(_owner, _maxTotalSupply);
-    if (_collateralizationRatioBips > 10000) {
+    if (_collateralizationRatioBips > BipsOne) {
       revert CollateralizationRatioTooHigh();
     }
+    if (_interestFeeBips > BipsOne) {
+      revert InterestFeeTooHigh();
+    }
     collateralizationRatioBips = _collateralizationRatioBips;
+    interestFeeBips = _interestFeeBips;
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -104,8 +119,13 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		public
 		onlyOwner
 	{
-		_state = _getCurrentState().setAnnualInterestBips(_annualInterestBips);
+    (VaultState state,) = _getCurrentStateAndAccrueFees();
+		_state = state.setAnnualInterestBips(_annualInterestBips);
 	}
+
+  function setFeeRecipient(address _feeRecipient) external onlyOwner {
+    feeRecipient = _feeRecipient;
+  }
 
 	/*//////////////////////////////////////////////////////////////
                              Mint & Burn
@@ -117,7 +137,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		returns (uint256 actualAmount)
 	{
 		// Get current scale factor
-		VaultState state = _getCurrentState();
+		(VaultState state,) = _getCurrentStateAndAccrueFees();
 		uint256 scaleFactor = state.getScaleFactor();
 
 		// Reduce amount if it would exceed totalSupply
@@ -152,7 +172,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 
 	function withdraw(uint256 amount, address to) external virtual {
     // Scale `amount`
-		VaultState state = _getCurrentState();
+		(VaultState state,) = _getCurrentStateAndAccrueFees();
 		uint256 scaleFactor = state.getScaleFactor();
 		uint256 scaledAmount = amount.rayDiv(scaleFactor);
 
@@ -184,17 +204,16 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	 * @notice Returns the normalized balance of `account` with interest.
 	 */
 	function balanceOf(address account) public view virtual returns (uint256) {
-		(uint256 scaleFactor, ) = _getCurrentScaleFactor(_state);
-		return scaledBalanceOf[account].rayMul(scaleFactor);
+		VaultState state = _getCurrentState();
+		return scaledBalanceOf[account].rayMul(state.getScaleFactor());
 	}
 
 	/**
 	 * @notice Returns the normalized total supply with interest.
 	 */
 	function totalSupply() public view virtual returns (uint256) {
-		VaultState state = _state;
-		(uint256 scaleFactor, ) = _getCurrentScaleFactor(state);
-		return state.getScaledTotalSupply().rayMul(scaleFactor);
+		VaultState state = _getCurrentState();
+		return state.getScaledTotalSupply().rayMul(state.getScaleFactor());
 	}
 
 	function stateParameters()
@@ -215,44 +234,111 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 	}
 
 	function currentScaleFactor() public view returns (uint256 scaleFactor) {
-		(scaleFactor, ) = _getCurrentScaleFactor(_state);
+		(VaultState state,,) = _calculateInterestAndFees(_state);
+    scaleFactor = state.getScaleFactor();
 	}
+
+  function pendingFees() public view returns (uint256 pendingFees) {
+    (,pendingFees,) = _calculateInterestAndFees(_state);
+  }
 
 	function maxTotalSupply() public view virtual returns (uint256) {
 		return _configuration.getMaxTotalSupply();
 	}
+
+  /**
+   * @dev Total balance in underlying asset
+   */
+  function totalAssets() public view returns (uint256) {
+    return IERC20(asset).balanceOf(address(this));
+  }
+
+  /**
+   * @dev Balance in underlying asset which is not reserved for fees.
+   */
+  function availableAssets() public view returns (uint256) {
+    return totalAssets().subMinZero(accruedProtocolFees);
+  }
 
 	/*//////////////////////////////////////////////////////////////
                        Internal State Handlers
   //////////////////////////////////////////////////////////////*/
 
 	function _getUpdatedScaleFactor() internal returns (uint256) {
-		VaultState state = _state;
-		(uint256 scaleFactor, bool changed) = _getCurrentScaleFactor(state);
-		if (changed) {
-			_state = state.setNewScaleOutputs(scaleFactor, block.timestamp);
-		}
-		return scaleFactor;
+		return _getUpdatedStateAndAccrueFees().getScaleFactor();
 	}
 
-	function _getCurrentState() internal view returns (VaultState state) {
-		state = _state;
-		(uint256 scaleFactor, bool changed) = _getCurrentScaleFactor(state);
-		if (changed) {
-			state = state.setNewScaleOutputs(scaleFactor, block.timestamp);
-		}
-	}
+  /**
+   * @dev Returns VaultState with interest since last update accrued to the cache
+   * and updates storage with accrued protocol fees.
+   * Used in functions that make additional changes to the vault state.
+   * @return state Vault state after interest is accrued - does not match stored object.
+   */
+  function _getCurrentStateAndAccrueFees() internal returns (VaultState /* state */, bool /* didUpdate */) {
+    (VaultState state, uint256 feesAccrued, bool didUpdate) =_calculateInterestAndFees(_state);
+    if (didUpdate) {
+      // @todo
+      // Update queries for collateral availability to reduce it by pending fees
+      // Otherwise, fees could cause collateral to be insufficient for a withdrawal that seemed fine on the front end
+      // Options for pool has sufficient assets for fee withdrawal:
+      // 1. Transfer
+      // 2. Update a sum of pending fees that does not count accrue interest or affect the supply
+      // 3. Always mint shares
+      // Options for pool has insufficient assets for fee withdrawal:
+      // 1. Mint shares - borrower can pay interest on fees if they are not maintaining collateral requirements
+      // 2. 
+      
+      // If pool has insufficient assets to transfer fees, treat fees as deposited assets
+      // to mint shares for fee recipient. This results in interest being charged on fees
+      // when the borrower does not maintain collateralization requirements.
+      if (totalAssets() < feesAccrued) {
+        uint256 scaledFee = feesAccrued.rayDiv(state.getScaleFactor());
+        state = state.setScaledTotalSupply(state.getScaledTotalSupply() + scaledFee);
+        scaledBalanceOf[feeRecipient] += scaledFee;
+        emit Transfer(address(0), feeRecipient, scaledFee);
+      } else {
+        // @todo safe cast / demonstrate why not needed
+        accruedProtocolFees += uint96(feesAccrued);
+      }
+    }
+    return (state, didUpdate);
+  }
 
-	/**
-	 * @dev Returns scale factor at current time, with interest applied since the
-	 * previous accrual but without updating the state.
-	 */
-	function _getCurrentScaleFactor(VaultState state)
+  /**
+   * @dev Returns VaultState with interest since last update accrued to both the
+   * cached and stored vault states, and updates storage with accrued protocol fees.
+   * Used in functions that don't make additional changes to the vault state.
+   * @return state Vault state after interest is accrued - matches stored object.
+   */
+  function _getUpdatedStateAndAccrueFees() internal returns (VaultState) {
+    (VaultState state, bool didUpdate) = _getCurrentStateAndAccrueFees();
+    if (didUpdate) {
+      _state = state;
+    }
+    return state;
+  }
+
+  function _getCurrentState() internal view returns (VaultState state) {
+    (state,,) = _calculateInterestAndFees(_state);
+  }
+
+  // @todo rename
+  /**
+   * @dev Calculates interest and protocol fees accrued since last state update. and applies it to
+   * cached state returns protocol fees accrued.
+   * 
+   * @param state Vault state
+   * @return state Cached state with updated scaleFactor and timestamp after accruing fees
+   * @return feesAccrued Protocol fees owed on interest
+   * @return didUpdate Whether interest has accrued since last update
+   */
+  function _calculateInterestAndFees(VaultState state)
 		internal
 		view
 		returns (
-			uint256, /* newScaleFactor */
-			bool /* changed */
+      VaultState /* state */,
+      uint256 /* feesAccrued */,
+			bool /* didUpdate */
 		)
 	{
 		(
@@ -261,22 +347,38 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 			uint256 lastInterestAccruedTimestamp
 		) = state.getNewScaleInputs();
 		uint256 timeElapsed;
+    uint256 feesAccrued;
 		unchecked {
 			timeElapsed = block.timestamp - lastInterestAccruedTimestamp;
 		}
-		bool changed = timeElapsed > 0;
-		if (changed) {
-			uint256 newInterest;
-			uint256 interestPerSecond = annualInterestBips.annualBipsToRayPerSecond();
-			assembly {
-				// Calculate interest accrued since last update
-				newInterest := mul(timeElapsed, interestPerSecond)
-			}
-			// Calculate new scale factor
-      scaleFactor += scaleFactor.rayMul(newInterest);
-		}
-		return (scaleFactor, changed);
-	}
+
+		bool didUpdate = timeElapsed > 0;
+
+		if (didUpdate) {
+      uint256 scaleFactorDelta;
+      {
+        uint256 interestAccrued;
+        uint256 interestPerSecond = annualInterestBips.annualBipsToRayPerSecond();
+        assembly {
+          // Calculate interest accrued since last update
+          interestAccrued := mul(timeElapsed, interestPerSecond)
+        }
+        // Compound growth of scaleFactor
+        scaleFactorDelta = scaleFactor.rayMul(interestAccrued);
+      }
+      if (interestFeeBips > 0) {
+        uint256 scaledSupply = state.getScaledTotalSupply();
+        // Calculate fees accrued to protocol
+        feesAccrued = scaledSupply.rayMul(scaleFactorDelta.bipsMul(interestFeeBips));
+        // Subtract fee
+        scaleFactorDelta = scaleFactorDelta.bipsMul(BipsOne - interestFeeBips);
+      }
+      // Update scaleFactor and timestamp
+      state = state.setNewScaleOutputs(scaleFactor + scaleFactorDelta, block.timestamp);
+    }
+
+    return (state, feesAccrued, didUpdate);
+  }
 
 	function _getMaximumDeposit(VaultState state, uint256 scaleFactor)
 		internal
