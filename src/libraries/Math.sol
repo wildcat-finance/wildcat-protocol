@@ -3,6 +3,7 @@ pragma solidity >=0.8.13;
 
 import '../types/CoderConstants.sol';
 
+uint256 constant BipsOne = 1e4;
 uint256 constant OneEth = 1e18;
 uint256 constant RayOne = 1e26;
 uint256 constant RayBipsNumerator = 1e22;
@@ -34,6 +35,10 @@ library Math {
 	function rayDiv(uint256 x, uint256 y) internal pure returns (uint256 z) {
 		z = (x * RayOne) / y;
 	}
+
+  function bipsMul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    z = (x * y) / BipsOne;
+  }
 
 	function ternary(
 		bool condition,
