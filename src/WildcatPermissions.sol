@@ -19,6 +19,7 @@ contract WildcatPermissions {
 	event CounterpartyAdjustment(address, address, bool);
 	event ApprovedControllerAdded(address);
 	event VaultControllerRegistered(address, address);
+	event VaultControllerModified(address, address);
 
 	constructor(address _archcontroller) {
 		archController = _archcontroller;
@@ -46,11 +47,21 @@ contract WildcatPermissions {
 		return approvedController[_controller];
 	}
 
+	// NOTE: this currently enables bypass of vault registration fee if you calculate the vault address in advance
+	// NOTE: perhaps introduce a variable that flips on and off during vault creation within the factory
+	// NOTE: [would require a variable in here dictating the address of the vault factory]
 	function registerVaultController(address _vault, address _controller) external {
 		require(vaultController[_vault] == address(0x00)
 			 && approvedController[_controller], "registerVaultController: inappropriate permissions");
 		vaultController[_vault] = _controller;
 		emit VaultControllerRegistered(_vault, _controller);
+	}
+
+	function modifyVaultController(address _vault, address _newController) external isArchController {
+		require(vaultController[_vault] != address(0x00)
+			 && approvedController[_newController], "modifyVaultController: inappropriate permissions");
+		vaultController[_vault] = _newController;
+		emit VaultControllerModified(_vault, _newController);
 	}
 
 	function isVaultController(address _vault) external view returns (address) {
