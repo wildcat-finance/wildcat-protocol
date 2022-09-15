@@ -26,6 +26,7 @@ contract WildcatVaultFactory {
 	uint256 public factoryVaultMaximumCapacity = 0;
 	uint256 public factoryVaultAnnualAPR        = 0;
 	uint256 public factoryVaultCollatRatio     = 0;
+	uint256 public factoryVaultInterestFeeBips     = 0;
 
 	string public factoryVaultNamePrefix       = "";
 	string public factoryVaultSymbolPrefix     = "";
@@ -68,6 +69,8 @@ contract WildcatVaultFactory {
 		factoryVaultMaximumCapacity = _maxCapacity;
 		factoryVaultAnnualAPR       = _annualAPR;
 		factoryVaultCollatRatio     = _collatRatio;
+    // @todo - implement
+    factoryVaultInterestFeeBips = 0;
 		factoryVaultNamePrefix      = _namePrefix;
 		factoryVaultSymbolPrefix    = _symbolPrefix;
 
@@ -81,6 +84,7 @@ contract WildcatVaultFactory {
 		factoryVaultMaximumCapacity = 0;
 		factoryVaultAnnualAPR       = 0;
 		factoryVaultCollatRatio     = 0;
+    factoryVaultInterestFeeBips = 0;
 		factoryVaultNamePrefix      = "";
 		factoryVaultSymbolPrefix    = "";
 	}

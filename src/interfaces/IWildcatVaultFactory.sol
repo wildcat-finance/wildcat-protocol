@@ -12,6 +12,8 @@ interface IWildcatVaultFactory {
 
 	function factoryVaultCollatRatio() external returns (uint256);
 
+  function factoryVaultInterestFeeBips() external view returns (uint256);
+
 	function vaultRegistryAddress() external view returns (address);
 
 	function vaultPermissionsAddress() external view returns (address);
