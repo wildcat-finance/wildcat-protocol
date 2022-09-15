@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.13;
-
-import './interfaces/IERC20.sol';
 import './interfaces/IWildcatPermissions.sol';
 import './interfaces/IWildcatVaultFactory.sol';
 import { SafeTransferLib } from './libraries/SafeTransferLib.sol';
@@ -28,7 +26,7 @@ contract WildcatVault is UncollateralizedDebtToken {
 	event CollateralWithdrawn(address indexed recipient, uint256 assets);
 	event CollateralDeposited(address indexed sender, uint256 assets);
 	event VaultClosed(uint256 timestamp);
-	event FeesCollected(uint recipient, uint256 assets);
+	event FeesCollected(address recipient, uint256 assets);
 	// END: Events
 
 	// BEGIN: Modifiers
@@ -57,7 +55,8 @@ contract WildcatVault is UncollateralizedDebtToken {
 			IWildcatVaultFactory(msg.sender).factoryPermissionRegistry(),
 			IWildcatVaultFactory(msg.sender).factoryVaultMaximumCapacity(),
 			IWildcatVaultFactory(msg.sender).factoryVaultAnnualAPR(),
-			IWildcatVaultFactory(msg.sender).factoryVaultCollatRatio()
+			IWildcatVaultFactory(msg.sender).factoryVaultCollatRatio(),
+      IWildcatVaultFactory(msg.sender).factoryVaultInterestFeeBips()
 		)
 	{
 		wcPermissions = IWildcatPermissions(
@@ -74,7 +73,7 @@ contract WildcatVault is UncollateralizedDebtToken {
 	 */
 	function maxCollateralToWithdraw() public view returns (uint256) {
 		uint256 maximumToWithdraw = (totalSupply() * collateralizationRatioBips) / 100;
-		uint256 collateral = IERC20(asset).balanceOf(address(this));
+		uint256 collateral = availableAssets();
 		if (collateralWithdrawn > maximumToWithdraw) {
 			return 0;
 		}
@@ -124,7 +123,6 @@ contract WildcatVault is UncollateralizedDebtToken {
 		uint feesToCollect = balanceOf(recipient);
 		SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), feesToCollect);
 		emit FeesCollected(recipient, feesToCollect);
-
 	}
 
 	// END: Unique vault functionality
