@@ -31,9 +31,9 @@ contract WildcatVaultFactory {
 	string public factoryVaultNamePrefix       = "";
 	string public factoryVaultSymbolPrefix     = "";
 
-	mapping(address => mapping (address => bool)) validatedVaults;
-	IERC20 erc20USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-	uint256 vaultValidationFee = 0;
+	mapping(address => mapping (address => bool)) internal validatedVaults;
+	IERC20 internal erc20USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+	uint256 public vaultValidationFee = 0;
 
 	constructor(address _permissions) {
 		wcPermissions = IWildcatPermissions(_permissions);
@@ -51,7 +51,7 @@ contract WildcatVaultFactory {
 	}
 
 	function deployVault(
-		address _vaultOwner,
+		address _controller,
 		address _underlying,
 		uint256 _maxCapacity,
 		uint256 _annualAPR,
@@ -61,7 +61,7 @@ contract WildcatVaultFactory {
 		bytes32 _salt
 	) public returns (address vault) {
 
-		require(validatedVaults[_vaultOwner][_underlying], "deployVault: vault not validated");
+		require(isVaultValidated(_controller, _underlying), "deployVault: vault not validated");
 
 		// Set variables for vault creation
 		factoryVaultUnderlying      = _underlying;
@@ -76,7 +76,7 @@ contract WildcatVaultFactory {
 
 		vault = address(new WildcatVault{ salt: _salt }());
 		wcRegistry.registerVault(vault);
-		wcPermissions.registerVaultController(vault, _vaultOwner);
+		wcPermissions.registerVaultController(vault, _controller);
 
 		// Reset variables for gas refund
 		factoryVaultUnderlying      = address(0x00);
@@ -87,6 +87,10 @@ contract WildcatVaultFactory {
     factoryVaultInterestFeeBips = 0;
 		factoryVaultNamePrefix      = "";
 		factoryVaultSymbolPrefix    = "";
+	}
+
+	function isVaultValidated(address _controller, address _underlying) public view returns (bool) {
+		return validatedVaults[_controller][_underlying];
 	}
 
 	function vaultPermissionsAddress() external view returns (address) {
