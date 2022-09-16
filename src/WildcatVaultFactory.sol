@@ -101,7 +101,7 @@ contract WildcatVaultFactory {
 		return address(wcRegistry);
 	}
 
-	function computeVaultAddress(bytes32 salt) external view returns (address) {
+	function computeVaultAddress(bytes32 _salt) external view returns (address) {
 		return
 			address(
 				uint160(
@@ -110,7 +110,7 @@ contract WildcatVaultFactory {
 							abi.encodePacked(
 								bytes1(0xff),
 								address(this),
-								salt,
+								_salt,
 								VaultInitCodeHash
 							)
 						)
