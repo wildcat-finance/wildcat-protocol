@@ -60,7 +60,7 @@ contract WildcatVaultFactory {
 		string memory _symbolPrefix,
 		bytes32 _salt
 	) public returns (address vault) {
-
+		require(msg.sender == _controller, "deployVault: attempting to deploy vault from invalid address");
 		require(isVaultValidated(_controller, _underlying), "deployVault: vault not validated");
 
 		// Set variables for vault creation
