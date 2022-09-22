@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.13;
 
+import "./libraries/SafeTransferLib.sol";
+
 contract WildcatPermissions {
+	using SafeTransferLib for address;
+
 	address public archController;
 	address public archRecipient;
 	uint256 public immutable interestFeeBips;
+	address public feeAsset;
+	uint256 public deployVaultFee;
 	mapping(address => bool) public approvedController;
 	mapping(address => mapping(address => bool)) public approvedForAsset;
 	mapping(address => address) public vaultController;
@@ -37,8 +43,9 @@ contract WildcatPermissions {
 		address /* vault */,
 		uint256 collateralizationRatioBips,
 		uint256 /* annualInterestBips */
-	) external view {
-		require(approvedForAsset[deployer][asset], "Not Approved");
+	) external {
+		require(approvedController[deployer], "Not Approved");
+		feeAsset.safeTransferFrom(deployer, address(this), deployVaultFee);
 		require(collateralizationRatioBips > 0, "Collat = 0");
 	}
 

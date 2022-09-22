@@ -42,9 +42,6 @@ contract BaseVaultTest is Test {
 		DAI = new TestERC20('Dai Stablecoin', 'DAI', 18);
 		// @todo add fee tests
 		perms = new WildcatPermissions(wildcatController, 0);
-		vm.startPrank(wildcatController);
-		perms.approveForAsset(wintermuteController, address(DAI));
-		vm.stopPrank();
 		factory = new WildcatVaultFactory(address(perms));
 		registry = WildcatRegistry(factory.vaultRegistryAddress());
 	}
