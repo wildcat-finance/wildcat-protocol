@@ -8,8 +8,11 @@ import { DefaultVaultState, VaultState, VaultStateCoder } from './types/VaultSta
 import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.sol';
 import './libraries/SafeTransferLib.sol';
 import './libraries/Math.sol';
+import './interfaces/IWildcatPermissions.sol';
 
-contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
+import { InitializationParametersLoader, loadVaultConfigInitializationParameters } from "./libraries/InitializationParametersLoader.sol";
+
+contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, InitializationParametersLoader {
 	using SafeTransferLib for address;
 	using VaultStateCoder for VaultState;
 	using ConfigurationCoder for Configuration;
@@ -46,8 +49,6 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 
 	Configuration internal _configuration;
 
-  address public feeRecipient;
-
   uint96 public accruedProtocolFees;
 
 	mapping(address => uint256) public scaledBalanceOf;
@@ -57,6 +58,8 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
   uint256 public immutable collateralizationRatioBips;
 
   uint256 public immutable interestFeeBips;
+	
+	address public immutable wcPermissions;
 
 	/*//////////////////////////////////////////////////////////////
                               Modifiers
@@ -67,33 +70,34 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
 		_;
 	}
 
-	constructor(
-		address _asset,
-		string memory namePrefix,
-		string memory symbolPrefix,
-		address _owner,
-		uint256 _maxTotalSupply,
-		uint256 _annualInterestBips,
-    uint256 _collateralizationRatioBips,
-    uint256 _interestFeeBips
-	)
-		WrappedAssetMetadata(namePrefix, symbolPrefix, _asset)
+	constructor()
+		InitializationParametersLoader()
+		WrappedAssetMetadata()
 		ERC2612(name(), 'v1')
 	{
+		(
+			address _owner,
+			address _vaultPermissions,
+			uint256 _maxTotalSupply,
+			uint256 _annualInterestBips,
+			uint256 _collateralizationRatioBips,
+			uint256 _interestFeeBips
+		) = loadVaultConfigInitializationParameters();
 		_state = DefaultVaultState.setInitialState(
 			_annualInterestBips,
 			RayOne,
 			block.timestamp
 		);
 		_configuration = ConfigurationCoder.encode(_owner, _maxTotalSupply);
-    if (_collateralizationRatioBips > BipsOne) {
-      revert CollateralizationRatioTooHigh();
-    }
-    if (_interestFeeBips > BipsOne) {
-      revert InterestFeeTooHigh();
-    }
-    collateralizationRatioBips = _collateralizationRatioBips;
-    interestFeeBips = _interestFeeBips;
+		if (_collateralizationRatioBips > BipsOne) {
+			revert CollateralizationRatioTooHigh();
+		}
+		if (_interestFeeBips > BipsOne) {
+			revert InterestFeeTooHigh();
+		}
+		collateralizationRatioBips = _collateralizationRatioBips;
+		interestFeeBips = _interestFeeBips;
+		wcPermissions = _vaultPermissions;
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -122,10 +126,6 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
     (VaultState state,) = _getCurrentStateAndAccrueFees();
 		_state = state.setAnnualInterestBips(_annualInterestBips);
 	}
-
-  function setFeeRecipient(address _feeRecipient) external onlyOwner {
-    feeRecipient = _feeRecipient;
-  }
 
 	/*//////////////////////////////////////////////////////////////
                              Mint & Burn
@@ -294,8 +294,8 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612 {
       if (totalAssets() < feesAccrued) {
         uint256 scaledFee = feesAccrued.rayDiv(state.getScaleFactor());
         state = state.setScaledTotalSupply(state.getScaledTotalSupply() + scaledFee);
-        scaledBalanceOf[feeRecipient] += scaledFee;
-        emit Transfer(address(0), feeRecipient, scaledFee);
+        scaledBalanceOf[wcPermissions] += scaledFee;
+        emit Transfer(address(0), wcPermissions, scaledFee);
       } else {
         // @todo safe cast / demonstrate why not needed
         accruedProtocolFees += uint96(feesAccrued);

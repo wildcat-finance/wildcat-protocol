@@ -4,7 +4,9 @@ pragma solidity ^0.8.13;
 contract WildcatPermissions {
 	address public archController;
 	address public archRecipient;
+	uint256 public immutable interestFeeBips;
 	mapping(address => bool) public approvedController;
+	mapping(address => mapping(address => bool)) public approvedForAsset;
 	mapping(address => address) public vaultController;
 
 	mapping(address => mapping(address => bool)) public whitelisted;
@@ -21,11 +23,31 @@ contract WildcatPermissions {
 	event VaultControllerRegistered(address, address);
 	event VaultControllerModified(address, address);
 
-	constructor(address _archcontroller) {
+	constructor(address _archcontroller, uint256 _interestFeeBips) {
+		interestFeeBips = _interestFeeBips;
 		archController = _archcontroller;
 		archRecipient = _archcontroller;
 		emit ArchControllerAddressUpdated(_archcontroller);
 		emit ArchRecipientAddressUpdated(_archcontroller);
+	}
+
+	function onDeployVault(
+		address deployer,
+		address asset,
+		address /* vault */,
+		uint256 collateralizationRatioBips,
+		uint256 /* annualInterestBips */
+	) external view {
+		require(approvedForAsset[deployer][asset], "Not Approved");
+		require(collateralizationRatioBips > 0, "Collat = 0");
+	}
+
+	function approveForAsset(address deployer, address vault) external isArchController {
+		approvedForAsset[deployer][vault] = true;
+	}
+
+	function getInterestFeeBips(address /* deployer */, address /* asset */, address /* vault */) external view returns (uint256) {
+		return interestFeeBips;
 	}
 
 	function updateArchController(address _newArchController) external isArchController {

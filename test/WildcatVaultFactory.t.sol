@@ -19,7 +19,7 @@ contract VaultFactoryTest is BaseVaultTest {
     function test_DeployVaultToExpectedAddress() external {
       vm.prank(wildcatController);
       assertEq(_getVaultAddress(address(factory), DaiSalt), address(wcDAI));
-      assertEq(factory.computeVaultAddress(DaiSalt), address(wcDAI));
+      assertEq(factory.computeVaultAddress(address(this), address(perms), address(DAI), DaiSalt), address(wcDAI));
     }
 
     function test_DeployVaultData() public {

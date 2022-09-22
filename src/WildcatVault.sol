@@ -8,13 +8,12 @@ import { VaultStateCoder } from './types/VaultStateCoder.sol';
 import './UncollateralizedDebtToken.sol';
 
 // Also 4626, but not inheriting, rather rewriting
-contract WildcatVault is UncollateralizedDebtToken {
+// Constructor doesn't take any arguments so that the bytecode is consistent for the create2 factory
+contract WildcatVault is UncollateralizedDebtToken() {
 	using VaultStateCoder for VaultState;
 
 	error NotWhitelisted();
 
-	// BEGIN: Vault specific parameters
-	IWildcatPermissions public immutable wcPermissions;
 
 	uint256 internal immutable vaultFeePercentage = 10;
 
@@ -31,13 +30,13 @@ contract WildcatVault is UncollateralizedDebtToken {
 
 	// BEGIN: Modifiers
 	modifier isVaultController() {
-		address vaultController = wcPermissions.isVaultController(address(this)); 
+		address vaultController = IWildcatPermissions(wcPermissions).isVaultController(address(this)); 
 		require(msg.sender == vaultController);
 		_;
 	}
 
 	modifier isWhitelisted() {
-		if (!wcPermissions.isWhitelisted(address(this), msg.sender)) {
+		if (!IWildcatPermissions(wcPermissions).isWhitelisted(address(this), msg.sender)) {
 			revert NotWhitelisted();
 		}
 		_;
@@ -46,23 +45,6 @@ contract WildcatVault is UncollateralizedDebtToken {
 	// END: Modifiers
 
 	// BEGIN: Constructor
-	// Constructor doesn't take any arguments so that the bytecode is consistent for the create2 factory
-	constructor()
-		UncollateralizedDebtToken(
-			IWildcatVaultFactory(msg.sender).factoryVaultUnderlying(),
-			IWildcatVaultFactory(msg.sender).factoryVaultNamePrefix(),
-			IWildcatVaultFactory(msg.sender).factoryVaultSymbolPrefix(),
-			IWildcatVaultFactory(msg.sender).factoryPermissionRegistry(),
-			IWildcatVaultFactory(msg.sender).factoryVaultMaximumCapacity(),
-			IWildcatVaultFactory(msg.sender).factoryVaultAnnualAPR(),
-			IWildcatVaultFactory(msg.sender).factoryVaultCollatRatio(),
-      IWildcatVaultFactory(msg.sender).factoryVaultInterestFeeBips()
-		)
-	{
-		wcPermissions = IWildcatPermissions(
-			IWildcatVaultFactory(msg.sender).factoryPermissionRegistry()
-		);
-	}
 
 	// END: Constructor
 
@@ -119,7 +101,7 @@ contract WildcatVault is UncollateralizedDebtToken {
 	}
 
 	function retrieveFees() external {
-		address recipient = wcPermissions.archRecipient();
+		address recipient = wcPermissions;
 		uint feesToCollect = balanceOf(recipient);
 		SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), feesToCollect);
 		emit FeesCollected(recipient, feesToCollect);

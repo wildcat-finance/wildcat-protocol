@@ -2,6 +2,16 @@
 pragma solidity ^0.8.13;
 
 interface IWildcatPermissions {
+	function onDeployVault(
+		address deployer,
+		address asset,
+		address vault,
+		uint256 collateralizationRatioBips,
+		uint256 annualInterestBips
+	) external;
+
+	function getInterestFeeBips(address deployer, address asset, address vault) external view returns (uint256);
+
 	function archController() external view returns (address);
 	function updateArchController(address _newArchController) external;
 

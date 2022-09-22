@@ -40,7 +40,11 @@ contract BaseVaultTest is Test {
 
 	function _resetContracts() internal {
 		DAI = new TestERC20('Dai Stablecoin', 'DAI', 18);
-		perms = new WildcatPermissions(wildcatController);
+		// @todo add fee tests
+		perms = new WildcatPermissions(wildcatController, 0);
+		vm.startPrank(wildcatController);
+		perms.approveForAsset(wintermuteController, address(DAI));
+		vm.stopPrank();
 		factory = new WildcatVaultFactory(address(perms));
 		registry = WildcatRegistry(factory.vaultRegistryAddress());
 	}
@@ -89,8 +93,8 @@ contract BaseVaultTest is Test {
 
 	function _deployDAIVault() internal {
 		address returnedVaultAddress = factory.deployVault(
-			wintermuteController,
 			address(DAI),
+			address(perms),
 			DefaultMaximumSupply,
 			DefaultAPRBips,
 			DefaultCollateralizationRatio,
@@ -107,7 +111,7 @@ contract BaseVaultTest is Test {
 		// TODO: pay the vault validation toll from one of the wl addresses
 		vm.startPrank(wildcatController);
 		perms.addApprovedController(wintermuteController);
-		factory.validateVaultDeployment(wintermuteController, address(DAI));
+		// factory.validateVaultDeployment(wintermuteController, address(DAI));
 		vm.stopPrank();
 
 		vm.startPrank(wintermuteController);

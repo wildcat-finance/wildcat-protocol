@@ -2,21 +2,20 @@
 pragma solidity ^0.8.13;
 
 interface IWildcatVaultFactory {
-
-	function factoryVaultUnderlying() external returns (address);
-	function factoryPermissionRegistry() external returns (address);
-	function factoryVaultMaximumCapacity() external returns (uint256);
-	function factoryVaultAnnualAPR() external returns (uint256);
-	function factoryVaultCollatRatio() external returns (uint256);
-    function factoryVaultInterestFeeBips() external view returns (uint256);
-	function factoryVaultNamePrefix() external view returns (string memory);
-	function factoryVaultSymbolPrefix() external view returns (string memory);
+	function getVaultParameters() external view returns (
+		address asset,
+		bytes32 namePrefix,
+		bytes32 symbolPrefix,
+		address owner,
+		address vaultPermissions,
+		uint256 maxTotalSupply,
+		uint256 annualInterestBips,
+		uint256 collateralizationRatioBips,
+		uint256 interestFeeBips
+	);
 
 	function vaultRegistryAddress() external view returns (address);
 	function vaultPermissionsAddress() external view returns (address);
-
-	function vaultValidationFee() external view returns (uint256);
-	function validateVaultDeployment(address _controller, address _underlying) external;
 	function isVaultValidated(address _controller, address _underlying) external view returns (bool);
 	function computeVaultAddress(bytes32 salt) external view returns (address);
 
