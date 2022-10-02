@@ -3,31 +3,17 @@ pragma solidity ^0.8.13;
 
 import './interfaces/IERC20.sol';
 import './interfaces/IWildcatPermissions.sol';
-import './interfaces/IWildcatRegistry.sol';
 import './interfaces/IWildcatVault.sol';
 import { SafeTransferLib } from './libraries/SafeTransferLib.sol';
 import './WildcatVault.sol';
-import './WildcatRegistry.sol';
 import "./libraries/StringPackerPrefixer.sol";
 
 contract WildcatVaultFactory is StringPackerPrefixer {
 
-	IWildcatRegistry internal wcRegistry;
 	IWildcatPermissions internal wcPermissions;
 
 	bytes32 public immutable VaultInitCodeHash =
 		keccak256(type(WildcatVault).creationCode);
-
-	// Temporary storage of vault initialization parameters
-	// address public factoryVaultUnderlying      = address(0x00);
-	// address public factoryPermissionRegistry   = address(0x00);
-	// uint256 public factoryVaultMaximumCapacity = 0;
-	// uint256 public factoryVaultAnnualAPR        = 0;
-	// uint256 public factoryVaultCollatRatio     = 0;
-	// uint256 public factoryVaultInterestFeeBips     = 0;
-
-	// string public factoryVaultNamePrefix       = "";
-	// string public factoryVaultSymbolPrefix     = "";
 
 	mapping(address => mapping (address => bool)) internal validatedVaults;
 	IERC20 internal erc20USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -35,8 +21,6 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 
 	constructor(address _permissions) {
 		wcPermissions = IWildcatPermissions(_permissions);
-		WildcatRegistry registry = new WildcatRegistry{ salt: bytes32(0x0) }();
-		wcRegistry = IWildcatRegistry(address(registry));
 		_resetVaultParameters();
 	}
 
@@ -129,10 +113,6 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 		_vaultCollateralizationRatioBips = _collateralizationRatioBips;
 		vault = address(new WildcatVault{ salt: salt }());
 		_resetVaultParameters();
-	}
-
-	function vaultRegistryAddress() external view returns (address) {
-		return address(wcRegistry);
 	}
 
 	function _deriveSalt(
