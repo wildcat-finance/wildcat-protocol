@@ -1,18 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import './libraries/StringPackerPrefixer.sol';
 import './interfaces/IERC20.sol';
-import './WrappedAssetMetadata.sol';
-import './ERC2612.sol';
 import { DefaultVaultState, VaultState, VaultStateCoder } from './types/VaultStateCoder.sol';
 import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.sol';
 import './libraries/SafeTransferLib.sol';
 import './libraries/Math.sol';
 import './interfaces/IWildcatPermissions.sol';
-
 import { InitializationParametersLoader, loadVaultConfigInitializationParameters } from "./libraries/InitializationParametersLoader.sol";
+import { IWildcatVaultFactory } from "./interfaces/IWildcatVaultFactory.sol";
+import { IERC20Metadata } from "./interfaces/IERC20Metadata.sol";
 
-contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, InitializationParametersLoader {
+
+uint256 constant UnknownNameQueryError_selector = 0xed3df7ad00000000000000000000000000000000000000000000000000000000;
+uint256 constant UnknownSymbolQueryError_selector = 0x89ff815700000000000000000000000000000000000000000000000000000000;
+uint256 constant NameFunction_selector = 0x06fdde0300000000000000000000000000000000000000000000000000000000;
+uint256 constant SymbolFunction_selector = 0x95d89b4100000000000000000000000000000000000000000000000000000000;
+
+contract UncollateralizedDebtToken is StringPackerPrefixer {
 	using SafeTransferLib for address;
 	using VaultStateCoder for VaultState;
 	using ConfigurationCoder for Configuration;
@@ -37,13 +43,19 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, Initializat
   /// @notice Error thrown when interest fee set higher than 100%
   error InterestFeeTooHigh();
 
-	event Transfer(address indexed from, address indexed to, uint256 value);
-	event Approval(address indexed owner, address indexed spender, uint256 value);
-	event MaxSupplyUpdated(uint256 assets);
+	error UnknownNameQueryError();
 
-	/*//////////////////////////////////////////////////////////////
-                        Storage and Constants
-  //////////////////////////////////////////////////////////////*/
+	error UnknownSymbolQueryError();
+
+	event Transfer(address indexed from, address indexed to, uint256 value);
+	
+  event Approval(address indexed owner, address indexed spender, uint256 value);
+	
+  event MaxSupplyUpdated(uint256 assets);
+
+/*//////////////////////////////////////////////////////////////
+                      Storage and Constants
+//////////////////////////////////////////////////////////////*/
 
 	VaultState internal _state;
 
@@ -61,28 +73,50 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, Initializat
 	
 	address public immutable wcPermissions;
 
-	/*//////////////////////////////////////////////////////////////
-                              Modifiers
-  //////////////////////////////////////////////////////////////*/
+	address public immutable asset;
+
+	bytes32 private immutable _packedName;
+
+	bytes32 private immutable _packedSymbol;
+
+	uint8 public immutable decimals;
+
+/*//////////////////////////////////////////////////////////////
+                            Modifiers
+//////////////////////////////////////////////////////////////*/
 
 	modifier onlyOwner() {
 		if (msg.sender != owner()) revert NotOwner();
 		_;
 	}
 
-	constructor()
-		InitializationParametersLoader()
-		WrappedAssetMetadata()
-		ERC2612(name(), 'v1')
-	{
+	constructor() {
 		(
-			address _owner,
+      address _asset,
+      bytes32 _namePrefix,
+      bytes32 _symbolPrefix,
+      address _owner,
 			address _vaultPermissions,
 			uint256 _maxTotalSupply,
 			uint256 _annualInterestBips,
 			uint256 _collateralizationRatioBips,
 			uint256 _interestFeeBips
-		) = loadVaultConfigInitializationParameters();
+    ) = IWildcatVaultFactory(msg.sender).getVaultParameters();
+    // Set asset metadata
+		asset = _asset;
+		_packedName = _getPackedPrefixedReturnValue(
+			_unpackString(_namePrefix),
+			_asset,
+			NameFunction_selector,
+			UnknownNameQueryError_selector
+		);
+		_packedSymbol = _getPackedPrefixedReturnValue(
+			_unpackString(_symbolPrefix),
+			_asset,
+			SymbolFunction_selector,
+			UnknownSymbolQueryError_selector
+		);
+		decimals = IERC20Metadata(_asset).decimals();
 		_state = DefaultVaultState.setInitialState(
 			_annualInterestBips,
 			RayOne,
@@ -100,9 +134,9 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, Initializat
 		wcPermissions = _vaultPermissions;
 	}
 
-	/*//////////////////////////////////////////////////////////////
-                         Management Actions
-  //////////////////////////////////////////////////////////////*/
+/*//////////////////////////////////////////////////////////////
+                        Management Actions
+//////////////////////////////////////////////////////////////*/
 
 	// TODO: how should the maximum capacity be represented here? flat amount of base asset? inflated per scale factor?
 	/**
@@ -127,9 +161,9 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, Initializat
 		_state = state.setAnnualInterestBips(_annualInterestBips);
 	}
 
-	/*//////////////////////////////////////////////////////////////
-                             Mint & Burn
-  //////////////////////////////////////////////////////////////*/
+/*//////////////////////////////////////////////////////////////
+                            Mint & Burn
+//////////////////////////////////////////////////////////////*/
 
 	function depositUpTo(uint256 amount, address to)
 		public
@@ -192,9 +226,9 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, Initializat
 		asset.safeTransfer(to, amount);
 	}
 
-	/*//////////////////////////////////////////////////////////////
-                          External Getters
-  //////////////////////////////////////////////////////////////*/
+/*//////////////////////////////////////////////////////////////
+                        External Getters
+//////////////////////////////////////////////////////////////*/
 
 	function owner() public view returns (address) {
 		return _configuration.getOwner();
@@ -260,9 +294,17 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, Initializat
     return totalAssets().subMinZero(accruedProtocolFees);
   }
 
-	/*//////////////////////////////////////////////////////////////
-                       Internal State Handlers
-  //////////////////////////////////////////////////////////////*/
+	function name() public view returns (string memory) {
+		return _unpackString(_packedName);
+	}
+
+	function symbol() public view returns (string memory) {
+		return _unpackString(_packedSymbol);
+	}
+
+/*//////////////////////////////////////////////////////////////
+                      Internal State Handlers
+//////////////////////////////////////////////////////////////*/
 
 	function _getUpdatedScaleFactor() internal returns (uint256) {
 		return _getUpdatedStateAndAccrueFees().getScaleFactor();
@@ -390,9 +432,9 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, Initializat
 		return _maxTotalSupply.subMinZero(_totalSupply);
 	}
 
-  /*//////////////////////////////////////////////////////////////
-                            ERC20 Actions
-  //////////////////////////////////////////////////////////////*/
+/*//////////////////////////////////////////////////////////////
+                          ERC20 Actions
+//////////////////////////////////////////////////////////////*/
 
 	function approve(address spender, uint256 amount)
 		external
@@ -435,7 +477,7 @@ contract UncollateralizedDebtToken is WrappedAssetMetadata, ERC2612, Initializat
 		address _owner,
 		address spender,
 		uint256 amount
-	) internal virtual override {
+	) internal virtual {
 		allowance[_owner][spender] = amount;
 		emit Approval(_owner, spender, amount);
 	}
