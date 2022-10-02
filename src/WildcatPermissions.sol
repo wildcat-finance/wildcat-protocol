@@ -29,6 +29,8 @@ contract WildcatPermissions {
 	event VaultControllerRegistered(address, address);
 	event VaultControllerModified(address, address);
 
+  error NotApprovedForDeploy();
+
 	constructor(address _archcontroller, uint256 _interestFeeBips) {
 		interestFeeBips = _interestFeeBips;
 		archController = _archcontroller;
@@ -44,7 +46,7 @@ contract WildcatPermissions {
 		uint256 collateralizationRatioBips,
 		uint256 /* annualInterestBips */
 	) external {
-		require(approvedController[deployer], "Not Approved");
+		if (!approvedController[deployer]) revert NotApprovedForDeploy();
 		feeAsset.safeTransferFrom(deployer, address(this), deployVaultFee);
 		require(collateralizationRatioBips > 0, "Collat = 0");
 	}
