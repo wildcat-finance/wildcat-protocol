@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.13;
 import './interfaces/IWildcatPermissions.sol';
+import './ERC2612.sol';
 import './interfaces/IWildcatVaultFactory.sol';
 import { SafeTransferLib } from './libraries/SafeTransferLib.sol';
 import { VaultStateCoder } from './types/VaultStateCoder.sol';
@@ -9,7 +10,7 @@ import './UncollateralizedDebtToken.sol';
 
 // Also 4626, but not inheriting, rather rewriting
 // Constructor doesn't take any arguments so that the bytecode is consistent for the create2 factory
-contract WildcatVault is UncollateralizedDebtToken() {
+contract WildcatVault is UncollateralizedDebtToken(), ERC2612 {
 	using VaultStateCoder for VaultState;
 
 	error NotWhitelisted();
@@ -45,7 +46,7 @@ contract WildcatVault is UncollateralizedDebtToken() {
 	// END: Modifiers
 
 	// BEGIN: Constructor
-
+  constructor() ERC2612(name(), 'v1') {}
 	// END: Constructor
 
 	// BEGIN: Unique vault functionality
@@ -108,4 +109,12 @@ contract WildcatVault is UncollateralizedDebtToken() {
 	}
 
 	// END: Unique vault functionality
+
+  function _approve(
+		address _owner,
+		address spender,
+		uint256 amount
+	) internal virtual override(UncollateralizedDebtToken, ERC2612) {
+    return UncollateralizedDebtToken._approve(_owner, spender, amount);
+  }
 }
