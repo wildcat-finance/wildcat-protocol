@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.13;
 
-// import "src/WMPermissions.sol";
-// import "src/WMRegistry.sol";
-// import "src/WMVaultFactory.sol";
 import "./helpers/BaseVaultTest.sol";
 
 contract VaultFactoryTest is BaseVaultTest {
@@ -12,14 +9,14 @@ contract VaultFactoryTest is BaseVaultTest {
     using Math for int256;
 
     function test_DeployVaultAsNotWintermute() external {
-      vm.expectRevert(); // TODO: be more specific with the type of revert
+      vm.expectRevert(WildcatPermissions.NotApprovedForDeploy.selector); // TODO: be more specific with the type of revert
       _deployDAIVault();
     }
 
     function test_DeployVaultToExpectedAddress() external {
       vm.prank(wildcatController);
-      assertEq(_getVaultAddress(address(factory), DaiSalt), address(wcDAI));
-      assertEq(factory.computeVaultAddress(address(this), address(perms), address(DAI), DaiSalt), address(wcDAI));
+      assertEq(_getVaultAddress(), address(wcDAI));
+      assertEq(factory.computeVaultAddress(wintermuteController, address(perms), address(DAI), DaiSalt), address(wcDAI));
     }
 
     function test_DeployVaultData() public {
@@ -42,11 +39,6 @@ contract VaultFactoryTest is BaseVaultTest {
         assertEq(scaledTotalSupply, 0);
         assertEq(scaleFactor, RayOne);
         assertEq(lastInterestAccruedTimestamp, block.timestamp);
-
-        // Vault added to registry
-        address[] memory regVaults = registry.listVaults();
-        assertEq(regVaults.length, 1);
-        assertEq(regVaults[0], address(wcDAI));
     }
 
     function test_PermissionsGranted() public {

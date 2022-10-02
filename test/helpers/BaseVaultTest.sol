@@ -7,7 +7,6 @@ import 'forge-std/Vm.sol';
 import './TestERC20.sol';
 
 import 'src/WildcatPermissions.sol';
-import 'src/WildcatRegistry.sol';
 import 'src/WildcatVaultFactory.sol';
 
 uint256 constant DefaultMaximumSupply = 100_000e18;
@@ -32,7 +31,6 @@ contract BaseVaultTest is Test {
 	address internal nonwlUser = address(0x43);
 
 	WildcatPermissions internal perms;
-	WildcatRegistry internal registry;
 	WildcatVaultFactory internal factory;
 
 	TestERC20 internal DAI;
@@ -43,20 +41,29 @@ contract BaseVaultTest is Test {
 		// @todo add fee tests
 		perms = new WildcatPermissions(wildcatController, 0);
 		factory = new WildcatVaultFactory(address(perms));
-		registry = WildcatRegistry(factory.vaultRegistryAddress());
 	}
 
-	function _getVaultAddress(address _factory, bytes32 _salt)
+	function _deriveSalt(
+		address deployer,
+		address permissions,
+		address asset,
+		bytes32 _salt
+	) internal pure returns (bytes32) {
+		return keccak256(abi.encode(deployer, permissions, asset, _salt));
+	}
+
+	function _getVaultAddress()
 		internal
 		view
 		returns (address)
 	{
+    bytes32 salt = _deriveSalt(wintermuteController, address(perms), address(DAI), DaiSalt);
 		return
 			address(
 				uint160(
 					uint256(
 						keccak256(
-							abi.encodePacked(bytes1(0xff), _factory, _salt, VaultInitCodeHash)
+							abi.encodePacked(bytes1(0xff), address(factory), salt, VaultInitCodeHash)
 						)
 					)
 				)
