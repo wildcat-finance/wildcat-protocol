@@ -36,13 +36,6 @@ contract BaseVaultTest is Test {
 	TestERC20 internal DAI;
 	WildcatVault internal wcDAI;
 
-	function _resetContracts() internal {
-		DAI = new TestERC20('Dai Stablecoin', 'DAI', 18);
-		// @todo add fee tests
-		perms = new WildcatPermissions(wildcatController, 0);
-		factory = new WildcatVaultFactory(address(perms));
-	}
-
 	function _deriveSalt(
 		address deployer,
 		address permissions,
@@ -109,8 +102,11 @@ contract BaseVaultTest is Test {
 		wcDAI = WildcatVault(returnedVaultAddress);
 	}
 
-	function setUp() public {
-		_resetContracts();
+  function setupVault(uint256 interestFeeBips) internal {
+		DAI = new TestERC20('Dai Stablecoin', 'DAI', 18);
+		// @todo add fee tests
+		perms = new WildcatPermissions(wildcatController, interestFeeBips);
+		factory = new WildcatVaultFactory(address(perms));
 
 		// TODO: pay the vault validation toll from one of the wl addresses
 		vm.startPrank(wildcatController);
@@ -130,6 +126,10 @@ contract BaseVaultTest is Test {
 		DAI.mint(nonwlUser, 100_000e18);
 
 		_approve(wlUser, address(wcDAI), DefaultMaximumSupply);
-    	_approve(nonwlUser, address(wcDAI), DefaultMaximumSupply);
+    _approve(nonwlUser, address(wcDAI), DefaultMaximumSupply);
+  }
+
+	function setUp() public {
+		setupVault(0);
 	}
 }
