@@ -24,15 +24,6 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 		_resetVaultParameters();
 	}
 
-	// Note: anyone can pay this fee on behalf of a vault controller, provided they're approved
-	function validateVaultDeployment(address _controller, address _underlying) external {
-		require(wcPermissions.isApprovedController(_controller),
-				"given controller is not approved by wildcat to deploy");
-		address recipient = wcPermissions.archRecipient();
-		SafeTransferLib.safeTransferFrom(address(erc20USDC), msg.sender, recipient, vaultValidationFee);
-		validatedVaults[_controller][_underlying] = true;
-	}
-
 	// function validateConfig(address deployer, address vault, uint collatRatio, uint annualInterestBips)
 	address internal _vaultOwner;
 	address internal _vaultAsset;
