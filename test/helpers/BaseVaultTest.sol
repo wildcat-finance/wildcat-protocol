@@ -11,7 +11,7 @@ import 'src/WildcatVaultFactory.sol';
 
 uint256 constant DefaultMaximumSupply = 100_000e18;
 uint256 constant DefaultAPRBips = 500;
-uint256 constant DefaultCollateralizationRatio = 90;
+uint256 constant DefaultCollateralizationRatioBips = 9000;
 
 bytes32 constant DaiSalt = bytes32(uint256(1));
 
@@ -94,7 +94,7 @@ contract BaseVaultTest is Test {
 			address(perms),
 			DefaultMaximumSupply,
 			DefaultAPRBips,
-			DefaultCollateralizationRatio,
+			DefaultCollateralizationRatioBips,
 			"Wintermute ",
 			"wmt",
 			DaiSalt
