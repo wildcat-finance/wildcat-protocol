@@ -6,17 +6,17 @@ import './interfaces/IWildcatPermissions.sol';
 import './interfaces/IWildcatVault.sol';
 import { SafeTransferLib } from './libraries/SafeTransferLib.sol';
 import './WildcatVault.sol';
-import "./libraries/StringPackerPrefixer.sol";
+import './libraries/StringPackerPrefixer.sol';
 
 contract WildcatVaultFactory is StringPackerPrefixer {
-
 	IWildcatPermissions internal wcPermissions;
 
 	bytes32 public immutable VaultInitCodeHash =
 		keccak256(type(WildcatVault).creationCode);
 
-	mapping(address => mapping (address => bool)) internal validatedVaults;
-	IERC20 internal erc20USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+	mapping(address => mapping(address => bool)) internal validatedVaults;
+	IERC20 internal erc20USDC =
+		IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 	uint256 public vaultValidationFee = 0;
 
 	constructor(address _permissions) {
@@ -45,22 +45,27 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 		_vaultCollateralizationRatioBips = 1;
 	}
 
-	function getVaultParameters() external view returns (
-		address asset,
-		bytes32 namePrefix,
-		bytes32 symbolPrefix,
-		address owner,
-		address vaultPermissions,
-		uint256 maxTotalSupply,
-		uint256 annualInterestBips,
-		uint256 collateralizationRatioBips,
-		uint256 interestFeeBips
-	) {
+	function getVaultParameters()
+		external
+		view
+		returns (
+			address asset,
+			bytes32 namePrefix,
+			bytes32 symbolPrefix,
+			address owner,
+			address vaultPermissions,
+			uint256 maxTotalSupply,
+			uint256 annualInterestBips,
+			uint256 collateralizationRatioBips,
+			uint256 interestFeeBips
+		)
+	{
 		asset = _vaultAsset;
 		owner = _vaultOwner;
 		vaultPermissions = _vaultPermissions;
 		if (vaultPermissions != address(0)) {
-			interestFeeBips = IWildcatPermissions(vaultPermissions).getInterestFeeBips(owner, asset, msg.sender);
+			interestFeeBips = IWildcatPermissions(vaultPermissions)
+				.getInterestFeeBips(owner, asset, msg.sender);
 		}
 		return (
 			asset,
@@ -121,7 +126,8 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 		address asset,
 		bytes32 _salt
 	) external view returns (address) {
-		return _computeVaultAddress(_deriveSalt(deployer, permissions, asset, _salt));
+		return
+			_computeVaultAddress(_deriveSalt(deployer, permissions, asset, _salt));
 	}
 
 	function _computeVaultAddress(bytes32 salt) internal view returns (address) {

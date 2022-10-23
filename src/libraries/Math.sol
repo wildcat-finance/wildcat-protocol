@@ -36,9 +36,9 @@ library Math {
 		z = (x * RayOne) / y;
 	}
 
-  function bipsMul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-    z = (x * y) / BipsOne;
-  }
+	function bipsMul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+		z = (x * y) / BipsOne;
+	}
 
 	function ternary(
 		bool condition,
