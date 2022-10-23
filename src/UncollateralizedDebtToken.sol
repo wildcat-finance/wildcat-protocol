@@ -33,10 +33,6 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
   /// @notice Error thrown when new maxTotalSupply lower than totalSupply
 	error NewMaxSupplyTooLow();
 
-	// @todo Is this a reasonable limit?
-	/// @notice Error thrown when interest rate is lower than -100%
-	error InterestRateTooLow();
-
   /// @notice Error thrown when collateralization ratio higher than 100%
   error CollateralizationRatioTooHigh();
 
