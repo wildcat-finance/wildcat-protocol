@@ -8,10 +8,9 @@ import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.so
 import './libraries/SafeTransferLib.sol';
 import './libraries/Math.sol';
 import './interfaces/IWildcatPermissions.sol';
-import { InitializationParametersLoader, loadVaultConfigInitializationParameters } from "./libraries/InitializationParametersLoader.sol";
-import { IWildcatVaultFactory } from "./interfaces/IWildcatVaultFactory.sol";
-import { IERC20Metadata } from "./interfaces/IERC20Metadata.sol";
-
+import { InitializationParametersLoader, loadVaultConfigInitializationParameters } from './libraries/InitializationParametersLoader.sol';
+import { IWildcatVaultFactory } from './interfaces/IWildcatVaultFactory.sol';
+import { IERC20Metadata } from './interfaces/IERC20Metadata.sol';
 
 uint256 constant UnknownNameQueryError_selector = 0xed3df7ad00000000000000000000000000000000000000000000000000000000;
 uint256 constant UnknownSymbolQueryError_selector = 0x89ff815700000000000000000000000000000000000000000000000000000000;
@@ -24,32 +23,32 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 	using ConfigurationCoder for Configuration;
 	using Math for uint256;
 
-  /// @notice Error thrown when deposit exceeds maxTotalSupply
+	/// @notice Error thrown when deposit exceeds maxTotalSupply
 	error MaxSupplyExceeded();
 
-  /// @notice Error thrown when non-owner tries accessing owner-only actions
+	/// @notice Error thrown when non-owner tries accessing owner-only actions
 	error NotOwner();
 
-  /// @notice Error thrown when new maxTotalSupply lower than totalSupply
+	/// @notice Error thrown when new maxTotalSupply lower than totalSupply
 	error NewMaxSupplyTooLow();
 
-  /// @notice Error thrown when collateralization ratio higher than 100%
-  error CollateralizationRatioTooHigh();
+	/// @notice Error thrown when collateralization ratio higher than 100%
+	error CollateralizationRatioTooHigh();
 
-  /// @notice Error thrown when interest fee set higher than 100%
-  error InterestFeeTooHigh();
+	/// @notice Error thrown when interest fee set higher than 100%
+	error InterestFeeTooHigh();
 
 	error UnknownNameQueryError();
 
 	error UnknownSymbolQueryError();
 
 	event Transfer(address indexed from, address indexed to, uint256 value);
-	
-  event Approval(address indexed owner, address indexed spender, uint256 value);
-	
-  event MaxSupplyUpdated(uint256 assets);
 
-/*//////////////////////////////////////////////////////////////
+	event Approval(address indexed owner, address indexed spender, uint256 value);
+
+	event MaxSupplyUpdated(uint256 assets);
+
+	/*//////////////////////////////////////////////////////////////
                       Storage and Constants
 //////////////////////////////////////////////////////////////*/
 
@@ -57,16 +56,16 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 
 	Configuration internal _configuration;
 
-  uint96 public accruedProtocolFees;
+	uint96 public accruedProtocolFees;
 
 	mapping(address => uint256) public scaledBalanceOf;
 
 	mapping(address => mapping(address => uint256)) public allowance;
 
-  uint256 public immutable collateralizationRatioBips;
+	uint256 public immutable collateralizationRatioBips;
 
-  uint256 public immutable interestFeeBips;
-	
+	uint256 public immutable interestFeeBips;
+
 	address public immutable wcPermissions;
 
 	address public immutable asset;
@@ -77,7 +76,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 
 	uint8 public immutable decimals;
 
-/*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                             Modifiers
 //////////////////////////////////////////////////////////////*/
 
@@ -88,17 +87,17 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 
 	constructor() {
 		(
-      address _asset,
-      bytes32 _namePrefix,
-      bytes32 _symbolPrefix,
-      address _owner,
+			address _asset,
+			bytes32 _namePrefix,
+			bytes32 _symbolPrefix,
+			address _owner,
 			address _vaultPermissions,
 			uint256 _maxTotalSupply,
 			uint256 _annualInterestBips,
 			uint256 _collateralizationRatioBips,
 			uint256 _interestFeeBips
-    ) = IWildcatVaultFactory(msg.sender).getVaultParameters();
-    // Set asset metadata
+		) = IWildcatVaultFactory(msg.sender).getVaultParameters();
+		// Set asset metadata
 		asset = _asset;
 		_packedName = _getPackedPrefixedReturnValue(
 			_unpackString(_namePrefix),
@@ -130,7 +129,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		wcPermissions = _vaultPermissions;
 	}
 
-/*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                         Management Actions
 //////////////////////////////////////////////////////////////*/
 
@@ -149,15 +148,12 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		emit MaxSupplyUpdated(_maxTotalSupply);
 	}
 
-	function setAnnualInterestBips(uint256 _annualInterestBips)
-		public
-		onlyOwner
-	{
-    (VaultState state,) = _getCurrentStateAndAccrueFees();
+	function setAnnualInterestBips(uint256 _annualInterestBips) public onlyOwner {
+		(VaultState state, ) = _getCurrentStateAndAccrueFees();
 		_state = state.setAnnualInterestBips(_annualInterestBips);
 	}
 
-/*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                             Mint & Burn
 //////////////////////////////////////////////////////////////*/
 
@@ -167,7 +163,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		returns (uint256 actualAmount)
 	{
 		// Get current scale factor
-		(VaultState state,) = _getCurrentStateAndAccrueFees();
+		(VaultState state, ) = _getCurrentStateAndAccrueFees();
 		uint256 scaleFactor = state.getScaleFactor();
 
 		// Reduce amount if it would exceed totalSupply
@@ -201,16 +197,16 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 	}
 
 	function withdraw(uint256 amount, address to) external virtual {
-    // Scale `amount`
-		(VaultState state,) = _getCurrentStateAndAccrueFees();
+		// Scale `amount`
+		(VaultState state, ) = _getCurrentStateAndAccrueFees();
 		uint256 scaleFactor = state.getScaleFactor();
 		uint256 scaledAmount = amount.rayDiv(scaleFactor);
 
-    // Reduce caller's balance
+		// Reduce caller's balance
 		scaledBalanceOf[msg.sender] -= scaledAmount;
 		emit Transfer(msg.sender, address(0), amount);
 
-    // Reduce supply
+		// Reduce supply
 		unchecked {
 			// If user's balance did not underflow, neither will supply
 			_state = state.setScaledTotalSupply(
@@ -222,7 +218,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		asset.safeTransfer(to, amount);
 	}
 
-/*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                         External Getters
 //////////////////////////////////////////////////////////////*/
 
@@ -259,36 +255,40 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		return _state.decode();
 	}
 
-	function currentAnnualInterestBips() public view returns (uint256 annualBips) {
-		(annualBips,,,) = stateParameters();
+	function currentAnnualInterestBips()
+		public
+		view
+		returns (uint256 annualBips)
+	{
+		(annualBips, , , ) = stateParameters();
 	}
 
 	function currentScaleFactor() public view returns (uint256 scaleFactor) {
-		(VaultState state,,) = _calculateInterestAndFees(_state);
-    scaleFactor = state.getScaleFactor();
+		(VaultState state, , ) = _calculateInterestAndFees(_state);
+		scaleFactor = state.getScaleFactor();
 	}
 
-  function pendingFees() public view returns (uint256 pendingFees) {
-    (,pendingFees,) = _calculateInterestAndFees(_state);
-  }
+	function pendingFees() public view returns (uint256 pendingFees) {
+		(, pendingFees, ) = _calculateInterestAndFees(_state);
+	}
 
 	function maxTotalSupply() public view virtual returns (uint256) {
 		return _configuration.getMaxTotalSupply();
 	}
 
-  /**
-   * @dev Total balance in underlying asset
-   */
-  function totalAssets() public view returns (uint256) {
-    return IERC20(asset).balanceOf(address(this));
-  }
+	/**
+	 * @dev Total balance in underlying asset
+	 */
+	function totalAssets() public view returns (uint256) {
+		return IERC20(asset).balanceOf(address(this));
+	}
 
-  /**
-   * @dev Balance in underlying asset which is not reserved for fees.
-   */
-  function availableAssets() public view returns (uint256) {
-    return totalAssets().subMinZero(accruedProtocolFees);
-  }
+	/**
+	 * @dev Balance in underlying asset which is not reserved for fees.
+	 */
+	function availableAssets() public view returns (uint256) {
+		return totalAssets().subMinZero(accruedProtocolFees);
+	}
 
 	function name() public view returns (string memory) {
 		return _unpackString(_packedName);
@@ -298,7 +298,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		return _unpackString(_packedSymbol);
 	}
 
-/*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                       Internal State Handlers
 //////////////////////////////////////////////////////////////*/
 
@@ -306,76 +306,88 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		return _getUpdatedStateAndAccrueFees().getScaleFactor();
 	}
 
-  /**
-   * @dev Returns VaultState with interest since last update accrued to the cache
-   * and updates storage with accrued protocol fees.
-   * Used in functions that make additional changes to the vault state.
-   * @return state Vault state after interest is accrued - does not match stored object.
-   */
-  function _getCurrentStateAndAccrueFees() internal returns (VaultState /* state */, bool /* didUpdate */) {
-    (VaultState state, uint256 feesAccrued, bool didUpdate) =_calculateInterestAndFees(_state);
-    if (didUpdate) {
-      // @todo
-      // Update queries for collateral availability to reduce it by pending fees
-      // Otherwise, fees could cause collateral to be insufficient for a withdrawal that seemed fine on the front end
-      // Options for pool has sufficient assets for fee withdrawal:
-      // 1. Transfer
-      // 2. Update a sum of pending fees that does not count accrue interest or affect the supply
-      // 3. Always mint shares
-      // Options for pool has insufficient assets for fee withdrawal:
-      // 1. Mint shares - borrower can pay interest on fees if they are not maintaining collateral requirements
-      // 2. 
-      
-      // If pool has insufficient assets to transfer fees, treat fees as deposited assets
-      // to mint shares for fee recipient. This results in interest being charged on fees
-      // when the borrower does not maintain collateralization requirements.
-      if (totalAssets() < feesAccrued) {
-        uint256 scaledFee = feesAccrued.rayDiv(state.getScaleFactor());
-        state = state.setScaledTotalSupply(state.getScaledTotalSupply() + scaledFee);
-        scaledBalanceOf[wcPermissions] += scaledFee;
-        emit Transfer(address(0), wcPermissions, scaledFee);
-      } else {
-        // @todo safe cast / demonstrate why not needed
-        accruedProtocolFees += uint96(feesAccrued);
-      }
-    }
-    return (state, didUpdate);
-  }
+	/**
+	 * @dev Returns VaultState with interest since last update accrued to the cache
+	 * and updates storage with accrued protocol fees.
+	 * Used in functions that make additional changes to the vault state.
+	 * @return state Vault state after interest is accrued - does not match stored object.
+	 */
+	function _getCurrentStateAndAccrueFees()
+		internal
+		returns (
+			VaultState, /* state */
+			bool /* didUpdate */
+		)
+	{
+		(
+			VaultState state,
+			uint256 feesAccrued,
+			bool didUpdate
+		) = _calculateInterestAndFees(_state);
+		if (didUpdate) {
+			// @todo
+			// Update queries for collateral availability to reduce it by pending fees
+			// Otherwise, fees could cause collateral to be insufficient for a withdrawal that seemed fine on the front end
+			// Options for pool has sufficient assets for fee withdrawal:
+			// 1. Transfer
+			// 2. Update a sum of pending fees that does not count accrue interest or affect the supply
+			// 3. Always mint shares
+			// Options for pool has insufficient assets for fee withdrawal:
+			// 1. Mint shares - borrower can pay interest on fees if they are not maintaining collateral requirements
+			// 2.
 
-  /**
-   * @dev Returns VaultState with interest since last update accrued to both the
-   * cached and stored vault states, and updates storage with accrued protocol fees.
-   * Used in functions that don't make additional changes to the vault state.
-   * @return state Vault state after interest is accrued - matches stored object.
-   */
-  function _getUpdatedStateAndAccrueFees() internal returns (VaultState) {
-    (VaultState state, bool didUpdate) = _getCurrentStateAndAccrueFees();
-    if (didUpdate) {
-      _state = state;
-    }
-    return state;
-  }
+			// If pool has insufficient assets to transfer fees, treat fees as deposited assets
+			// to mint shares for fee recipient. This results in interest being charged on fees
+			// when the borrower does not maintain collateralization requirements.
+			if (totalAssets() < feesAccrued) {
+				uint256 scaledFee = feesAccrued.rayDiv(state.getScaleFactor());
+				state = state.setScaledTotalSupply(
+					state.getScaledTotalSupply() + scaledFee
+				);
+				scaledBalanceOf[wcPermissions] += scaledFee;
+				emit Transfer(address(0), wcPermissions, scaledFee);
+			} else {
+				// @todo safe cast / demonstrate why not needed
+				accruedProtocolFees += uint96(feesAccrued);
+			}
+		}
+		return (state, didUpdate);
+	}
 
-  function _getCurrentState() internal view returns (VaultState state) {
-    (state,,) = _calculateInterestAndFees(_state);
-  }
+	/**
+	 * @dev Returns VaultState with interest since last update accrued to both the
+	 * cached and stored vault states, and updates storage with accrued protocol fees.
+	 * Used in functions that don't make additional changes to the vault state.
+	 * @return state Vault state after interest is accrued - matches stored object.
+	 */
+	function _getUpdatedStateAndAccrueFees() internal returns (VaultState) {
+		(VaultState state, bool didUpdate) = _getCurrentStateAndAccrueFees();
+		if (didUpdate) {
+			_state = state;
+		}
+		return state;
+	}
 
-  // @todo rename
-  /**
-   * @dev Calculates interest and protocol fees accrued since last state update. and applies it to
-   * cached state returns protocol fees accrued.
-   * 
-   * @param state Vault state
-   * @return state Cached state with updated scaleFactor and timestamp after accruing fees
-   * @return feesAccrued Protocol fees owed on interest
-   * @return didUpdate Whether interest has accrued since last update
-   */
-  function _calculateInterestAndFees(VaultState state)
+	function _getCurrentState() internal view returns (VaultState state) {
+		(state, , ) = _calculateInterestAndFees(_state);
+	}
+
+	// @todo rename
+	/**
+	 * @dev Calculates interest and protocol fees accrued since last state update. and applies it to
+	 * cached state returns protocol fees accrued.
+	 *
+	 * @param state Vault state
+	 * @return state Cached state with updated scaleFactor and timestamp after accruing fees
+	 * @return feesAccrued Protocol fees owed on interest
+	 * @return didUpdate Whether interest has accrued since last update
+	 */
+	function _calculateInterestAndFees(VaultState state)
 		internal
 		view
 		returns (
-      VaultState /* state */,
-      uint256 /* feesAccrued */,
+			VaultState, /* state */
+			uint256, /* feesAccrued */
 			bool /* didUpdate */
 		)
 	{
@@ -385,7 +397,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 			uint256 lastInterestAccruedTimestamp
 		) = state.getNewScaleInputs();
 		uint256 timeElapsed;
-    uint256 feesAccrued;
+		uint256 feesAccrued;
 		unchecked {
 			timeElapsed = block.timestamp - lastInterestAccruedTimestamp;
 		}
@@ -393,30 +405,36 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		bool didUpdate = timeElapsed > 0;
 
 		if (didUpdate) {
-      uint256 scaleFactorDelta;
-      {
-        uint256 interestAccrued;
-        uint256 interestPerSecond = annualInterestBips.annualBipsToRayPerSecond();
-        assembly {
-          // Calculate interest accrued since last update
-          interestAccrued := mul(timeElapsed, interestPerSecond)
-        }
-        // Compound growth of scaleFactor
-        scaleFactorDelta = scaleFactor.rayMul(interestAccrued);
-      }
-      if (interestFeeBips > 0) {
-        uint256 scaledSupply = state.getScaledTotalSupply();
-        // Calculate fees accrued to protocol
-        feesAccrued = scaledSupply.rayMul(scaleFactorDelta.bipsMul(interestFeeBips));
-        // Subtract fee
-        scaleFactorDelta = scaleFactorDelta.bipsMul(BipsOne - interestFeeBips);
-      }
-      // Update scaleFactor and timestamp
-      state = state.setNewScaleOutputs(scaleFactor + scaleFactorDelta, block.timestamp);
-    }
+			uint256 scaleFactorDelta;
+			{
+				uint256 interestAccrued;
+				uint256 interestPerSecond = annualInterestBips
+					.annualBipsToRayPerSecond();
+				assembly {
+					// Calculate interest accrued since last update
+					interestAccrued := mul(timeElapsed, interestPerSecond)
+				}
+				// Compound growth of scaleFactor
+				scaleFactorDelta = scaleFactor.rayMul(interestAccrued);
+			}
+			if (interestFeeBips > 0) {
+				uint256 scaledSupply = state.getScaledTotalSupply();
+				// Calculate fees accrued to protocol
+				feesAccrued = scaledSupply.rayMul(
+					scaleFactorDelta.bipsMul(interestFeeBips)
+				);
+				// Subtract fee
+				scaleFactorDelta = scaleFactorDelta.bipsMul(BipsOne - interestFeeBips);
+			}
+			// Update scaleFactor and timestamp
+			state = state.setNewScaleOutputs(
+				scaleFactor + scaleFactorDelta,
+				block.timestamp
+			);
+		}
 
-    return (state, feesAccrued, didUpdate);
-  }
+		return (state, feesAccrued, didUpdate);
+	}
 
 	function _getMaximumDeposit(VaultState state, uint256 scaleFactor)
 		internal
@@ -428,7 +446,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		return _maxTotalSupply.subMinZero(_totalSupply);
 	}
 
-/*//////////////////////////////////////////////////////////////
+	/*//////////////////////////////////////////////////////////////
                           ERC20 Actions
 //////////////////////////////////////////////////////////////*/
 

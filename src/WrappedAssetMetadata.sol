@@ -27,7 +27,11 @@ abstract contract WrappedAssetMetadata is StringPackerPrefixer {
 	uint8 public immutable decimals;
 
 	constructor() {
-		(address _asset, bytes32 _namePrefix, bytes32 _symbolPrefix) = loadMetadataInitializationParameters();
+		(
+			address _asset,
+			bytes32 _namePrefix,
+			bytes32 _symbolPrefix
+		) = loadMetadataInitializationParameters();
 		asset = _asset;
 		_packedName = _getPackedPrefixedReturnValue(
 			_unpackString(_namePrefix),

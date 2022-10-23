@@ -63,7 +63,9 @@ contract WildcatVault is UncollateralizedDebtToken, ERC2612 {
 	 * @dev Returns the maximum amount of collateral that can be withdrawn.
 	 */
 	function maxCollateralToWithdraw() public view returns (uint256) {
-		uint256 maximumToWithdraw = totalSupply().bipsMul(collateralizationRatioBips);
+		uint256 maximumToWithdraw = totalSupply().bipsMul(
+			collateralizationRatioBips
+		);
 		uint256 collateral = availableAssets();
 		if (collateralWithdrawn > maximumToWithdraw) {
 			return 0;
@@ -105,32 +107,28 @@ contract WildcatVault is UncollateralizedDebtToken, ERC2612 {
 		setAnnualInterestBips(0);
 		uint256 currentlyHeld = totalAssets();
 		uint256 outstanding = totalSupply() - currentlyHeld;
-		asset.safeTransferFrom(
-			msg.sender,
-			address(this),
-			outstanding
-		);
+		asset.safeTransferFrom(msg.sender, address(this), outstanding);
 		emit VaultClosed(block.timestamp);
 	}
 
 	function retrieveFees() external {
-		(VaultState state,) = _getCurrentStateAndAccrueFees();
+		(VaultState state, ) = _getCurrentStateAndAccrueFees();
 		uint256 feesOwed = accruedProtocolFees;
 		accruedProtocolFees = 0;
 
-    uint256 feeShares = scaledBalanceOf[wcPermissions];
-    if (feeShares > 0) {
-		  uint256 scaleFactor = state.getScaleFactor();
-      uint256 feeSharesValue = feeShares.rayMul(scaleFactor);
-      if (feeSharesValue + accruedProtocolFees <= totalAssets()) {
-        feesOwed += feeSharesValue;
-        scaledBalanceOf[wcPermissions] = 0;
-        _state = state.setScaledTotalSupply(
-          state.getScaledTotalSupply() - feeShares
-        );
-        emit Transfer(wcPermissions, address(0), feeShares);
-      }
-    }
+		uint256 feeShares = scaledBalanceOf[wcPermissions];
+		if (feeShares > 0) {
+			uint256 scaleFactor = state.getScaleFactor();
+			uint256 feeSharesValue = feeShares.rayMul(scaleFactor);
+			if (feeSharesValue + accruedProtocolFees <= totalAssets()) {
+				feesOwed += feeSharesValue;
+				scaledBalanceOf[wcPermissions] = 0;
+				_state = state.setScaledTotalSupply(
+					state.getScaledTotalSupply() - feeShares
+				);
+				emit Transfer(wcPermissions, address(0), feeShares);
+			}
+		}
 		asset.safeTransfer(wcPermissions, feesOwed);
 		emit FeesCollected(wcPermissions, feesOwed);
 	}
