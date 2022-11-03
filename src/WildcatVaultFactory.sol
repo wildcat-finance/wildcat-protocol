@@ -9,22 +9,15 @@ import './WildcatVault.sol';
 import './libraries/StringPackerPrefixer.sol';
 
 contract WildcatVaultFactory is StringPackerPrefixer {
-	IWildcatPermissions internal wcPermissions;
-
 	bytes32 public immutable VaultInitCodeHash =
 		keccak256(type(WildcatVault).creationCode);
 
 	mapping(address => mapping(address => bool)) internal validatedVaults;
-	IERC20 internal erc20USDC =
-		IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-	uint256 public vaultValidationFee = 0;
 
-	constructor(address _permissions) {
-		wcPermissions = IWildcatPermissions(_permissions);
+	constructor() {
 		_resetVaultParameters();
 	}
 
-	// function validateConfig(address deployer, address vault, uint collatRatio, uint annualInterestBips)
 	address internal _vaultOwner;
 	address internal _vaultAsset;
 	bytes32 internal _vaultNamePrefix;
