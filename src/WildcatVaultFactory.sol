@@ -12,8 +12,6 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 	bytes32 public immutable VaultInitCodeHash =
 		keccak256(type(WildcatVault).creationCode);
 
-	mapping(address => mapping(address => bool)) internal validatedVaults;
-
 	constructor() {
 		_resetVaultParameters();
 	}
