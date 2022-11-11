@@ -28,6 +28,7 @@ contract WildcatVault is UncollateralizedDebtToken, ERC2612 {
 	event CollateralDeposited(address indexed sender, uint256 assets);
 	event VaultClosed(uint256 timestamp);
 	event FeesCollected(address recipient, uint256 assets);
+	event CollateralRequested(address indexed lender, uint256 assets);
 	// END: Events
 
 	// BEGIN: Modifiers
@@ -98,6 +99,15 @@ contract WildcatVault is UncollateralizedDebtToken, ERC2612 {
 			collateralWithdrawn -= assets;
 		}
 		emit CollateralDeposited(address(this), assets);
+	}
+
+	/**
+	 * @dev Fires an event from a given lender that logs a request for vault controller to deposit X collateral
+	 */
+	function requestCollateralDeposit(uint amountRequested) external {
+		uint currBal = scaledBalanceOf[msg.sender];
+		require(amountRequested <= currBal, "Requesting more collateral than held");
+		emit CollateralRequested(msg.sender, amountRequested);
 	}
 
 	/**
