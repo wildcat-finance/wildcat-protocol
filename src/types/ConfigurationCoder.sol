@@ -125,3 +125,5 @@ library ConfigurationCoder {
 		_isNull = equals(a, DefaultConfiguration);
 	}
 }
+
+using ConfigurationCoder for Configuration global;

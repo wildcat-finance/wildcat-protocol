@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: NONE
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 import './interfaces/IWildcatPermissions.sol';
 import './ERC2612.sol';
 import './interfaces/IWildcatVaultFactory.sol';

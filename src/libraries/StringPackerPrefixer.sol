@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.13;
+pragma solidity >=0.8.17;
 
 uint256 constant InvalidReturnDataString_selector = 0x4cb9c00000000000000000000000000000000000000000000000000000000000;
 uint256 constant NullPrefix_selector = 0x1cf25ee800000000000000000000000000000000000000000000000000000000;
