@@ -8,7 +8,6 @@ import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.so
 import './libraries/SafeTransferLib.sol';
 import './libraries/Math.sol';
 import './interfaces/IWildcatPermissions.sol';
-import { InitializationParametersLoader, loadVaultConfigInitializationParameters } from './libraries/InitializationParametersLoader.sol';
 import { IWildcatVaultFactory } from './interfaces/IWildcatVaultFactory.sol';
 import { IERC20Metadata } from './interfaces/IERC20Metadata.sol';
 
