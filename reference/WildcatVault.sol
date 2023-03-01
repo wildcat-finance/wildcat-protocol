@@ -4,14 +4,14 @@ import './interfaces/IWildcatPermissions.sol';
 import './ERC2612.sol';
 import './interfaces/IWildcatVaultFactory.sol';
 import { SafeTransferLib } from './libraries/SafeTransferLib.sol';
-import { ScaleParametersCoder } from './types/ScaleParametersCoder.sol';
+// import { ScaleParametersCoder } from './types/ScaleParametersCoder.sol';
 
 import './UncollateralizedDebtToken.sol';
 
 // Also 4626, but not inheriting, rather rewriting
 // Constructor doesn't take any arguments so that the bytecode is consistent for the create2 factory
 contract WildcatVault is UncollateralizedDebtToken, ERC2612 {
-	using ScaleParametersCoder for ScaleParameters;
+	// using ScaleParametersCoder for ScaleParameters;
 	using SafeTransferLib for address;
 	using Math for uint256;
 
@@ -122,7 +122,7 @@ contract WildcatVault is UncollateralizedDebtToken, ERC2612 {
 	}
 
 	function retrieveFees() external {
-		(ScaleParameters state, ) = _getCurrentStateAndAccrueFees();
+		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
 		uint256 feesOwed = accruedProtocolFees;
 		accruedProtocolFees = 0;
 

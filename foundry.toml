@@ -1,5 +1,6 @@
 [profile.default]
 src = 'src'
+reference = 'reference'
 out = 'out'
 libs = ['lib']
 gas_reports = ["*"]

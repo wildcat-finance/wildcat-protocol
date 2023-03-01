@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import './libraries/StringPackerPrefixer.sol';
 import './interfaces/IERC20.sol';
-import { DefaultVaultState, VaultState, VaultStateCoder } from './types/VaultStateCoder.sol';
-import { Configuration, ConfigurationCoder } from './types/ConfigurationCoder.sol';
+import './types/ScaleParametersCoder.sol';
+import './types/VaultSupplyCoder.sol';
 import './libraries/SafeTransferLib.sol';
 import './libraries/Math.sol';
 import './interfaces/IWildcatPermissions.sol';
@@ -18,8 +18,8 @@ uint256 constant SymbolFunction_selector = 0x95d89b41000000000000000000000000000
 
 contract UncollateralizedDebtToken is StringPackerPrefixer {
 	using SafeTransferLib for address;
-	using VaultStateCoder for VaultState;
-	using ConfigurationCoder for Configuration;
+	using ScaleParametersCoder for ScaleParameters;
+	using VaultSupplyCoder for VaultSupply;
 	using Math for uint256;
 
 	/// @notice Error thrown when deposit exceeds maxTotalSupply
@@ -51,9 +51,11 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
                       Storage and Constants
 //////////////////////////////////////////////////////////////*/
 
-	VaultState internal _state;
+  address internal _owner;
 
-	Configuration internal _configuration;
+	ScaleParameters internal _state;
+
+	VaultSupply internal _vaultSupply;
 
 	uint96 public accruedProtocolFees;
 
@@ -64,6 +66,8 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 	uint256 public immutable collateralizationRatioBips;
 
 	uint256 public immutable interestFeeBips;
+
+  uint256 public /* immutable */ penaltyFeeBips;
 
 	address public immutable wcPermissions;
 
@@ -111,12 +115,12 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 			UnknownSymbolQueryError_selector
 		);
 		decimals = IERC20Metadata(_asset).decimals();
-		_state = DefaultVaultState.setInitialState(
+		_state = DefaultScaleParameters.setInitialState(
 			_annualInterestBips,
 			RayOne,
 			block.timestamp
 		);
-		_configuration = ConfigurationCoder.encode(_owner, _maxTotalSupply);
+		_vaultSupply = DefaultVaultSupply.setMaxTotalSupply( _maxTotalSupply);
 		if (_collateralizationRatioBips > BipsOne) {
 			revert CollateralizationRatioTooHigh();
 		}
@@ -142,13 +146,13 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		if (_maxTotalSupply < totalSupply()) {
 			revert NewMaxSupplyTooLow();
 		}
-		// Store new configuration with updated maxTotalSupply
-		_configuration = _configuration.setMaxTotalSupply(_maxTotalSupply);
+		// Store new vault supply with updated maxTotalSupply
+		_vaultSupply = _vaultSupply.setMaxTotalSupply(_maxTotalSupply);
 		emit MaxSupplyUpdated(_maxTotalSupply);
 	}
 
 	function setAnnualInterestBips(uint256 _annualInterestBips) public onlyOwner {
-		(VaultState state, ) = _getCurrentStateAndAccrueFees();
+		(ScaleParameters state, ) = _getCurrentStateAndAccrueFees();
 		_state = state.setAnnualInterestBips(_annualInterestBips);
 	}
 
@@ -162,7 +166,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		returns (uint256 actualAmount)
 	{
 		// Get current scale factor
-		(VaultState state, ) = _getCurrentStateAndAccrueFees();
+		(ScaleParameters state, ) = _getCurrentStateAndAccrueFees();
 		uint256 scaleFactor = state.getScaleFactor();
 
 		// Reduce amount if it would exceed totalSupply
@@ -182,8 +186,8 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		unchecked {
 			// If user's balance did not overflow uint256, neither will supply
 			// Coder checks for overflow of uint96
-			state = state.setScaledTotalSupply(
-				state.getScaledTotalSupply() + scaledAmount
+			_vaultSupply = _vaultSupply.setScaledTotalSupply(
+				_vaultSupply.getScaledTotalSupply() + scaledAmount
 			);
 		}
 		_state = state;
@@ -197,7 +201,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 
 	function withdraw(uint256 amount, address to) external virtual {
 		// Scale `amount`
-		(VaultState state, ) = _getCurrentStateAndAccrueFees();
+		(ScaleParameters state, ) = _getCurrentStateAndAccrueFees();
 		uint256 scaleFactor = state.getScaleFactor();
 		uint256 scaledAmount = amount.rayDiv(scaleFactor);
 
@@ -208,8 +212,8 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		// Reduce supply
 		unchecked {
 			// If user's balance did not underflow, neither will supply
-			_state = state.setScaledTotalSupply(
-				state.getScaledTotalSupply() - scaledAmount
+			_vaultSupply = _vaultSupply.setScaledTotalSupply(
+				_vaultSupply.getScaledTotalSupply() - scaledAmount
 			);
 		}
 
@@ -222,14 +226,14 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 //////////////////////////////////////////////////////////////*/
 
 	function owner() public view returns (address) {
-		return _configuration.getOwner();
+		return _owner;
 	}
 
 	/**
 	 * @notice Returns the normalized balance of `account` with interest.
 	 */
 	function balanceOf(address account) public view virtual returns (uint256) {
-		VaultState state = _getCurrentState();
+		ScaleParameters state = _getCurrentState();
 		return scaledBalanceOf[account].rayMul(state.getScaleFactor());
 	}
 
@@ -237,33 +241,50 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 	 * @notice Returns the normalized total supply with interest.
 	 */
 	function totalSupply() public view virtual returns (uint256) {
-		VaultState state = _getCurrentState();
-		return state.getScaledTotalSupply().rayMul(state.getScaleFactor());
+		ScaleParameters state = _getCurrentState();
+		return _vaultSupply.getScaledTotalSupply().rayMul(state.getScaleFactor());
 	}
 
 	function stateParameters()
 		public
 		view
 		returns (
-			uint256 annualInterestBips,
-			uint256 scaledTotalSupply,
-			uint256 scaleFactor,
-			uint256 lastInterestAccruedTimestamp
+  // Maximum allowed token supply
+  uint256 maxTotalSupply,
+  // Scaled token supply (divided by scaleFactor)
+	uint256 scaledTotalSupply,
+  // Whether vault is currently delinquent (collateral under requirement)
+	bool isDelinquent,
+  // Seconds in delinquency status
+	uint256 timeDelinquent,
+	// Max APR is ~655%
+	uint256 annualInterestBips,
+	// Max scale factor is ~52m
+	uint256 scaleFactor,
+  // Last time vault accrued interest
+	uint256 lastInterestAccruedTimestamp
 		)
 	{
-		return _state.decode();
+    (maxTotalSupply, scaledTotalSupply) = _vaultSupply.decode();
+    (
+      isDelinquent,
+timeDelinquent,
+annualInterestBips,
+scaleFactor,
+lastInterestAccruedTimestamp
+    ) = _state.decode();
 	}
 
 	function currentAnnualInterestBips()
 		public
 		view
-		returns (uint256 annualBips)
+		returns (uint256)
 	{
-		(annualBips, , , ) = stateParameters();
+    return _state.getAnnualInterestBips();
 	}
 
 	function currentScaleFactor() public view returns (uint256 scaleFactor) {
-		(VaultState state, , ) = _calculateInterestAndFees(_state);
+		(ScaleParameters state, , ) = _calculateInterestAndFees(_state);
 		scaleFactor = state.getScaleFactor();
 	}
 
@@ -272,7 +293,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 	}
 
 	function maxTotalSupply() public view virtual returns (uint256) {
-		return _configuration.getMaxTotalSupply();
+		return _vaultSupply.getMaxTotalSupply();
 	}
 
 	/**
@@ -306,7 +327,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 	}
 
 	/**
-	 * @dev Returns VaultState with interest since last update accrued to the cache
+	 * @dev Returns ScaleParameters with interest since last update accrued to the cache
 	 * and updates storage with accrued protocol fees.
 	 * Used in functions that make additional changes to the vault state.
 	 * @return state Vault state after interest is accrued - does not match stored object.
@@ -314,12 +335,12 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 	function _getCurrentStateAndAccrueFees()
 		internal
 		returns (
-			VaultState, /* state */
+			ScaleParameters, /* scaleParameters */
 			bool /* didUpdate */
 		)
 	{
 		(
-			VaultState state,
+			ScaleParameters state,
 			uint256 feesAccrued,
 			bool didUpdate
 		) = _calculateInterestAndFees(_state);
@@ -340,8 +361,8 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 			// when the borrower does not maintain collateralization requirements.
 			if (totalAssets() < feesAccrued) {
 				uint256 scaledFee = feesAccrued.rayDiv(state.getScaleFactor());
-				state = state.setScaledTotalSupply(
-					state.getScaledTotalSupply() + scaledFee
+				_vaultSupply = _vaultSupply.setScaledTotalSupply(
+					_vaultSupply.getScaledTotalSupply() + scaledFee
 				);
 				scaledBalanceOf[wcPermissions] += scaledFee;
 				emit Transfer(address(0), wcPermissions, scaledFee);
@@ -354,20 +375,20 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 	}
 
 	/**
-	 * @dev Returns VaultState with interest since last update accrued to both the
+	 * @dev Returns ScaleParameters with interest since last update accrued to both the
 	 * cached and stored vault states, and updates storage with accrued protocol fees.
 	 * Used in functions that don't make additional changes to the vault state.
 	 * @return state Vault state after interest is accrued - matches stored object.
 	 */
-	function _getUpdatedStateAndAccrueFees() internal returns (VaultState) {
-		(VaultState state, bool didUpdate) = _getCurrentStateAndAccrueFees();
+	function _getUpdatedStateAndAccrueFees() internal returns (ScaleParameters) {
+		(ScaleParameters state, bool didUpdate) = _getCurrentStateAndAccrueFees();
 		if (didUpdate) {
 			_state = state;
 		}
 		return state;
 	}
 
-	function _getCurrentState() internal view returns (VaultState state) {
+	function _getCurrentState() internal view returns (ScaleParameters state) {
 		(state, , ) = _calculateInterestAndFees(_state);
 	}
 
@@ -381,11 +402,11 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 	 * @return feesAccrued Protocol fees owed on interest
 	 * @return didUpdate Whether interest has accrued since last update
 	 */
-	function _calculateInterestAndFees(VaultState state)
+	function _calculateInterestAndFees(ScaleParameters state)
 		internal
 		view
 		returns (
-			VaultState, /* state */
+			ScaleParameters, /* state */
 			uint256, /* feesAccrued */
 			bool /* didUpdate */
 		)
@@ -417,7 +438,7 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 				scaleFactorDelta = scaleFactor.rayMul(interestAccrued);
 			}
 			if (interestFeeBips > 0) {
-				uint256 scaledSupply = state.getScaledTotalSupply();
+				uint256 scaledSupply = _vaultSupply.getScaledTotalSupply();
 				// Calculate fees accrued to protocol
 				feesAccrued = scaledSupply.rayMul(
 					scaleFactorDelta.bipsMul(interestFeeBips)
@@ -435,12 +456,12 @@ contract UncollateralizedDebtToken is StringPackerPrefixer {
 		return (state, feesAccrued, didUpdate);
 	}
 
-	function _getMaximumDeposit(VaultState state, uint256 scaleFactor)
+	function _getMaximumDeposit(ScaleParameters state, uint256 scaleFactor)
 		internal
 		view
 		returns (uint256)
 	{
-		uint256 _totalSupply = state.getScaledTotalSupply().rayMul(scaleFactor);
+		uint256 _totalSupply = _vaultSupply.getScaledTotalSupply().rayMul(scaleFactor);
 		uint256 _maxTotalSupply = maxTotalSupply();
 		return _maxTotalSupply.subMinZero(_totalSupply);
 	}

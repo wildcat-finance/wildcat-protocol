@@ -77,7 +77,13 @@ contract DepositsTest is BaseVaultTest {
 		uint256 supply = wcDAI.totalSupply();
 		uint256 startBalance = wcDAI.balanceOf(wlUser);
 		assertEq(supply, startBalance, 'supply not balance');
-
+    (
+			uint256 annualInterestBips,
+			uint256 scaledTotalSupply,
+			uint256 scaleFactor,
+			uint256 lastInterestAccruedTimestamp
+		) = wcDAI.stateParameters();
+    console2.log("Scaled supply: ", scaledTotalSupply);
 		_warpOneYear();
 		uint256 interest = uint256(
 			startBalance
