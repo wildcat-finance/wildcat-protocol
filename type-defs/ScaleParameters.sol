@@ -1,8 +1,8 @@
-struct VaultState {
+struct ScaleParameters {
+  bool isDelinquent;
+  uint32 timeDelinquent;
   // Max APR is ~655%
   uint16 annualInterestBips;
-  // Max supply is ~80
-  uint96 scaledTotalSupply;
   // Max scale factor is ~52m
   uint112 scaleFactor;
   uint32 lastInterestAccruedTimestamp unchecked;
@@ -28,5 +28,10 @@ struct VaultState {
     annualInterestBips;
     scaleFactor;
     lastInterestAccruedTimestamp;
+  }
+
+  group Delinquency {
+    isDelinquent;
+    timeDelinquent;
   }
 }
