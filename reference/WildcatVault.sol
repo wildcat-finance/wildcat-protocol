@@ -65,7 +65,7 @@ contract WildcatVault is UncollateralizedDebtToken, ERC2612 {
 	 */
 	function maxCollateralToWithdraw() public view returns (uint256) {
 		uint256 maximumToWithdraw = totalSupply().bipsMul(
-			collateralizationRatioBips
+			liquidityCoverageRatio
 		);
 		uint256 collateral = availableAssets();
 		if (collateralWithdrawn > maximumToWithdraw) {

@@ -4,27 +4,24 @@ pragma solidity ^0.8.17;
 import './interfaces/IERC20.sol';
 import './libraries/FeeMath.sol';
 import './libraries/SafeTransferLib.sol';
-import './libraries/StringQuery.sol';
+import { queryName, querySymbol } from './libraries/StringQuery.sol';
 import './libraries/Math.sol';
 import './interfaces/IWildcatPermissions.sol';
 import './interfaces/IVaultErrors.sol';
 
-import { IWildcatVaultFactory } from './interfaces/IWildcatVaultFactory.sol';
+import './interfaces/IWildcatVaultFactory.sol';
 import { IERC20Metadata } from './interfaces/IERC20Metadata.sol';
-
-uint256 constant UnknownNameQueryError_selector = 0xed3df7ad00000000000000000000000000000000000000000000000000000000;
-uint256 constant UnknownSymbolQueryError_selector = 0x89ff815700000000000000000000000000000000000000000000000000000000;
-uint256 constant NameFunction_selector = 0x06fdde0300000000000000000000000000000000000000000000000000000000;
-uint256 constant SymbolFunction_selector = 0x95d89b4100000000000000000000000000000000000000000000000000000000;
 
 contract UncollateralizedDebtToken is IVaultErrors {
 	using SafeTransferLib for address;
-	using Math for uint256;
+	using MathUtils for uint256;
+	using FeeMath for VaultState;
+	using WadRayMath for uint256;
 	using SafeCastLib for uint256;
 
 	/*//////////////////////////////////////////////////////////////
                       Storage and Constants
-//////////////////////////////////////////////////////////////*/
+  //////////////////////////////////////////////////////////////*/
 
 	address public owner;
 
@@ -36,15 +33,13 @@ contract UncollateralizedDebtToken is IVaultErrors {
 
 	mapping(address => mapping(address => uint256)) public allowance;
 
-	uint256 public immutable collateralizationRatioBips;
-
 	uint256 public immutable interestFeeBips;
 
 	uint256 public immutable penaltyFeeBips;
 
 	uint256 public immutable gracePeriod;
 
-	address public immutable wcPermissions;
+	address public immutable controller;
 
 	address public immutable asset;
 
@@ -56,74 +51,63 @@ contract UncollateralizedDebtToken is IVaultErrors {
 
 	/*//////////////////////////////////////////////////////////////
                             Modifiers
-//////////////////////////////////////////////////////////////*/
+  //////////////////////////////////////////////////////////////*/
 
 	modifier onlyOwner() {
 		if (msg.sender != owner) revert NotOwner();
 		_;
 	}
 
+	modifier onlyController() {
+		_;
+	}
+
 	constructor() {
-		(
-			address _asset,
-			string memory _namePrefix,
-			string memory _symbolPrefix,
-			address _owner,
-			address _vaultPermissions,
-			uint256 _maxTotalSupply,
-			uint256 _annualInterestBips,
-			uint256 _penaltyFeeBips,
-			uint256 _gracePeriod,
-			uint256 _collateralizationRatioBips,
-			uint256 _interestFeeBips
-		) = IWildcatVaultFactory(msg.sender).getVaultParameters();
-		owner = _owner;
+		VaultParameters memory parameters = IWildcatVaultFactory(msg.sender).getVaultParameters();
+		owner = parameters.owner;
+
 		// Set asset metadata
-		asset = _asset;
-		name = string.concat(
-			_namePrefix,
-			queryStringOrBytes32AsString(
-				_asset,
-				NameFunction_selector,
-				UnknownNameQueryError_selector
-			)
-		);
-		symbol = string.concat(
-			_symbolPrefix,
-			queryStringOrBytes32AsString(
-				_asset,
-				SymbolFunction_selector,
-				UnknownSymbolQueryError_selector
-			)
-		);
-		decimals = IERC20Metadata(_asset).decimals();
+		asset = parameters.asset;
+		name = string.concat(parameters.namePrefix, queryName(parameters.asset));
+		symbol = string.concat(parameters.symbolPrefix, queryName(parameters.asset));
+		decimals = IERC20Metadata(parameters.asset).decimals();
+
 		_state = VaultState({
-			maxTotalSupply: _maxTotalSupply.safeCastTo128(),
+			maxTotalSupply: parameters.maxTotalSupply.safeCastTo128(),
 			scaledTotalSupply: 0,
 			isDelinquent: false,
 			timeDelinquent: 0,
-			annualInterestBips: _annualInterestBips.safeCastTo16(),
-			scaleFactor: uint112(RayOne),
+			liquidityCoverageRatio: parameters.liquidityCoverageRatio.safeCastTo16(),
+			annualInterestBips: parameters.annualInterestBips.safeCastTo16(),
+			scaleFactor: uint112(RAY),
 			lastInterestAccruedTimestamp: uint32(block.timestamp)
 		});
-		if (_collateralizationRatioBips > BipsOne) {
-			revert CollateralizationRatioTooHigh();
+
+		if (parameters.annualInterestBips > BIP) {
+			revert InterestRateTooHigh();
 		}
-		if (_interestFeeBips > BipsOne) {
+		if (parameters.liquidityCoverageRatio > BIP) {
+			revert LiquidityCoverageRatioTooHigh();
+		}
+		if (parameters.interestFeeBips > BIP) {
 			revert InterestFeeTooHigh();
 		}
-		collateralizationRatioBips = _collateralizationRatioBips;
-		interestFeeBips = _interestFeeBips;
-		wcPermissions = _vaultPermissions;
-		penaltyFeeBips = _penaltyFeeBips;
-		gracePeriod = _gracePeriod;
+		if (parameters.penaltyFeeBips > BIP) {
+			revert PenaltyFeeTooHigh();
+		}
+
+		interestFeeBips = parameters.interestFeeBips;
+		controller = parameters.controller;
+		penaltyFeeBips = parameters.penaltyFeeBips;
+		gracePeriod = parameters.gracePeriod;
 	}
+
+	function _liquidityCoverageRatio() internal {}
 
 	/*//////////////////////////////////////////////////////////////
                         Management Actions
-//////////////////////////////////////////////////////////////*/
+  //////////////////////////////////////////////////////////////*/
 
-	// TODO: how should the maximum capacity be represented here? flat amount of base asset? inflated per scale factor?
 	/**
 	 * @dev Sets the maximum total supply - this only limits deposits and
 	 * does not affect interest accrual.
@@ -146,16 +130,12 @@ contract UncollateralizedDebtToken is IVaultErrors {
                             Mint & Burn
 //////////////////////////////////////////////////////////////*/
 
-	function depositUpTo(uint256 amount, address to)
-		public
-		virtual
-		returns (uint256 actualAmount)
-	{
+	function depositUpTo(uint256 amount, address to) public virtual returns (uint256 actualAmount) {
 		// Get current state
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
 
 		// Reduce amount if it would exceed totalSupply
-		actualAmount = Math.min(amount, state.getMaximumDeposit());
+		actualAmount = MathUtils.min(amount, state.getMaximumDeposit());
 
 		// Scale the actual mint amount
 		uint256 scaledAmount = actualAmount.rayDiv(state.scaleFactor);
@@ -168,8 +148,7 @@ contract UncollateralizedDebtToken is IVaultErrors {
 		emit Transfer(address(0), to, actualAmount);
 
 		// Increase supply
-		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) + scaledAmount)
-			.safeCastTo128();
+		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) + scaledAmount).safeCastTo128();
 
 		_state = state;
 	}
@@ -190,8 +169,7 @@ contract UncollateralizedDebtToken is IVaultErrors {
 		emit Transfer(msg.sender, address(0), amount);
 
 		// Reduce supply
-		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) - scaledAmount)
-			.safeCastTo128();
+		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) - scaledAmount).safeCastTo128();
 
 		// Transfer withdrawn assets to `user`
 		asset.safeTransfer(to, amount);
@@ -229,10 +207,6 @@ contract UncollateralizedDebtToken is IVaultErrors {
 		return state.scaleFactor;
 	}
 
-	/* 	function pendingFees() public view returns (uint256 pendingFees) {
-		(, pendingFees, ) = _calculateInterestAndFees(_state);
-	} */
-
 	function maxTotalSupply() public view virtual returns (uint256) {
 		return _state.maxTotalSupply;
 	}
@@ -248,30 +222,22 @@ contract UncollateralizedDebtToken is IVaultErrors {
 	 * @dev Balance in underlying asset which is not reserved for fees.
 	 */
 	function availableAssets() public view returns (uint256) {
-		return totalAssets().subMinZero(accruedProtocolFees);
+		return totalAssets().satSub(accruedProtocolFees);
 	}
 
 	/*//////////////////////////////////////////////////////////////
                       Internal State Handlers
 //////////////////////////////////////////////////////////////*/
-
-	function _getUpdatedScaleFactor() internal returns (uint256) {
-		return _getUpdatedStateAndAccrueFees().scaleFactor;
-	}
-
 	/**
 	 * @dev Returns ScaleParameters with interest since last update accrued to the cache
-	 * and updates storage with accrued protocol fees.
-	 * Used in functions that make additional changes to the vault state.
+	 *      and updates storage with accrued protocol fees.
+	 *      This is used by functions that make additional changes to the vault state.
+	 *
 	 * @return state Vault state after interest is accrued - does not match stored object.
 	 */
-	function _getCurrentStateAndAccrueFees()
-		internal
-		returns (VaultState memory, bool)
-	{
+	function _getCurrentStateAndAccrueFees() internal returns (VaultState memory, bool) {
 		VaultState memory state = _state;
-		(uint256 feesAccrued, bool didUpdate) = _calculateInterestAndFees(
-			state,
+		(uint256 feesAccrued, bool didUpdate) = state.calculateInterestAndFees(
 			interestFeeBips,
 			penaltyFeeBips,
 			gracePeriod
@@ -281,12 +247,11 @@ contract UncollateralizedDebtToken is IVaultErrors {
 			// deposited assets to mint shares for fee recipient. This results
 			// in interest being charged on fees when the borrower does not
 			// maintain collateralization requirements.
-			if (totalAssets() < feesAccrued) {
+			if (availableAssets() < feesAccrued) {
 				uint256 scaledFee = feesAccrued.rayDiv(state.scaleFactor);
-				state.scaledTotalSupply = (uint256(state.scaledTotalSupply) + scaledFee)
-					.safeCastTo128();
-				scaledBalanceOf[wcPermissions] += scaledFee;
-				emit Transfer(address(0), wcPermissions, scaledFee);
+				state.scaledTotalSupply = (uint256(state.scaledTotalSupply) + scaledFee).safeCastTo128();
+				scaledBalanceOf[controller] += scaledFee;
+				emit Transfer(address(0), controller, scaledFee);
 			} else {
 				accruedProtocolFees += feesAccrued;
 			}
@@ -295,15 +260,15 @@ contract UncollateralizedDebtToken is IVaultErrors {
 	}
 
 	/**
-	 * @dev Returns ScaleParameters with interest since last update accrued to both the
-	 * cached and stored vault states, and updates storage with accrued protocol fees.
-	 * Used in functions that don't make additional changes to the vault state.
+	 * @dev   Returns ScaleParameters with interest since last update accrued
+	 *        to both the cached and stored vault states, and updates storage
+	 *        with accrued protocol fees.
+	 *
+	 * @dev   Used in functions that don't make additional changes to the
+	 *        vault state.
 	 * @return state Vault state after interest is accrued - matches stored object.
 	 */
-	function _getUpdatedStateAndAccrueFees()
-		internal
-		returns (VaultState memory)
-	{
+	function _getUpdatedStateAndAccrueFees() internal returns (VaultState memory) {
 		(VaultState memory state, bool didUpdate) = _getCurrentStateAndAccrueFees();
 		if (didUpdate) {
 			_state = state;
@@ -313,23 +278,14 @@ contract UncollateralizedDebtToken is IVaultErrors {
 
 	function _getCurrentState() internal view returns (VaultState memory state) {
 		state = _state;
-		_calculateInterestAndFees(
-			state,
-			interestFeeBips,
-			penaltyFeeBips,
-			gracePeriod
-		);
+		state.calculateInterestAndFees(interestFeeBips, penaltyFeeBips, gracePeriod);
 	}
 
 	/*//////////////////////////////////////////////////////////////
-                          ERC20 Actions
+                            ERC20 Actions                        
 //////////////////////////////////////////////////////////////*/
 
-	function approve(address spender, uint256 amount)
-		external
-		virtual
-		returns (bool)
-	{
+	function approve(address spender, uint256 amount) external virtual returns (bool) {
 		_approve(msg.sender, spender, amount);
 
 		return true;
@@ -353,30 +309,18 @@ contract UncollateralizedDebtToken is IVaultErrors {
 		return true;
 	}
 
-	function transfer(address recipient, uint256 amount)
-		external
-		virtual
-		returns (bool)
-	{
+	function transfer(address recipient, uint256 amount) external virtual returns (bool) {
 		_transfer(msg.sender, recipient, amount);
 		return true;
 	}
 
-	function _approve(
-		address _owner,
-		address spender,
-		uint256 amount
-	) internal virtual {
-		allowance[_owner][spender] = amount;
-		emit Approval(_owner, spender, amount);
+	function _approve(address approver, address spender, uint256 amount) internal virtual {
+		allowance[approver][spender] = amount;
+		emit Approval(approver, spender, amount);
 	}
 
-	function _transfer(
-		address from,
-		address to,
-		uint256 amount
-	) internal virtual {
-    VaultState memory state = _getUpdatedStateAndAccrueFees();
+	function _transfer(address from, address to, uint256 amount) internal virtual {
+		VaultState memory state = _getUpdatedStateAndAccrueFees();
 		uint256 scaledAmount = state.scaleAmount(amount);
 		scaledBalanceOf[from] -= scaledAmount;
 		unchecked {

@@ -46,12 +46,12 @@ contract WildcatPermissions {
 		address deployer,
 		address asset,
 		address, /* vault */
-		uint256 collateralizationRatioBips,
+		uint256 liquidityCoverageRatio,
 		uint256 /* annualInterestBips */
 	) external {
 		if (!approvedController[deployer]) revert NotApprovedForDeploy();
 		feeAsset.safeTransferFrom(deployer, address(this), deployVaultFee);
-		require(collateralizationRatioBips > 0, 'Collat = 0');
+		require(liquidityCoverageRatio > 0, 'Collat = 0');
 	}
 
 	function approveForAsset(address deployer, address vault)

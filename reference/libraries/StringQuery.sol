@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.17;
 
-import './Math.sol';
+import './math/MathUtils.sol';
 
 uint256 constant InvalidReturnDataString_selector = 0x4cb9c00000000000000000000000000000000000000000000000000000000000;
 
@@ -11,6 +11,20 @@ uint256 constant OnlyFullWordMask = 0xffffffe0;
 
 error InvalidReturnDataString();
 error InvalidCompactString();
+
+function bytes32ToString(bytes32 value) pure returns (string memory str) {
+  uint256 size;
+  unchecked {
+    uint256 sizeInBits = 255 - MathUtils.lowestBitSet(uint256(value));
+    size = (sizeInBits + 7) / 8;
+  }
+  assembly {
+    str := mload(0x40)
+    mstore(0x40, add(str, 0x40))
+    mstore(str, size)
+    mstore(add(str, 0x20), value)
+  }
+}
 
 function queryStringOrBytes32AsString(
 	address target,
@@ -52,7 +66,7 @@ function queryStringOrBytes32AsString(
 		}
 		uint256 size;
 		unchecked {
-			uint256 sizeInBits = 255 - Math.lowestBitSet(value);
+			uint256 sizeInBits = 255 - MathUtils.lowestBitSet(value);
 			size = (sizeInBits + 7) / 8;
 		}
 		assembly {
@@ -75,3 +89,34 @@ function queryStringOrBytes32AsString(
 		}
 	}
 }
+
+function queryName(address target) view returns (string memory) {
+	return
+		queryStringOrBytes32AsString(
+			target,
+			NameFunction_selector,
+			UnknownNameQueryError_selector
+		);
+}
+
+function querySymbol(address target) view returns (string memory) {
+	return
+		queryStringOrBytes32AsString(
+			target,
+			SymbolFunction_selector,
+			UnknownSymbolQueryError_selector
+		);
+}
+
+uint256 constant UnknownNameQueryError_selector = (
+	0xed3df7ad00000000000000000000000000000000000000000000000000000000
+);
+uint256 constant UnknownSymbolQueryError_selector = (
+	0x89ff815700000000000000000000000000000000000000000000000000000000
+);
+uint256 constant NameFunction_selector = (
+	0x06fdde0300000000000000000000000000000000000000000000000000000000
+);
+uint256 constant SymbolFunction_selector = (
+	0x95d89b4100000000000000000000000000000000000000000000000000000000
+);

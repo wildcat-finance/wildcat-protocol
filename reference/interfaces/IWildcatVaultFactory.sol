@@ -1,32 +1,31 @@
 // SPDX-License-Identifier: NONE
 pragma solidity ^0.8.17;
 
+struct VaultParameters {
+	address asset;
+	string namePrefix;
+	string symbolPrefix;
+	address owner;
+	address controller;
+	uint256 maxTotalSupply;
+	uint256 annualInterestBips;
+	uint256 penaltyFeeBips;
+	uint256 gracePeriod;
+	uint256 liquidityCoverageRatio;
+	uint256 interestFeeBips;
+}
+
 interface IWildcatVaultFactory {
-	function getVaultParameters()
-		external
-		view
-		returns (
-			address _asset,
-			string memory _namePrefix,
-			string memory _symbolPrefix,
-			address _owner,
-			address _vaultPermissions,
-			uint256 _maxTotalSupply,
-			uint256 _annualInterestBips,
-			uint256 _penaltyFeeBips,
-			uint256 _gracePeriod,
-			uint256 _collateralizationRatioBips,
-			uint256 _interestFeeBips
-		);
+	function getVaultParameters() external view returns (VaultParameters memory);
 
 	function vaultRegistryAddress() external view returns (address);
 
-	function vaultPermissionsAddress() external view returns (address);
+	function controllerAddress() external view returns (address);
 
-	function isVaultValidated(address _controller, address _underlying)
-		external
-		view
-		returns (bool);
+	function isVaultValidated(
+		address _controller,
+		address _underlying
+	) external view returns (bool);
 
 	function computeVaultAddress(bytes32 salt) external view returns (address);
 

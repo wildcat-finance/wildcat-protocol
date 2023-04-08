@@ -1,0 +1,3 @@
+interface IController {
+  // function reduceCollateral
+}

@@ -20,20 +20,20 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 	address internal _vaultAsset;
 	bytes32 internal _vaultNamePrefix;
 	bytes32 internal _vaultSymbolPrefix;
-	address internal _vaultPermissions;
+	address internal _controller;
 	uint256 internal _vaultMaxTotalSupply;
 	uint256 internal _vaultAnnualInterestBips;
-	uint256 internal _vaultCollateralizationRatioBips;
+	uint256 internal _vaultliquidityCoverageRatio;
 
 	function _resetVaultParameters() internal {
 		_vaultOwner = address(1);
 		_vaultAsset = address(1);
 		_vaultNamePrefix = bytes32(uint256(1));
 		_vaultSymbolPrefix = bytes32(uint256(1));
-		_vaultPermissions = address(1);
+		_controller = address(1);
 		_vaultMaxTotalSupply = 1;
 		_vaultAnnualInterestBips = 1;
-		_vaultCollateralizationRatioBips = 1;
+		_vaultliquidityCoverageRatio = 1;
 	}
 
 	function getVaultParameters()
@@ -44,18 +44,18 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 			bytes32 namePrefix,
 			bytes32 symbolPrefix,
 			address owner,
-			address vaultPermissions,
+			address controller,
 			uint256 maxTotalSupply,
 			uint256 annualInterestBips,
-			uint256 collateralizationRatioBips,
+			uint256 liquidityCoverageRatio,
 			uint256 interestFeeBips
 		)
 	{
 		asset = _vaultAsset;
 		owner = _vaultOwner;
-		vaultPermissions = _vaultPermissions;
-		if (vaultPermissions != address(0)) {
-			interestFeeBips = IWildcatPermissions(vaultPermissions)
+		controller = _controller;
+		if (controller != address(0)) {
+			interestFeeBips = IWildcatPermissions(controller)
 				.getInterestFeeBips(owner, asset, msg.sender);
 		}
 		return (
@@ -63,10 +63,10 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 			_vaultNamePrefix,
 			_vaultSymbolPrefix,
 			owner,
-			vaultPermissions,
+			controller,
 			_vaultMaxTotalSupply,
 			_vaultAnnualInterestBips,
-			_vaultCollateralizationRatioBips,
+			_vaultliquidityCoverageRatio,
 			interestFeeBips
 		);
 	}
@@ -76,7 +76,7 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 		address _permissions,
 		uint256 _maxTotalSupply,
 		uint256 _annualInterestBips,
-		uint256 _collateralizationRatioBips,
+		uint256 _liquidityCoverageRatio,
 		string memory _namePrefix,
 		string memory _symbolPrefix,
 		bytes32 _salt
@@ -86,7 +86,7 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 			msg.sender,
 			_asset,
 			_computeVaultAddress(salt),
-			_collateralizationRatioBips,
+			_liquidityCoverageRatio,
 			_annualInterestBips
 		);
 		// Set variables for vault creation
@@ -94,10 +94,10 @@ contract WildcatVaultFactory is StringPackerPrefixer {
 		_vaultAsset = _asset;
 		_vaultNamePrefix = _packString(_namePrefix);
 		_vaultSymbolPrefix = _packString(_symbolPrefix);
-		_vaultPermissions = _permissions;
+		_controller = _permissions;
 		_vaultMaxTotalSupply = _maxTotalSupply;
 		_vaultAnnualInterestBips = _annualInterestBips;
-		_vaultCollateralizationRatioBips = _collateralizationRatioBips;
+		_vaultliquidityCoverageRatio = _liquidityCoverageRatio;
 		vault = address(new WildcatVault{ salt: salt }());
 		_resetVaultParameters();
 	}
