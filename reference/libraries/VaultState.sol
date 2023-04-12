@@ -67,7 +67,7 @@ library VaultStateLib {
 		state.maxTotalSupply = _maxTotalSupply.safeCastTo128();
 	}
 
-	function setliquidityCoverageRatio(
+	function setLiquidityCoverageRatio(
 		VaultState memory state,
 		uint256 liquidityCoverageRatio
 	) internal pure {

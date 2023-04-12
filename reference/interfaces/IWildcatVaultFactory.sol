@@ -5,7 +5,7 @@ struct VaultParameters {
 	address asset;
 	string namePrefix;
 	string symbolPrefix;
-	address owner;
+	address borrower;
 	address controller;
 	uint256 maxTotalSupply;
 	uint256 annualInterestBips;
@@ -13,6 +13,7 @@ struct VaultParameters {
 	uint256 gracePeriod;
 	uint256 liquidityCoverageRatio;
 	uint256 interestFeeBips;
+  address feeRecipient;
 }
 
 interface IWildcatVaultFactory {

@@ -5,8 +5,8 @@ interface IVaultErrors {
 	/// @notice Error thrown when deposit exceeds maxTotalSupply
 	error MaxSupplyExceeded();
 
-	/// @notice Error thrown when non-owner tries accessing owner-only actions
-	error NotOwner();
+	/// @notice Error thrown when non-borrower tries accessing borrower-only actions
+	error NotBorrower();
 
 	/// @notice Error thrown when non-controller tries accessing controller-only actions
 	error NotController();
@@ -30,6 +30,8 @@ interface IVaultErrors {
 
 	error UnknownSymbolQueryError();
 
+  error BorrowAmountTooHigh();
+
 	event Transfer(address indexed from, address indexed to, uint256 value);
 
 	event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -37,4 +39,10 @@ interface IVaultErrors {
 	event MaxSupplyUpdated(uint256 assets);
 
   event Deposit(address indexed account, uint256 assetAmount, uint256 scaledAmount);
+
+  event Borrow(uint256 assetAmount);
+
+	event VaultClosed(uint256 timestamp);
+
+	event FeesCollected(uint256 assets);
 }

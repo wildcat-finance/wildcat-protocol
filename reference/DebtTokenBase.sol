@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import './interfaces/IERC20.sol';
 import './libraries/FeeMath.sol';
-import './libraries/SafeTransferLib.sol';
+import 'solady/utils/SafeTransferLib.sol';
 import { queryName, querySymbol } from './libraries/StringQuery.sol';
 import './interfaces/IVaultErrors.sol';
 
@@ -22,7 +22,8 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
                       Storage and Constants
   //////////////////////////////////////////////////////////////*/
 
-	address public owner;
+	address public immutable borrower;
+	address public immutable feeRecipient;
 
 	VaultState internal _state;
 
@@ -52,8 +53,8 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
                             Modifiers
   //////////////////////////////////////////////////////////////*/
 
-	modifier onlyOwner() {
-		if (msg.sender != owner) revert NotOwner();
+	modifier onlyBorrower() {
+		if (msg.sender != borrower) revert NotBorrower();
 		_;
 	}
 
@@ -64,7 +65,8 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 
 	constructor() {
 		VaultParameters memory parameters = IWildcatVaultFactory(msg.sender).getVaultParameters();
-		owner = parameters.owner;
+		borrower = parameters.borrower;
+		feeRecipient = parameters.feeRecipient;
 
 		// Set asset metadata
 		asset = parameters.asset;
@@ -123,11 +125,11 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		_writeState(state);
 	}
 
-	function setliquidityCoverageRatio(
+	function setLiquidityCoverageRatio(
 		uint256 _liquidityCoverageRatio
 	) public onlyController nonReentrant {
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
-		state.setliquidityCoverageRatio(_liquidityCoverageRatio);
+		state.setLiquidityCoverageRatio(_liquidityCoverageRatio);
 		_writeState(state);
 	}
 
@@ -178,6 +180,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		// Increase user's balance
 		scaledBalanceOf[to] += scaledAmount;
 		emit Transfer(address(0), to, scaledAmount);
+		emit Deposit(msg.sender, amount, scaledAmount);
 
 		// Increase supply
 		state.increaseScaledTotalSupply(scaledAmount);
@@ -225,6 +228,10 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		return _state.annualInterestBips;
 	}
 
+  function liquidityCoverageRatio() external view returns (uint256) {
+    return _state.liquidityCoverageRatio;
+  }
+
 	function scaleFactor() external view nonReentrantView returns (uint256) {
 		(VaultState memory state, ) = _getCurrentState();
 		return state.scaleFactor;
@@ -249,6 +256,11 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		returns (uint256 _accruedProtocolFees)
 	{
 		(, _accruedProtocolFees) = _getCurrentState();
+	}
+
+	function getState() external view returns (VaultState memory) {
+		(VaultState memory state, ) = _getCurrentState();
+		return state;
 	}
 
 	/*//////////////////////////////////////////////////////////////
