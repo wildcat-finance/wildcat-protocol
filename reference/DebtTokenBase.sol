@@ -194,7 +194,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 	}
 
 	function _transfer(address from, address to, uint256 amount) internal virtual {
-		VaultState memory state = _getUpdatedStateAndAccrueFees();
+		(VaultState memory state,) = _getCurrentStateAndAccrueFees();
 		uint256 scaledAmount = state.scaleAmount(amount);
 		scaledBalanceOf[from] -= scaledAmount;
 		unchecked {

@@ -4,6 +4,10 @@ pragma solidity ^0.8.17;
 import './DebtTokenBase.sol';
 
 contract WildcatVaultToken is DebtTokenBase {
+	using SafeTransferLib for address;
+  using MathUtils for uint256;
+  using VaultStateLib for VaultState;
+
 	function collectFees() external {
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
 		_writeState(state);
