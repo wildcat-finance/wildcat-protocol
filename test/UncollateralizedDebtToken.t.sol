@@ -33,14 +33,15 @@ contract UncollateralizedDebtTokenTest is BaseTest {
       asset: address(baseToken),
       namePrefix: "Wildcat ",
       symbolPrefix: "WC",
-      owner: address(this),
+      borrower: address(this),
       controller: address(0),
       maxTotalSupply: input.state.maxTotalSupply,
       annualInterestBips: input.state.annualInterestBips,
       penaltyFeeBips: input.penaltyFeeBips,
       gracePeriod: input.gracePeriod,
       liquidityCoverageRatio: input.liquidityCoverageRatio,
-      interestFeeBips: input.protocolFeeBips
+      interestFeeBips: input.protocolFeeBips,
+      feeRecipient: address(0)
     });
   }
 }
