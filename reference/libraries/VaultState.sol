@@ -48,6 +48,10 @@ library VaultStateLib {
 		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) + scaledAmount).safeCastTo104();
 	}
 
+	function decreaseScaledTotalSupply(VaultState memory state, uint256 scaledAmount) internal pure {
+		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) - scaledAmount).safeCastTo104();
+	}
+
 	function normalizeAmount(
 		VaultState memory state,
 		uint256 amount
@@ -88,8 +92,9 @@ library VaultStateLib {
 	}
 
 	function liquidityRequired(
-		VaultState memory state
+		VaultState memory state,
+		uint256 accruedFees
 	) internal pure returns (uint256 _liquidityRequired) {
-		_liquidityRequired = state.getTotalSupply().bipMul(state.liquidityCoverageRatio);
+		_liquidityRequired = state.getTotalSupply().bipMul(state.liquidityCoverageRatio) + accruedFees;
 	}
 }
