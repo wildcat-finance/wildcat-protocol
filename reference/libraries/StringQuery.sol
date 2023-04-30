@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.17;
 
-import './math/MathUtils.sol';
+import { LibBit } from 'solady/utils/LibBit.sol';
+
+using LibBit for uint256;
 
 uint256 constant InvalidReturnDataString_selector = 0x4cb9c00000000000000000000000000000000000000000000000000000000000;
 
@@ -15,7 +17,7 @@ error InvalidCompactString();
 function bytes32ToString(bytes32 value) pure returns (string memory str) {
   uint256 size;
   unchecked {
-    uint256 sizeInBits = 255 - MathUtils.lowestBitSet(uint256(value));
+    uint256 sizeInBits = 255 - uint256(value).ffs();
     size = (sizeInBits + 7) / 8;
   }
   assembly {
@@ -66,7 +68,7 @@ function queryStringOrBytes32AsString(
 		}
 		uint256 size;
 		unchecked {
-			uint256 sizeInBits = 255 - MathUtils.lowestBitSet(value);
+			uint256 sizeInBits = 255 - value.ffs();
 			size = (sizeInBits + 7) / 8;
 		}
 		assembly {
