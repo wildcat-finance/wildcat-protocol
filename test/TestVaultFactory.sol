@@ -5,48 +5,29 @@ import 'forge-std/Test.sol';
 import 'reference/WildcatVaultFactory.sol';
 import 'reference/WildcatVaultController.sol';
 import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
+import "./BaseVaultTest.sol";
 
-contract FactoryTest is Test {
-	WildcatVaultFactory internal factory;
-	WildcatVaultController internal controller;
-	address internal feeRecipient = address(0xfee);
-	address internal borrower = address(0xb0b);
-	MockERC20 internal asset;
-
-	function setUp() public {
-		factory = new WildcatVaultFactory(feeRecipient);
-		controller = new WildcatVaultController();
-		asset = new MockERC20('Token', 'TKN', 18);
-	}
+contract FactoryTest is BaseVaultTest {
 
 	function testDeployVault() public {
-		VaultParameters memory vaultParameters;
-		vaultParameters.borrower = borrower;
-		vaultParameters.asset = address(asset);
-		vaultParameters.controller = address(controller);
-
-		vaultParameters.namePrefix = 'Wildcat ';
-		vaultParameters.symbolPrefix = 'WC';
-
-		vaultParameters.maxTotalSupply = type(uint128).max;
-		vaultParameters.annualInterestBips = 1000;
-		vaultParameters.penaltyFeeBips = 1000;
-		vaultParameters.gracePeriod = 1 days;
-		vaultParameters.liquidityCoverageRatio = 2000;
-		vaultParameters.interestFeeBips = 1000;
-		vaultParameters.feeRecipient = feeRecipient;
-		WildcatVaultToken vault = WildcatVaultToken(factory.deployVault(vaultParameters));
-		assertEq(vault.name(), 'Wildcat Token', "name");
-		assertEq(vault.symbol(), 'WCTKN', "symbol");
-		require(vault.maxTotalSupply() == type(uint128).max);
-		require(vault.annualInterestBips() == 1000);
-		require(vault.penaltyFeeBips() == 1000);
-		require(vault.gracePeriod() == 1 days);
-		require(vault.liquidityCoverageRatio() == 2000);
-		require(vault.interestFeeBips() == 1000);
+		assertEq(vault.name(), 'Wildcat Token', 'name');
+		assertEq(vault.symbol(), 'WCTKN', 'symbol');
+		require(vault.maxTotalSupply() == DefaultMaximumSupply);
+		require(vault.annualInterestBips() == DefaultInterest);
+		require(vault.penaltyFeeBips() == DefaultPenaltyFee);
+		require(vault.gracePeriod() == DefaultGracePeriod);
+		require(vault.liquidityCoverageRatio() == DefaultLiquidityCoverage);
+		require(vault.interestFeeBips() == DefaultInterestFee);
 		require(vault.feeRecipient() == feeRecipient);
 		require(vault.borrower() == borrower);
 		require(vault.asset() == address(asset));
 		require(vault.controller() == address(controller));
+	}
+
+	function testDeposit() external {
+		asset.mint(address(this), 1e18);
+    asset.approve(address(vault), 1e18);
+    vault.depositUpTo(1e18, address(this));
+    assertEq(vault.balanceOf(address(this)), 1e18);
 	}
 }
