@@ -32,6 +32,10 @@ interface IVaultErrors {
 
   error BorrowAmountTooHigh();
 
+  error FeeSetWithoutRecipient();
+
+  error InsufficientCoverageForFeeWithdrawal();
+
 	event Transfer(address indexed from, address indexed to, uint256 value);
 
 	event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -39,6 +43,8 @@ interface IVaultErrors {
 	event MaxSupplyUpdated(uint256 assets);
 
   event Deposit(address indexed account, uint256 assetAmount, uint256 scaledAmount);
+
+  event Withdrawal(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
   event Borrow(uint256 assetAmount);
 
