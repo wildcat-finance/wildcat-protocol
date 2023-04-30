@@ -8,18 +8,23 @@ contract WildcatVaultToken is DebtTokenBase {
   using MathUtils for uint256;
   using VaultStateLib for VaultState;
 
-	function collectFees() external {
-		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
+	function collectFees() external nonReentrant {
+    (VaultState memory state, ) = _getCurrentStateAndAccrueFees();
+    // Coverage for deposits takes precedence over fee revenue.
+    uint256 assetsRequiredForDeposits = state.liquidityRequired(0);
+    if (totalAssets() < assetsRequiredForDeposits) {
+      revert InsufficientCoverageForFeeWithdrawal();
+    }
 		_writeState(state);
 		uint256 fees = lastAccruedProtocolFees;
+		lastAccruedProtocolFees = 0;
 		asset.safeTransfer(feeRecipient, fees);
 		emit FeesCollected(fees);
-		lastAccruedProtocolFees = 0;
 	}
 
 	function borrow(uint256 amount) external onlyBorrower nonReentrant {
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
-		uint256 borrowable = totalAssets().satSub(lastAccruedProtocolFees);
+		uint256 borrowable = state.liquidityRequired(lastAccruedProtocolFees);
 		if (amount > borrowable) {
 			revert BorrowAmountTooHigh();
 		}

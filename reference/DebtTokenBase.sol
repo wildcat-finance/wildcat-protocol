@@ -68,23 +68,9 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		borrower = parameters.borrower;
 		feeRecipient = parameters.feeRecipient;
 
-		// Set asset metadata
-		asset = parameters.asset;
-		name = string.concat(parameters.namePrefix, queryName(parameters.asset));
-		symbol = string.concat(parameters.symbolPrefix, queryName(parameters.asset));
-		decimals = IERC20Metadata(parameters.asset).decimals();
-
-		_state = VaultState({
-			maxTotalSupply: parameters.maxTotalSupply.safeCastTo128(),
-			scaledTotalSupply: 0,
-			isDelinquent: false,
-			timeDelinquent: 0,
-			liquidityCoverageRatio: parameters.liquidityCoverageRatio.safeCastTo16(),
-			annualInterestBips: parameters.annualInterestBips.safeCastTo16(),
-			scaleFactor: uint112(RAY),
-			lastInterestAccruedTimestamp: uint32(block.timestamp)
-		});
-
+		if (parameters.interestFeeBips > 0 && feeRecipient == address(0)) {
+			revert FeeSetWithoutRecipient();
+		}
 		if (parameters.annualInterestBips > BIP) {
 			revert InterestRateTooHigh();
 		}
@@ -97,6 +83,23 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		if (parameters.penaltyFeeBips > BIP) {
 			revert PenaltyFeeTooHigh();
 		}
+
+		// Set asset metadata
+		asset = parameters.asset;
+		name = string.concat(parameters.namePrefix, queryName(parameters.asset));
+		symbol = string.concat(parameters.symbolPrefix, querySymbol(parameters.asset));
+		decimals = IERC20Metadata(parameters.asset).decimals();
+
+		_state = VaultState({
+			maxTotalSupply: parameters.maxTotalSupply.safeCastTo128(),
+			scaledTotalSupply: 0,
+			isDelinquent: false,
+			timeDelinquent: 0,
+			liquidityCoverageRatio: parameters.liquidityCoverageRatio.safeCastTo16(),
+			annualInterestBips: parameters.annualInterestBips.safeCastTo16(),
+			scaleFactor: uint112(RAY),
+			lastInterestAccruedTimestamp: uint32(block.timestamp)
+		});
 
 		interestFeeBips = parameters.interestFeeBips;
 		controller = parameters.controller;
@@ -185,6 +188,38 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		// Increase supply
 		state.increaseScaledTotalSupply(scaledAmount);
 
+		// Update stored state
+		_writeState(state);
+
+		return amount;
+	}
+
+	function deposit(uint256 amount, address to) external virtual {
+		uint256 actualAmount = depositUpTo(amount, to);
+		if (amount != actualAmount) {
+			revert MaxSupplyExceeded();
+		}
+	}
+
+	function withdraw(uint256 amount, address to) external virtual nonReentrant {
+		// Get current state
+		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
+
+		// Scale the actual mint amount
+		uint256 scaledAmount = state.scaleAmount(amount);
+
+		// Reduce caller's balance
+		scaledBalanceOf[msg.sender] -= scaledAmount;
+		emit Transfer(msg.sender, address(0), amount);
+		emit Withdrawal(msg.sender, amount, scaledAmount);
+
+		// Reduce supply
+		state.decreaseScaledTotalSupply(scaledAmount);
+
+		// Transfer withdrawn assets to `to`
+		asset.safeTransfer(to, amount);
+
+		// Update stored state
 		_writeState(state);
 	}
 
@@ -194,7 +229,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 	}
 
 	function _transfer(address from, address to, uint256 amount) internal virtual {
-		(VaultState memory state,) = _getCurrentStateAndAccrueFees();
+		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
 		uint256 scaledAmount = state.scaleAmount(amount);
 		scaledBalanceOf[from] -= scaledAmount;
 		unchecked {
@@ -220,6 +255,11 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		return state.getTotalSupply();
 	}
 
+	function maximumDeposit() external view returns (uint256) {
+		(VaultState memory state, ) = _getCurrentState();
+		return state.getMaximumDeposit();
+	}
+
 	function maxTotalSupply() external view returns (uint256) {
 		return _state.maxTotalSupply;
 	}
@@ -228,9 +268,9 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		return _state.annualInterestBips;
 	}
 
-  function liquidityCoverageRatio() external view returns (uint256) {
-    return _state.liquidityCoverageRatio;
-  }
+	function liquidityCoverageRatio() external view returns (uint256) {
+		return _state.liquidityCoverageRatio;
+	}
 
 	function scaleFactor() external view nonReentrantView returns (uint256) {
 		(VaultState memory state, ) = _getCurrentState();
@@ -238,15 +278,19 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 	}
 
 	/// @dev Total balance in underlying asset
-	function totalAssets() public view nonReentrantView returns (uint256) {
+	function totalAssets() public view returns (uint256) {
 		return IERC20(asset).balanceOf(address(this));
+	}
+
+	function coverageLiquidity() public view nonReentrantView returns (uint256) {
+		(VaultState memory state, uint256 _accruedProtocolFees) = _getCurrentState();
+		return state.liquidityRequired(_accruedProtocolFees);
 	}
 
 	/// @dev  Balance in underlying asset which is not owed in fees.
 	///       Returns current value after calculating new protocol fees.
 	function borrowableAssets() public view nonReentrantView returns (uint256) {
-		(, uint256 _accruedProtocolFees) = _getCurrentState();
-		return totalAssets().satSub(_accruedProtocolFees);
+		return totalAssets().satSub(coverageLiquidity());
 	}
 
 	function accruedProtocolFees()
@@ -258,7 +302,11 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		(, _accruedProtocolFees) = _getCurrentState();
 	}
 
-	function getState() external view returns (VaultState memory) {
+	function previousState() external view returns (VaultState memory) {
+		return _state;
+	}
+
+	function currentState() external view nonReentrantView returns (VaultState memory) {
 		(VaultState memory state, ) = _getCurrentState();
 		return state;
 	}
@@ -306,7 +354,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 	}
 
 	function _writeState(VaultState memory state) internal {
-		state.isDelinquent = state.liquidityRequired() > totalAssets();
+		state.isDelinquent = state.liquidityRequired(lastAccruedProtocolFees) > totalAssets();
 		_state = state;
 	}
 }
