@@ -12,7 +12,7 @@ import { IERC20Metadata } from './interfaces/IERC20Metadata.sol';
 import './ReentrancyGuard.sol';
 
 contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
-	using SafeTran sferLib for address;
+	using SafeTransferLib for address;
 	using MathUtils for uint256;
 	using FeeMath for VaultState;
 	using WadRayMath for uint256;
