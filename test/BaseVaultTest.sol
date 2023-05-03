@@ -107,7 +107,7 @@ contract BaseVaultTest is Test, Assertions {
 		vault.withdraw(amount, to);
 		updateState(state, protocolFees);
 		lastTotalAssets -= amount;
-		assertEq(state, vault.currentState(), '');
+		_checkState();
 	}
 
 	function _borrow(uint256 amount) internal asAccount(borrower) {
@@ -115,7 +115,7 @@ contract BaseVaultTest is Test, Assertions {
 		vault.borrow(amount);
 		updateState(state, protocolFees);
 		lastTotalAssets -= amount;
-		assertEq(state, vault.currentState(), '');
+		_checkState();
 	}
 
   function _checkState() internal {
