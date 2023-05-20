@@ -27,6 +27,7 @@ contract DebtTokenTest is BaseERC20Test {
 		asset = new MockERC20('Token', 'TKN', 18);
 
 		VaultParameters memory vaultParameters = VaultParameters({
+      sentinel: address(0),
 			borrower: borrower,
 			asset: address(asset),
 			controller: address(controller),
@@ -49,11 +50,12 @@ contract DebtTokenTest is BaseERC20Test {
 	function _mint(address to, uint256 amount) internal override {
 		asset.mint(address(this), amount);
 		asset.approve(address(token), amount);
-		WildcatVaultToken(address(token)).depositUpTo(amount, to);
+    hevm.prank(to);
+		WildcatVaultToken(address(token)).depositUpTo(amount);
 	}
 
 	function _burn(address from, uint256 amount) internal override {
 		hevm.prank(from);
-		WildcatVaultToken(address(token)).withdraw(amount, address(this));
+		WildcatVaultToken(address(token)).withdraw(amount);
 	}
 }

@@ -27,7 +27,7 @@ contract FactoryTest is BaseVaultTest {
 	function testDeposit() external {
 		asset.mint(address(this), 1e18);
     asset.approve(address(vault), 1e18);
-    vault.depositUpTo(1e18, address(this));
+    vault.depositUpTo(1e18);
     assertEq(vault.balanceOf(address(this)), 1e18);
 	}
 }

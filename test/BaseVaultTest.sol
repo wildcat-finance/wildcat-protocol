@@ -23,6 +23,7 @@ uint256 constant SecondsIn365Days = 365 days;
 
 address constant alice = address(0xa11ce);
 address constant bob = address(0xb0b);
+address constant sentinel = address(0x533);
 address constant feeRecipient = address(0xfee);
 address constant borrower = address(0xb04405e4);
 
@@ -50,8 +51,10 @@ contract BaseVaultTest is Test, Assertions {
 	function setUp() public {
 		factory = new WildcatVaultFactory();
 		controller = new WildcatVaultController(feeRecipient, address(factory));
+    controller.approveLender(alice);
 		asset = new MockERC20('Token', 'TKN', 18);
 		parameters = VaultParameters({
+      sentinel: sentinel,
 			borrower: borrower,
 			asset: address(asset),
 			controller: address(controller),
@@ -86,25 +89,31 @@ contract BaseVaultTest is Test, Assertions {
 
 	function _deposit(
 		address from,
-		address to,
 		uint256 amount
 	) internal asAccount(from) returns (uint256) {
+    if (_pranking != address(0)) {
+      vm.stopPrank();
+    }
+    controller.approveLender(from);
+    if (_pranking != address(0)) {
+      vm.startPrank(_pranking);
+    }
 		(VaultState memory state, uint256 protocolFees) = pendingState();
 		uint256 realAmount = MathUtils.min(amount, state.getMaximumDeposit());
 		uint256 scaledAmount = state.scaleAmount(realAmount);
 		state.increaseScaledTotalSupply(scaledAmount);
-		uint256 actualAmount = vault.depositUpTo(amount, to);
+		uint256 actualAmount = vault.depositUpTo(amount);
 		assertEq(actualAmount, realAmount, 'Actual amount deposited');
 		lastTotalAssets += actualAmount;
 		updateState(state, protocolFees);
 		return actualAmount;
 	}
 
-	function _withdraw(address from, address to, uint256 amount) internal asAccount(from) {
+	function _withdraw(address from, uint256 amount) internal asAccount(from) {
 		(VaultState memory state, uint256 protocolFees) = pendingState();
 		uint256 scaledAmount = state.scaleAmount(amount);
 		state.decreaseScaledTotalSupply(scaledAmount);
-		vault.withdraw(amount, to);
+		vault.withdraw(amount);
 		updateState(state, protocolFees);
 		lastTotalAssets -= amount;
 		_checkState();
@@ -119,7 +128,9 @@ contract BaseVaultTest is Test, Assertions {
 	}
 
   function _checkState() internal {
-    assertEq(previousState, vault.currentState(), 'state');
+    (VaultState memory state, uint256 _accruedProtocolFees) = vault.currentState();
+    assertEq(previousState, state, 'state');
+    assertEq(lastProtocolFees, _accruedProtocolFees, 'protocol fees');
     assertEq(lastProtocolFees, vault.lastAccruedProtocolFees(), 'protocol fees');
   }
 
