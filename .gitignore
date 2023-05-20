@@ -4,3 +4,5 @@ key.txt
 node_modules/
 vaultabi.json
 typechain-types
+hh-cache
+artifacts
