@@ -1,23 +1,6 @@
 import type { HardhatUserConfig } from "hardhat/config";
-
-const optimizerSettingsNoSpecializer = {
-  enabled: true,
-  runs: 4_294_967_295,
-  details: {
-    peephole: true,
-    inliner: true,
-    jumpdestRemover: true,
-    orderLiterals: true,
-    deduplicate: true,
-    cse: true,
-    constantOptimizer: true,
-    yulDetails: {
-      stackAllocation: true,
-      optimizerSteps:
-        "dhfoDgvulfnTUtnIf[xa[r]EscLMcCTUtTOntnfDIulLculVcul [j]Tpeulxa[rul]xa[r]cLgvifCTUca[r]LSsTOtfDnca[r]Iulc]jmul[jul] VcTOcul jmul",
-    },
-  },
-};
+import "@typechain/hardhat";
+import "@nomicfoundation/hardhat-foundry";
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -41,7 +24,7 @@ const config: HardhatUserConfig = {
     },
   },
   // specify separate cache for hardhat, since it could possibly conflict with foundry's
-  paths: { cache: "hh-cache", sources: "src" },
+  paths: { cache: "hh-cache", sources: "reference" },
 };
 
 export default config;

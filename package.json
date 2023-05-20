@@ -1,5 +1,9 @@
 {
   "devDependencies": {
+    "@nomicfoundation/hardhat-foundry": "^1.0.1",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@typechain/ethers-v5": "^10.2.1",
+    "@typechain/hardhat": "^6.1.6",
     "hardhat": "^2.13.0",
     "prettier": "^2.8.4",
     "prettier-plugin-solidity": "^1.1.2",
@@ -7,6 +11,7 @@
     "solhint-plugin-prettier": "^0.0.5",
     "stack-packer": "^1.1.8",
     "ts-node": "^10.9.1",
+    "typechain": "^8.1.1",
     "typescript": "^4.9.5"
   },
   "scripts": {
@@ -15,5 +20,8 @@
     "lint:fix": "prettier --write 'src/**/*.sol'",
     "t": "stack-packer ./type-defs -h",
     "test": "forge test --block-timestamp $(date +%s)"
+  },
+  "dependencies": {
+    "cli-barchart": "^0.2.3"
   }
 }
