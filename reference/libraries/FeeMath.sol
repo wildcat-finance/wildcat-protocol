@@ -17,6 +17,7 @@ library FeeMath {
 	 * cached state returns protocol fees accrued.
 	 *
 	 * @param state Vault scale parameters
+   * @param timestamp Time to calculate interest and fees accrued until
 	 * @param protocolFeeBips Protocol fee on interest
 	 * @param penaltyFeeBips Fee for delinquency in excess of gracePeriod
 	 * @param gracePeriod Maximum time in delinquency before penalties are applied
@@ -25,14 +26,14 @@ library FeeMath {
 	 */
 	function calculateInterestAndFees(
 		VaultState memory state,
+    uint256 timestamp,
 		uint256 protocolFeeBips,
 		uint256 penaltyFeeBips,
 		uint256 gracePeriod
-	) internal view returns (uint256 feesAccrued, bool didUpdate) {
+	) internal pure returns (uint256 feesAccrued, bool didUpdate) {
 		uint256 scaleFactor = state.scaleFactor;
-		uint256 lastInterestAccruedTimestamp = state.lastInterestAccruedTimestamp;
 
-		uint256 timeDelta = lastInterestAccruedTimestamp.timeElapsedSince();
+		uint256 timeDelta = timestamp - state.lastInterestAccruedTimestamp;
 		didUpdate = timeDelta > 0;
 
 		// If time has passed since last update, calculate interest and fees accrued.
@@ -82,7 +83,7 @@ library FeeMath {
 
 			// Update scaleFactor and timestamp
 			state.scaleFactor = (scaleFactor + scaleFactorDelta).safeCastTo112();
-			state.lastInterestAccruedTimestamp = uint32(block.timestamp);
+			state.lastInterestAccruedTimestamp = uint32(timestamp);
 		}
 
 		return (feesAccrued, didUpdate);

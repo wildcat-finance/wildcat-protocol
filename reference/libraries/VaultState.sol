@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import './math/WadRayMath.sol';
 import './math/MathUtils.sol';
 import './SafeCastLib.sol';
-import '../interfaces/IVaultErrors.sol';
+import '../interfaces/IVaultEventsAndErrors.sol';
 
 using WadRayMath for uint256;
 using MathUtils for uint256;
@@ -20,6 +20,8 @@ struct VaultState {
 	uint128 maxTotalSupply;
 	// Scaled token supply (divided by scaleFactor)
 	uint104 scaledTotalSupply;
+  uint104 scaledPendingWithdrawals;
+  uint32 nextWithdrawalExpiry;
 	// Whether vault is currently delinquent (liquidity under requirement)
 	bool isDelinquent;
 	// Max APR is ~655%
@@ -33,7 +35,15 @@ struct VaultState {
 	uint32 lastInterestAccruedTimestamp;
 }
 
+
+struct Account {
+	AuthRole approval;
+	uint104 scaledBalance;
+	uint112 scaleFactor;
+}
+
 using VaultStateLib for VaultState global;
+using VaultStateLib for Account global;
 
 library VaultStateLib {
 	function getTotalSupply(VaultState memory state) internal pure returns (uint256) {
@@ -66,7 +76,7 @@ library VaultStateLib {
 	function setMaxTotalSupply(VaultState memory state, uint256 _maxTotalSupply) internal pure {
 		// Ensure new maxTotalSupply is not less than current totalSupply
 		if (_maxTotalSupply < state.getTotalSupply()) {
-			revert IVaultErrors.NewMaxSupplyTooLow();
+			revert IVaultEventsAndErrors.NewMaxSupplyTooLow();
 		}
 		state.maxTotalSupply = _maxTotalSupply.safeCastTo128();
 	}
@@ -76,7 +86,7 @@ library VaultStateLib {
 		uint256 liquidityCoverageRatio
 	) internal pure {
 		if (liquidityCoverageRatio > BIP) {
-			revert IVaultErrors.LiquidityCoverageRatioTooHigh();
+			revert IVaultEventsAndErrors.LiquidityCoverageRatioTooHigh();
 		}
 		state.liquidityCoverageRatio = liquidityCoverageRatio.safeCastTo16();
 	}
@@ -86,7 +96,7 @@ library VaultStateLib {
 		uint256 annualInterestBips
 	) internal pure {
 		if (annualInterestBips > BIP) {
-			revert IVaultErrors.InterestRateTooHigh();
+			revert IVaultEventsAndErrors.InterestRateTooHigh();
 		}
 		state.annualInterestBips = annualInterestBips.safeCastTo16();
 	}
@@ -96,5 +106,28 @@ library VaultStateLib {
 		uint256 accruedFees
 	) internal pure returns (uint256 _liquidityRequired) {
 		_liquidityRequired = state.getTotalSupply().bipMul(state.liquidityCoverageRatio) + accruedFees;
+	}
+
+  /**
+   * @dev Calculates the balance growth of an account since the last time it accrued interest.
+   */
+	function getNormalizedBalanceGrowth(
+		Account memory account,
+		VaultState memory state
+	) internal pure returns (uint256 balanceGrowth) {
+		if (account.scaleFactor > 0 && state.scaleFactor > account.scaleFactor) {
+			unchecked {
+				uint256 scaleFactorDiff = state.scaleFactor - account.scaleFactor;
+				balanceGrowth = uint256(account.scaledBalance).rayMul(scaleFactorDiff);
+			}
+		}
+	}
+
+	function decreaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
+		account.scaledBalance = (uint256(account.scaledBalance) - scaledAmount).safeCastTo104();
+	}
+
+	function increaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
+		account.scaledBalance = (uint256(account.scaledBalance) + scaledAmount).safeCastTo104();
 	}
 }
