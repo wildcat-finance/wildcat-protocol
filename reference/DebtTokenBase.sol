@@ -5,13 +5,14 @@ import './interfaces/IERC20.sol';
 import './libraries/FeeMath.sol';
 import 'solady/utils/SafeTransferLib.sol';
 import { queryName, querySymbol } from './libraries/StringQuery.sol';
-import './interfaces/IVaultErrors.sol';
+import './interfaces/IVaultEventsAndErrors.sol';
 
 import './interfaces/IWildcatVaultFactory.sol';
 import { IERC20Metadata } from './interfaces/IERC20Metadata.sol';
 import './ReentrancyGuard.sol';
+import './WildcatVaultController.sol';
 
-contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
+contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 	using SafeTransferLib for address;
 	using MathUtils for uint256;
 	using FeeMath for VaultState;
@@ -22,6 +23,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
                       Storage and Constants
   //////////////////////////////////////////////////////////////*/
 
+	address public immutable sentinel;
 	address public immutable borrower;
 	address public immutable feeRecipient;
 
@@ -29,7 +31,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 
 	uint256 public lastAccruedProtocolFees;
 
-	mapping(address => uint256) public scaledBalanceOf;
+	mapping(address => Account) internal _accounts;
 
 	mapping(address => mapping(address => uint256)) public allowance;
 
@@ -54,7 +56,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
   //////////////////////////////////////////////////////////////*/
 
 	modifier onlyBorrower() {
-		if (msg.sender != borrower) revert NotBorrower();
+		if (msg.sender != borrower) revert NotApprovedBorrower();
 		_;
 	}
 
@@ -63,8 +65,108 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		_;
 	}
 
+	/**
+	 * @dev Retrieve an account from storage or create a new one if it doesn't exist
+	 *      Also updates the account's last recorded scaleFactor and emits a Transfer
+	 *     event if it has accrued interest.
+   *
+   * note: If the account is blacklisted, reverts.
+	 */
+	function _getUpdatedAccount(
+		VaultState memory state,
+		address _account
+	) internal returns (Account memory account) {
+		account = _accounts[_account];
+    if (account.approval == AuthRole.Blocked) {
+      revert AccountBlacklisted();
+    }
+		// Track the growth from interest in the normalized balance
+		uint256 diff = account.getNormalizedBalanceGrowth(state);
+		account.scaleFactor = state.scaleFactor;
+		if (diff > 0) {
+			emit Transfer(address(0), _account, diff);
+		}
+	}
+
+	function _checkAccountAuthorization(address _account, Account memory account, AuthRole requiredRole) internal {
+		if (uint256(account.approval) < uint256(requiredRole)) {
+			if (WildcatVaultController(controller).isAuthorizedLender(_account)) {
+				account.approval = AuthRole.DepositAndWithdraw;
+				emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
+			} else {
+        revert NotApprovedLender();
+      }
+		}
+	}
+
+	/**
+	 * Revoke an account's authorization to deposit assets.
+	 */
+	function revokeAccountAuthorization(address _account) external onlyController nonReentrant {
+		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
+		Account memory account = _getUpdatedAccount(state, _account);
+		account.approval = AuthRole.WithdrawOnly;
+		_accounts[_account] = account;
+    _writeState(state);
+		emit AuthorizationStatusUpdated(_account, AuthRole.WithdrawOnly);
+	}
+
+	/**
+	 * Restore an account's authorization to deposit assets.
+   * Can not be used to restore a blacklisted account's status.
+	 */
+	function grantAccountAuthorization(address _account) external onlyController nonReentrant {
+		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
+		Account memory account = _getUpdatedAccount(state, _account);
+		account.approval = AuthRole.DepositAndWithdraw;
+		_accounts[_account] = account;
+    _writeState(state);
+		emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
+	}
+  /// @dev Block an account from interacting with the market and
+  ///      delete its balance.
+  //          *  |\**/|  *          *                                *           
+  //          *  \ == /  *          *                                *           
+  //          *   | b|   *          *                                *           
+  //          *   | y|   *          *                                *           
+  //          *   \ e/   *          *                                *           
+  //          *    \/    *          *                                *           
+  //          *          *          *                                *           
+  //          *          *          *                                *           
+  //          *          *  |\**/|  *                                *           
+  //          *          *  \ == /  *         _.-^^---....,,--       *           
+  //          *          *   | b|   *    _--                  --_    *           
+  //          *          *   | y|   *   <                        >)  *           
+  //          *          *   \ e/   *   |         O-FAC!          |  *           
+  //          *          *    \/    *    \._                   _./   *           
+  //          *          *          *       ```--. . , ; .--'''      *           
+  //          *          *          *   💸        | |   |            *           
+  //          *          *          *          .-=||  | |=-.    💸   *           
+  //  💰🤑💰  *    😅    *    😐    *    💸    `-=#$%&%$#=-'         *           
+  //   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪      *           
+  //   /\     * 💰/\ 💰  * 💰/\ 💰  *    _____.,-#%&$@%#&#~,._____   *           
+	function nukeFromOrbit(address _account) external {
+		if (msg.sender != sentinel) {
+			revert BadLaunchCode();
+		}
+		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
+		Account memory account = _getUpdatedAccount(state, _account);
+		uint256 scaledBalance = account.scaledBalance;
+		uint256 amount = state.normalizeAmount(scaledBalance);
+		_accounts[_account] = Account({ scaledBalance: 0, scaleFactor: 0, approval: AuthRole.Blocked });
+		if (scaledBalance > 0) {
+			state.decreaseScaledTotalSupply(scaledBalance);
+		}
+		if (amount > 0) {
+			emit Transfer(_account, address(0), amount);
+		}
+		_writeState(state);
+		emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
+	}
+
 	constructor() {
 		VaultParameters memory parameters = IWildcatVaultFactory(msg.sender).getVaultParameters();
+		sentinel = parameters.sentinel;
 		borrower = parameters.borrower;
 		feeRecipient = parameters.feeRecipient;
 
@@ -126,6 +228,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
 		state.setAnnualInterestBips(_annualInterestBips);
 		_writeState(state);
+		emit AnnualInterestBipsUpdated(_annualInterestBips);
 	}
 
 	function setLiquidityCoverageRatio(
@@ -134,6 +237,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
 		state.setLiquidityCoverageRatio(_liquidityCoverageRatio);
 		_writeState(state);
+		emit LiquidityCoverageRatioUpdated(_liquidityCoverageRatio);
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -165,8 +269,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 	}
 
 	function depositUpTo(
-		uint256 amount,
-		address to
+		uint256 amount
 	) public virtual nonReentrant returns (uint256 /* actualAmount */) {
 		// Get current state
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
@@ -180,9 +283,14 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		// Transfer deposit from caller
 		asset.safeTransferFrom(msg.sender, address(this), amount);
 
-		// Increase user's balance
-		scaledBalanceOf[to] += scaledAmount;
-		emit Transfer(address(0), to, scaledAmount);
+		// Update account
+		Account memory account = _getUpdatedAccount(state, msg.sender);
+    _checkAccountAuthorization(msg.sender, account, AuthRole.DepositAndWithdraw);
+
+		account.increaseScaledBalance(scaledAmount);
+		_accounts[msg.sender] = account;
+
+		emit Transfer(address(0), msg.sender, amount);
 		emit Deposit(msg.sender, amount, scaledAmount);
 
 		// Increase supply
@@ -194,22 +302,28 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		return amount;
 	}
 
-	function deposit(uint256 amount, address to) external virtual {
-		uint256 actualAmount = depositUpTo(amount, to);
+	function deposit(uint256 amount) external virtual {
+		uint256 actualAmount = depositUpTo(amount);
 		if (amount != actualAmount) {
 			revert MaxSupplyExceeded();
 		}
 	}
 
-	function withdraw(uint256 amount, address to) external virtual nonReentrant {
+	function withdraw(uint256 amount) external virtual nonReentrant {
 		// Get current state
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
 
 		// Scale the actual mint amount
 		uint256 scaledAmount = state.scaleAmount(amount);
 
+		// Update account
+		Account memory account = _getUpdatedAccount(state, msg.sender);
+    _checkAccountAuthorization(msg.sender, account, AuthRole.WithdrawOnly);
+
+		account.decreaseScaledBalance(scaledAmount);
+		_accounts[msg.sender] = account;
+
 		// Reduce caller's balance
-		scaledBalanceOf[msg.sender] -= scaledAmount;
 		emit Transfer(msg.sender, address(0), amount);
 		emit Withdrawal(msg.sender, amount, scaledAmount);
 
@@ -217,7 +331,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		state.decreaseScaledTotalSupply(scaledAmount);
 
 		// Transfer withdrawn assets to `to`
-		asset.safeTransfer(to, amount);
+		asset.safeTransfer(msg.sender, amount);
 
 		// Update stored state
 		_writeState(state);
@@ -231,10 +345,15 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 	function _transfer(address from, address to, uint256 amount) internal virtual {
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
 		uint256 scaledAmount = state.scaleAmount(amount);
-		scaledBalanceOf[from] -= scaledAmount;
-		unchecked {
-			scaledBalanceOf[to] += scaledAmount;
-		}
+
+		Account memory fromAccount = _getUpdatedAccount(state, from);
+		fromAccount.decreaseScaledBalance(scaledAmount);
+		_accounts[from] = fromAccount;
+
+		Account memory toAccount = _getUpdatedAccount(state, to);
+		toAccount.increaseScaledBalance(scaledAmount);
+		_accounts[to] = toAccount;
+
 		emit Transfer(from, to, amount);
 	}
 
@@ -246,7 +365,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 	function balanceOf(address account) public view virtual nonReentrantView returns (uint256) {
 		// Get current state
 		(VaultState memory state, ) = _getCurrentState();
-		return state.normalizeAmount(scaledBalanceOf[account]);
+		return state.normalizeAmount(_accounts[account].scaledBalance);
 	}
 
 	/// @notice Returns the normalized total supply with interest.
@@ -306,9 +425,13 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 		return _state;
 	}
 
-	function currentState() external view nonReentrantView returns (VaultState memory) {
-		(VaultState memory state, ) = _getCurrentState();
-		return state;
+	function currentState()
+		external
+		view
+		nonReentrantView
+		returns (VaultState memory state, uint256 _accruedProtocolFees)
+	{
+		return _getCurrentState();
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -354,7 +477,9 @@ contract DebtTokenBase is ReentrancyGuard, IVaultErrors {
 	}
 
 	function _writeState(VaultState memory state) internal {
-		state.isDelinquent = state.liquidityRequired(lastAccruedProtocolFees) > totalAssets();
+		bool isDelinquent = state.liquidityRequired(lastAccruedProtocolFees) > totalAssets();
+		state.isDelinquent = isDelinquent;
 		_state = state;
+		emit StateUpdated(state.scaleFactor, isDelinquent);
 	}
 }

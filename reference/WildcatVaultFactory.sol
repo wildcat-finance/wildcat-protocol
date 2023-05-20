@@ -18,19 +18,11 @@ contract WildcatVaultFactory {
 	event VaultDeployed(address indexed controller, address indexed underlying, address vault);
 
 	function deployVault(VaultParameters memory vaultParameters) external returns (address vault) {
-		if (vaultParameters.controller == address(0)) {
-			vaultParameters.controller = msg.sender;
-		}
 		bytes32 salt = _deriveSalt(vaultParameters.controller, msg.sender, vaultParameters.asset);
 		vault = _computeVaultAddress(salt);
-		if (
-			vaultParameters.controller != msg.sender &&
-			address(vaultParameters.controller).code.length > 0
-		) {
-			IWildcatVaultController controller = IWildcatVaultController(vaultParameters.controller);
-			// Allow controller to make any modifications to the vault parameters
-			vaultParameters = controller.handleDeployVault(vault, msg.sender, vaultParameters);
-		}
+    IWildcatVaultController controller = IWildcatVaultController(vaultParameters.controller);
+    // Allow controller to make any modifications to the vault parameters
+    vaultParameters = controller.handleDeployVault(vault, msg.sender, vaultParameters);
 		_tmpVaultParameters = vaultParameters;
 		require(
 			vault == address(new WildcatVaultToken{ salt: salt }()),

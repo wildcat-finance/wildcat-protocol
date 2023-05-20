@@ -14,6 +14,7 @@ struct VaultParameters {
 	uint256 liquidityCoverageRatio;
 	uint256 interestFeeBips;
   address feeRecipient;
+  address sentinel;
 }
 
 interface IWildcatVaultFactory {

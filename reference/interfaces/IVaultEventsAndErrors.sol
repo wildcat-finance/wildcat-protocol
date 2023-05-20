@@ -1,15 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-interface IVaultErrors {
+enum AuthRole {
+  Null,
+  Blocked,
+  WithdrawOnly,
+  DepositAndWithdraw
+}
+
+interface IVaultEventsAndErrors {
 	/// @notice Error thrown when deposit exceeds maxTotalSupply
 	error MaxSupplyExceeded();
 
 	/// @notice Error thrown when non-borrower tries accessing borrower-only actions
-	error NotBorrower();
+	error NotApprovedBorrower();
+
+	/// @notice Error thrown when non-approved lender tries lending to the vault
+	error NotApprovedLender();
 
 	/// @notice Error thrown when non-controller tries accessing controller-only actions
 	error NotController();
+  
+  /// @notice Error thrown when non-sentinel tries to use nukeFromOrbit
+  error BadLaunchCode();
 
 	/// @notice Error thrown when new maxTotalSupply lower than totalSupply
 	error NewMaxSupplyTooLow();
@@ -25,6 +38,9 @@ interface IVaultErrors {
 
 	/// @notice Error thrown when penalty fee set higher than 100%
 	error PenaltyFeeTooHigh();
+
+  /// @notice Error thrown when transfer target is blacklisted
+  error AccountBlacklisted();
 
 	error UnknownNameQueryError();
 
@@ -42,6 +58,10 @@ interface IVaultErrors {
 
 	event MaxSupplyUpdated(uint256 assets);
 
+	event AnnualInterestBipsUpdated(uint256 annualInterestBipsUpdated);
+
+  event LiquidityCoverageRatioUpdated(uint256 liquidityCoverageRatioUpdated);
+
   event Deposit(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
   event Withdrawal(address indexed account, uint256 assetAmount, uint256 scaledAmount);
@@ -51,4 +71,8 @@ interface IVaultErrors {
 	event VaultClosed(uint256 timestamp);
 
 	event FeesCollected(uint256 assets);
+
+  event StateUpdated(uint256 scaleFactor, bool isDelinquent);
+
+  event AuthorizationStatusUpdated(address indexed account, AuthRole role);
 }

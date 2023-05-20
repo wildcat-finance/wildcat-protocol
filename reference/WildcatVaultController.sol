@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.17;
 
-import './WildcatVaultToken.sol';
+import './DebtTokenBase.sol';
 import './interfaces/IWildcatVaultFactory.sol';
 import 'solady/auth/Ownable.sol';
 
@@ -18,11 +18,17 @@ contract WildcatVaultController is Ownable {
 
 	mapping(address => TemporaryLiquidityCoverage) public temporaryExcessLiquidityCoverage;
 
+  mapping(address => bool) public isAuthorizedLender;
+
 	constructor(address _feeRecipient, address _factory) {
 		_initializeOwner(msg.sender);
     feeRecipient = _feeRecipient;
 		factory = _factory;
 	}
+
+  function approveLender(address lender) external onlyOwner {
+    isAuthorizedLender[lender] = true;
+  }
 
 	function checkGte(
 		uint256 value,
@@ -92,7 +98,7 @@ contract WildcatVaultController is Ownable {
 	 */
 	function reduceInterestRate(address vault, uint256 amount) external {
 		require(
-			msg.sender == WildcatVaultToken(vault).borrower(),
+			msg.sender == DebtTokenBase(vault).borrower(),
 			'WildcatVaultController: Not owner or borrower'
 		);
 
@@ -103,11 +109,11 @@ contract WildcatVaultController is Ownable {
 			'WildcatVaultController: Excess liquidity coverage already active'
 		);
 
-		uint256 liquidityCoverageRatio = WildcatVaultToken(vault).liquidityCoverageRatio();
-		WildcatVaultToken(vault).setAnnualInterestBips(amount);
+		uint256 liquidityCoverageRatio = DebtTokenBase(vault).liquidityCoverageRatio();
+		DebtTokenBase(vault).setAnnualInterestBips(amount);
 
 		// Require 90% liquidity coverage for the next 2 weeks
-		WildcatVaultToken(vault).setLiquidityCoverageRatio(9000);
+		DebtTokenBase(vault).setLiquidityCoverageRatio(9000);
 
 		temporaryExcessLiquidityCoverage[vault] = TemporaryLiquidityCoverage(
 			uint128(liquidityCoverageRatio),
@@ -121,7 +127,7 @@ contract WildcatVaultController is Ownable {
 			block.timestamp >= tmp.expiry,
 			'WildcatVaultController: Excess liquidity coverage still active'
 		);
-		WildcatVaultToken(vault).setLiquidityCoverageRatio(tmp.liquidityCoverageRatio);
+		DebtTokenBase(vault).setLiquidityCoverageRatio(tmp.liquidityCoverageRatio);
 		delete temporaryExcessLiquidityCoverage[vault];
 	}
 }
