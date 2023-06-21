@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import './math/WadRayMath.sol';
-import './math/MathUtils.sol';
+import './MathUtils.sol';
 import './SafeCastLib.sol';
 import '../interfaces/IVaultEventsAndErrors.sol';
+import { AuthRole } from '../interfaces/WildcatStructsAndEnums.sol';
 
-using WadRayMath for uint256;
-using MathUtils for uint256;
-using SafeCastLib for uint256;
+using VaultStateLib for VaultState global;
+using VaultStateLib for Account global;
 
 // scaleFactor = 112 bits
 // RAY = 89 bits
@@ -16,52 +15,58 @@ using SafeCastLib for uint256;
 // if maxTotalSupply is 128 bits, scaledTotalSupply should be 104 bits
 
 struct VaultState {
-	// Maximum allowed token supply
 	uint128 maxTotalSupply;
+  uint128 accruedProtocolFees;
+  uint128 reservedAssets;
 	// Scaled token supply (divided by scaleFactor)
 	uint104 scaledTotalSupply;
-  uint104 scaledPendingWithdrawals;
-  uint32 nextWithdrawalExpiry;
+	uint104 scaledPendingWithdrawals;
+	uint32 pendingWithdrawalExpiry;
 	// Whether vault is currently delinquent (liquidity under requirement)
 	bool isDelinquent;
-	// Max APR is ~655%
+	// Annual interest rate accrued to lenders, in basis points
 	uint16 annualInterestBips;
+	// Percentage of outstanding balance that must be held in liquid reserves
 	uint16 liquidityCoverageRatio;
-	// Seconds in delinquency status
+	// Seconds borrower has been delinquent
 	uint32 timeDelinquent;
-	// Max scale factor is ~52m
+  // Ratio between internal balances and underlying token amounts
 	uint112 scaleFactor;
-	// Last time vault accrued interest
 	uint32 lastInterestAccruedTimestamp;
 }
-
 
 struct Account {
 	AuthRole approval;
 	uint104 scaledBalance;
-	uint112 scaleFactor;
+	uint32 pendingWithdrawalExpiry;
 }
 
-using VaultStateLib for VaultState global;
-using VaultStateLib for Account global;
-
 library VaultStateLib {
+	using MathUtils for uint256;
+	using SafeCastLib for uint256;
+
+	/// @dev Returns the normalized total supply of the vault.
 	function getTotalSupply(VaultState memory state) internal pure returns (uint256) {
 		return state.normalizeAmount(state.scaledTotalSupply);
 	}
 
+	/// @dev Returns the maximum amount of tokens that can be deposited without
+	///      reaching the maximum total supply.
 	function getMaximumDeposit(VaultState memory state) internal pure returns (uint256) {
 		return uint256(state.maxTotalSupply).satSub(state.getTotalSupply());
 	}
 
+	/// @dev Increase the scaled total supply.
 	function increaseScaledTotalSupply(VaultState memory state, uint256 scaledAmount) internal pure {
 		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) + scaledAmount).safeCastTo104();
 	}
 
+	/// @dev Decrease the scaled total supply.
 	function decreaseScaledTotalSupply(VaultState memory state, uint256 scaledAmount) internal pure {
 		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) - scaledAmount).safeCastTo104();
 	}
 
+	/// @dev Normalize an amount of scaled tokens using the current scale factor.
 	function normalizeAmount(
 		VaultState memory state,
 		uint256 amount
@@ -69,16 +74,9 @@ library VaultStateLib {
 		return amount.rayMul(state.scaleFactor);
 	}
 
+	/// @dev Scale an amount of normalized tokens using the current scale factor.
 	function scaleAmount(VaultState memory state, uint256 amount) internal pure returns (uint256) {
 		return amount.rayDiv(state.scaleFactor);
-	}
-
-	function setMaxTotalSupply(VaultState memory state, uint256 _maxTotalSupply) internal pure {
-		// Ensure new maxTotalSupply is not less than current totalSupply
-		if (_maxTotalSupply < state.getTotalSupply()) {
-			revert IVaultEventsAndErrors.NewMaxSupplyTooLow();
-		}
-		state.maxTotalSupply = _maxTotalSupply.safeCastTo128();
 	}
 
 	function setLiquidityCoverageRatio(
@@ -105,22 +103,11 @@ library VaultStateLib {
 		VaultState memory state,
 		uint256 accruedFees
 	) internal pure returns (uint256 _liquidityRequired) {
-		_liquidityRequired = state.getTotalSupply().bipMul(state.liquidityCoverageRatio) + accruedFees;
-	}
-
-  /**
-   * @dev Calculates the balance growth of an account since the last time it accrued interest.
-   */
-	function getNormalizedBalanceGrowth(
-		Account memory account,
-		VaultState memory state
-	) internal pure returns (uint256 balanceGrowth) {
-		if (account.scaleFactor > 0 && state.scaleFactor > account.scaleFactor) {
-			unchecked {
-				uint256 scaleFactorDiff = state.scaleFactor - account.scaleFactor;
-				balanceGrowth = uint256(account.scaledBalance).rayMul(scaleFactorDiff);
-			}
-		}
+		uint256 scaledWithdrawals = state.scaledPendingWithdrawals;
+		uint256 scaledCoverageLiquidity = (state.scaledTotalSupply - scaledWithdrawals).bipMul(
+			state.liquidityCoverageRatio
+		) + scaledWithdrawals;
+		return state.normalizeAmount(scaledCoverageLiquidity) + accruedFees;
 	}
 
 	function decreaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
@@ -130,4 +117,8 @@ library VaultStateLib {
 	function increaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
 		account.scaledBalance = (uint256(account.scaledBalance) + scaledAmount).safeCastTo104();
 	}
+
+  function liquidAssets(VaultState memory state, uint256 totalAssets) internal pure returns (uint256) {
+    return totalAssets.satSub(state.reservedAssets + state.accruedProtocolFees);
+  }
 }
