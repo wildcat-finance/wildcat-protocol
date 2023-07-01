@@ -16,16 +16,33 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 	using SafeTransferLib for address;
 	using MathUtils for uint256;
 	using FeeMath for VaultState;
-	using WadRayMath for uint256;
 	using SafeCastLib for uint256;
 
-	/*//////////////////////////////////////////////////////////////
-                      Storage and Constants
-  //////////////////////////////////////////////////////////////*/
+	// ====================================================================//
+	//                       Vault Config (immutable)                      //
+	// ====================================================================//
 
+	/// @dev Account with authority to blacklist accounts, used for
+	///      blocking sanctioned addresses.
 	address public immutable sentinel;
+	/// @dev Account with authority to borrow assets from the vault.
 	address public immutable borrower;
+	/// @dev Account that receives protocol fees.
 	address public immutable feeRecipient;
+	/// @dev Protocol fee added to interest paid by borrower.
+	uint256 public immutable protocolFeeBips;
+	/// @dev Penalty fee added to interest earned by lenders, does not affect protocol fee.
+	uint256 public immutable delinquencyFeeBips;
+	/// @dev Time after which delinquency incurs penalty fee.
+	uint256 public immutable delinquencyGracePeriod;
+	/// @dev Address of the Vault Controller.
+	address public immutable controller;
+	/// @dev Address of the underlying asset.
+	address public immutable asset;
+	/// @dev Token decimals (same as underlying asset).
+	uint8 public immutable decimals;
+  /// @dev Interval for 
+  uint256 public immutable withdrawalBatchDuration;
 
 	VaultState internal _state;
 
@@ -34,18 +51,6 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 	mapping(address => Account) internal _accounts;
 
 	mapping(address => mapping(address => uint256)) public allowance;
-
-	uint256 public immutable interestFeeBips;
-
-	uint256 public immutable penaltyFeeBips;
-
-	uint256 public immutable gracePeriod;
-
-	address public immutable controller;
-
-	address public immutable asset;
-
-	uint8 public immutable decimals;
 
 	string public name;
 
@@ -81,11 +86,11 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
       revert AccountBlacklisted();
     }
 		// Track the growth from interest in the normalized balance
-		uint256 diff = account.getNormalizedBalanceGrowth(state);
-		account.scaleFactor = state.scaleFactor;
-		if (diff > 0) {
-			emit Transfer(address(0), _account, diff);
-		}
+		// uint256 diff = account.getNormalizedBalanceGrowth(state);
+		// account.scaleFactor = state.scaleFactor;
+		// if (diff > 0) {
+			// emit Transfer(address(0), _account, diff);
+		// }
 	}
 
 	function _checkAccountAuthorization(address _account, Account memory account, AuthRole requiredRole) internal {
@@ -153,7 +158,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 		Account memory account = _getUpdatedAccount(state, _account);
 		uint256 scaledBalance = account.scaledBalance;
 		uint256 amount = state.normalizeAmount(scaledBalance);
-		_accounts[_account] = Account({ scaledBalance: 0, scaleFactor: 0, approval: AuthRole.Blocked });
+		delete _accounts[_account];
 		if (scaledBalance > 0) {
 			state.decreaseScaledTotalSupply(scaledBalance);
 		}
@@ -170,7 +175,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 		borrower = parameters.borrower;
 		feeRecipient = parameters.feeRecipient;
 
-		if (parameters.interestFeeBips > 0 && feeRecipient == address(0)) {
+		if (parameters.protocolFeeBips > 0 && feeRecipient == address(0)) {
 			revert FeeSetWithoutRecipient();
 		}
 		if (parameters.annualInterestBips > BIP) {
@@ -179,10 +184,10 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 		if (parameters.liquidityCoverageRatio > BIP) {
 			revert LiquidityCoverageRatioTooHigh();
 		}
-		if (parameters.interestFeeBips > BIP) {
+		if (parameters.protocolFeeBips > BIP) {
 			revert InterestFeeTooHigh();
 		}
-		if (parameters.penaltyFeeBips > BIP) {
+		if (parameters.delinquencyFeeBips > BIP) {
 			revert PenaltyFeeTooHigh();
 		}
 
@@ -195,6 +200,8 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 		_state = VaultState({
 			maxTotalSupply: parameters.maxTotalSupply.safeCastTo128(),
 			scaledTotalSupply: 0,
+      scaledPendingWithdrawals: 0,
+      nextWithdrawalExpiry: 0,
 			isDelinquent: false,
 			timeDelinquent: 0,
 			liquidityCoverageRatio: parameters.liquidityCoverageRatio.safeCastTo16(),
@@ -203,10 +210,10 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 			lastInterestAccruedTimestamp: uint32(block.timestamp)
 		});
 
-		interestFeeBips = parameters.interestFeeBips;
+		protocolFeeBips = parameters.protocolFeeBips;
 		controller = parameters.controller;
-		penaltyFeeBips = parameters.penaltyFeeBips;
-		gracePeriod = parameters.gracePeriod;
+		delinquencyFeeBips = parameters.delinquencyFeeBips;
+		delinquencyGracePeriod = parameters.delinquencyGracePeriod;
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -234,6 +241,7 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 	function setLiquidityCoverageRatio(
 		uint256 _liquidityCoverageRatio
 	) public onlyController nonReentrant {
+    // @todo - revert if new LCR would cause vault to be undercollateralized
 		(VaultState memory state, ) = _getCurrentStateAndAccrueFees();
 		state.setLiquidityCoverageRatio(_liquidityCoverageRatio);
 		_writeState(state);
@@ -452,12 +460,13 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 	function _getCurrentStateAndAccrueFees() internal returns (VaultState memory, bool) {
 		VaultState memory state = _state;
 		(uint256 feesAccrued, bool didUpdate) = state.calculateInterestAndFees(
-			interestFeeBips,
-			penaltyFeeBips,
-			gracePeriod
+			protocolFeeBips,
+			delinquencyFeeBips,
+			delinquencyGracePeriod
 		);
 		if (didUpdate) {
 			lastAccruedProtocolFees += feesAccrued;
+      emit FeesAccrued(state.scaleFactor, feesAccrued);
 		}
 		return (state, didUpdate);
 	}
@@ -469,9 +478,9 @@ contract DebtTokenBase is ReentrancyGuard, IVaultEventsAndErrors {
 	{
 		state = _state;
 		(uint256 feesAccrued, ) = state.calculateInterestAndFees(
-			interestFeeBips,
-			penaltyFeeBips,
-			gracePeriod
+			protocolFeeBips,
+			delinquencyFeeBips,
+			delinquencyGracePeriod
 		);
 		_accruedProtocolFees = lastAccruedProtocolFees + feesAccrued;
 	}

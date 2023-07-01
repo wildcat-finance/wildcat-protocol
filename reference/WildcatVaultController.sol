@@ -59,8 +59,8 @@ contract WildcatVaultController is Ownable {
 
 		vaultParameters.feeRecipient = feeRecipient;
 
-		vaultParameters.gracePeriod = checkLte(
-			vaultParameters.gracePeriod,
+		vaultParameters.delinquencyGracePeriod = checkLte(
+			vaultParameters.delinquencyGracePeriod,
 			1 days,
 			'WildcatVaultController: Grace period too long'
 		);
@@ -71,8 +71,8 @@ contract WildcatVaultController is Ownable {
 			'WildcatVaultController: Liquidity coverage ratio too low'
 		);
 
-		vaultParameters.penaltyFeeBips = checkGte(
-			vaultParameters.penaltyFeeBips,
+		vaultParameters.delinquencyFeeBips = checkGte(
+			vaultParameters.delinquencyFeeBips,
 			1000,
 			'WildcatVaultController: Penalty fee too low'
 		);

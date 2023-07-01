@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.17;
-import './interfaces/IWildcatVaultFactory.sol';
 import './interfaces/IWildcatVaultController.sol';
-import './WildcatVaultToken.sol';
+import { WildcatVaultToken } from './WildcatVaultToken.sol';
 
 contract WildcatVaultFactory {
 	/// @dev temporary storage for vault parameters, used during vault deployment
@@ -20,9 +19,9 @@ contract WildcatVaultFactory {
 	function deployVault(VaultParameters memory vaultParameters) external returns (address vault) {
 		bytes32 salt = _deriveSalt(vaultParameters.controller, msg.sender, vaultParameters.asset);
 		vault = _computeVaultAddress(salt);
-    IWildcatVaultController controller = IWildcatVaultController(vaultParameters.controller);
-    // Allow controller to make any modifications to the vault parameters
-    vaultParameters = controller.handleDeployVault(vault, msg.sender, vaultParameters);
+		IWildcatVaultController controller = IWildcatVaultController(vaultParameters.controller);
+		// Allow controller to make any modifications to the vault parameters
+		vaultParameters = controller.handleDeployVault(vault, msg.sender, vaultParameters);
 		_tmpVaultParameters = vaultParameters;
 		require(
 			vault == address(new WildcatVaultToken{ salt: salt }()),

@@ -1,21 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-struct VaultParameters {
-	address asset;
-	string namePrefix;
-	string symbolPrefix;
-	address borrower;
-	address controller;
-	uint256 maxTotalSupply;
-	uint256 annualInterestBips;
-	uint256 penaltyFeeBips;
-	uint256 gracePeriod;
-	uint256 liquidityCoverageRatio;
-	uint256 interestFeeBips;
-	address feeRecipient;
-	address sentinel;
-}
+import { VaultParameters } from "./WildcatStructsAndEnums.sol";
 
 interface IWildcatVaultController {
 	error NewOwnerIsZeroAddress();

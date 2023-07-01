@@ -8,9 +8,9 @@ struct VaultMetaData {
 	address borrower;
 	address controller;
 	address feeRecipient;
-	uint256 interestFeeBips;
-	uint256 penaltyFeeBips;
-	uint256 gracePeriod;
+	uint256 protocolFeeBips;
+	uint256 delinquencyFeeBips;
+	uint256 delinquencyGracePeriod;
   uint256 annualInterestBips;
   uint256 liquidityCoverageRatio;
 }
@@ -37,9 +37,9 @@ contract VaultLens {
     metadata.borrower = vault.borrower();
     metadata.controller = vault.controller();
     metadata.feeRecipient = vault.feeRecipient();
-    metadata.interestFeeBips = vault.interestFeeBips();
-    metadata.penaltyFeeBips = vault.penaltyFeeBips();
-    metadata.gracePeriod = vault.gracePeriod();
+    metadata.protocolFeeBips = vault.protocolFeeBips();
+    metadata.delinquencyFeeBips = vault.delinquencyFeeBips();
+    metadata.delinquencyGracePeriod = vault.delinquencyGracePeriod();
     metadata.annualInterestBips = vault.annualInterestBips();
     metadata.liquidityCoverageRatio = vault.liquidityCoverageRatio();
   }

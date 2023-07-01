@@ -109,11 +109,11 @@ interface IWildcatVaultToken {
 
   function feeRecipient () external view returns (address);
 
-  function gracePeriod () external view returns (uint256);
+  function delinquencyGracePeriod () external view returns (uint256);
 
   function grantAccountAuthorization (address _account) external;
 
-  function interestFeeBips () external view returns (uint256);
+  function protocolFeeBips () external view returns (uint256);
 
   function lastAccruedProtocolFees () external view returns (uint256);
 
@@ -127,7 +127,7 @@ interface IWildcatVaultToken {
 
   function nukeFromOrbit (address _account) external;
 
-  function penaltyFeeBips () external view returns (uint256);
+  function delinquencyFeeBips () external view returns (uint256);
 
   function previousState () external view returns (VaultState memory);
 

@@ -16,7 +16,7 @@ interface IWildcatPermissions {
 		uint256 annualInterestBips
 	) external;
 
-	function getInterestFeeBips(
+	function getprotocolFeeBips(
 		address deployer,
 		address asset,
 		address vault
