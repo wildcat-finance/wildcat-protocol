@@ -32,8 +32,8 @@ struct FuzzInput {
 	StateFuzzInputs state;
 	uint256 liquidityCoverageRatio;
 	uint256 protocolFeeBips;
-	uint256 penaltyFeeBips;
-	uint256 gracePeriod;
+	uint256 delinquencyFeeBips;
+	uint256 delinquencyGracePeriod;
 	uint256 timeDelta;
 }
 
@@ -41,8 +41,8 @@ struct FuzzContext {
 	VaultState state;
 	uint256 liquidityCoverageRatio;
 	uint256 protocolFeeBips;
-	uint256 penaltyFeeBips;
-	uint256 gracePeriod;
+	uint256 delinquencyFeeBips;
+	uint256 delinquencyGracePeriod;
 	uint256 timeDelta;
 }
 
@@ -104,8 +104,8 @@ contract BaseTest is Test {
 		).safeCastTo16();
 		context.protocolFeeBips = bound(input.protocolFeeBips, 1, 1e4)
 			.safeCastTo16();
-		context.penaltyFeeBips = bound(input.penaltyFeeBips, 1, 1e4).safeCastTo16();
-		context.gracePeriod = input.gracePeriod;
+		context.delinquencyFeeBips = bound(input.delinquencyFeeBips, 1, 1e4).safeCastTo16();
+		context.delinquencyGracePeriod = input.delinquencyGracePeriod;
 		context.timeDelta = bound(input.timeDelta, 0, type(uint32).max);
 		uint256 currentBlockTime = bound(
 			block.timestamp,

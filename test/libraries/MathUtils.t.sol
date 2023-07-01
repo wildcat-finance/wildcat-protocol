@@ -1,4 +1,4 @@
-import "reference/libraries/math/MathUtils.sol";
+import "reference/libraries/MathUtils.sol";
 import "forge-std/Test.sol";
 
 contract MathUtilsTest is Test {

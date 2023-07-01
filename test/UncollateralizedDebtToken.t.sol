@@ -11,10 +11,10 @@
 // 	address controller;
 // 	uint256 maxTotalSupply;
 // 	uint256 annualInterestBips;
-// 	uint256 penaltyFeeBips;
-// 	uint256 gracePeriod;
+// 	uint256 delinquencyFeeBips;
+// 	uint256 delinquencyGracePeriod;
 // 	uint256 liquidityCoverageRatio;
-// 	uint256 interestFeeBips; */
+// 	uint256 protocolFeeBips; */
 
 // contract UncollateralizedDebtTokenTest is BaseTest {
 //   VaultParameters public getVaultParameters;
@@ -37,10 +37,10 @@
 //       controller: address(0),
 //       maxTotalSupply: input.state.maxTotalSupply,
 //       annualInterestBips: input.state.annualInterestBips,
-//       penaltyFeeBips: input.penaltyFeeBips,
-//       gracePeriod: input.gracePeriod,
+//       delinquencyFeeBips: input.delinquencyFeeBips,
+//       delinquencyGracePeriod: input.delinquencyGracePeriod,
 //       liquidityCoverageRatio: input.liquidityCoverageRatio,
-//       interestFeeBips: input.protocolFeeBips,
+//       protocolFeeBips: input.protocolFeeBips,
 //       feeRecipient: address(0)
 //     });
 //   }

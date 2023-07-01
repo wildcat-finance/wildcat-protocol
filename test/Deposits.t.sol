@@ -2,16 +2,15 @@
 pragma solidity ^0.8.13;
 
 import './BaseVaultTest.sol';
-import 'reference/libraries/math/WadRayMath.sol';
 import 'reference/interfaces/IVaultEventsAndErrors.sol';
-import 'reference/libraries/math/MathUtils.sol';
+import 'reference/libraries/MathUtils.sol';
 import 'reference/libraries/SafeCastLib.sol';
 import 'reference/libraries/VaultState.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
 contract DepositsTest is BaseVaultTest {
 	using stdStorage for StdStorage;
-	using WadRayMath for uint256;
+	// using WadRayMath for uint256;
 	using MathUtils for int256;
 	using MathUtils for uint256;
 
@@ -51,7 +50,7 @@ contract DepositsTest is BaseVaultTest {
 	}
 
 	function test_BalanceIncreasesOverTime() public asAlice {
-		parameters.interestFeeBips = 0;
+		parameters.protocolFeeBips = 0;
 		setupVault();
 		_deposit(alice,  50_000e18);
 		uint256 startBalance = vault.balanceOf(alice);

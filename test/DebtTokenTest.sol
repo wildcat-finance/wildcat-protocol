@@ -35,10 +35,10 @@ contract DebtTokenTest is BaseERC20Test {
 			symbolPrefix: 'WC',
 			maxTotalSupply: DefaultMaximumSupply,
 			annualInterestBips: DefaultInterest,
-			penaltyFeeBips: 1000,
-			gracePeriod: DefaultGracePeriod,
+			delinquencyFeeBips: 1000,
+			delinquencyGracePeriod: DefaultGracePeriod,
 			liquidityCoverageRatio: DefaultLiquidityCoverage,
-			interestFeeBips: 1000,
+			protocolFeeBips: 1000,
 			feeRecipient: feeRecipient
 		});
 		token = IERC20Metadata(factory.deployVault(vaultParameters));

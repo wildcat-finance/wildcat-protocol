@@ -33,7 +33,7 @@ contract FeeMathTest is BaseTest {
 		VaultState memory state;
 		state.timeDelinquent = 1000;
 		state.isDelinquent = true;
-		uint256 gracePeriod = 0;
+		uint256 delinquencyGracePeriod = 0;
 		state.annualInterestBips = 1000;
 		state.scaledTotalSupply = uint104(uint256(1e18).rayDiv(RAY));
 		vm.warp(365 days);
@@ -41,7 +41,7 @@ contract FeeMathTest is BaseTest {
 		(uint256 feesAccrued, bool didUpdate) = state.calculateInterestAndFees(
 			1000,
 			0,
-			gracePeriod
+			delinquencyGracePeriod
 		);
 		assertEq(state.lastInterestAccruedTimestamp, block.timestamp);
 		assertTrue(didUpdate, 'did not update');
@@ -53,7 +53,7 @@ contract FeeMathTest is BaseTest {
 		VaultState memory state;
 		state.timeDelinquent = 1000;
 		state.isDelinquent = true;
-		uint256 gracePeriod = 0;
+		uint256 delinquencyGracePeriod = 0;
 		state.annualInterestBips = 1000;
 		state.scaledTotalSupply = uint104(uint256(1e18).rayDiv(RAY));
 		vm.warp(365 days);
@@ -61,7 +61,7 @@ contract FeeMathTest is BaseTest {
 		(uint256 feesAccrued, bool didUpdate) = state.calculateInterestAndFees(
 			0,
 			1000,
-			gracePeriod
+			delinquencyGracePeriod
 		);
 		assertEq(state.lastInterestAccruedTimestamp, block.timestamp);
 		assertTrue(didUpdate, 'did not update');
@@ -73,7 +73,7 @@ contract FeeMathTest is BaseTest {
 		VaultState memory state;
 		state.timeDelinquent = 1000;
 		state.isDelinquent = true;
-		uint256 gracePeriod = 0;
+		uint256 delinquencyGracePeriod = 0;
 		state.annualInterestBips = 1000;
 		state.scaledTotalSupply = uint104(uint256(1e18).rayDiv(RAY));
 		vm.warp(365 days);
@@ -81,7 +81,7 @@ contract FeeMathTest is BaseTest {
 		(uint256 feesAccrued, bool didUpdate) = state.calculateInterestAndFees(
 			1000,
 			1000,
-			gracePeriod
+			delinquencyGracePeriod
 		);
 		assertEq(state.lastInterestAccruedTimestamp, block.timestamp);
 		assertTrue(didUpdate, 'did not update');
@@ -93,7 +93,7 @@ contract FeeMathTest is BaseTest {
 		VaultState memory state;
 		state.timeDelinquent = 1000;
 		state.isDelinquent = true;
-		uint256 gracePeriod = 0;
+		uint256 delinquencyGracePeriod = 0;
 		state.annualInterestBips = 1000;
 		state.scaledTotalSupply = uint104(uint256(1e18).rayDiv(RAY));
 		vm.warp(365 days);
@@ -101,7 +101,7 @@ contract FeeMathTest is BaseTest {
 		(uint256 feesAccrued, bool didUpdate) = state.calculateInterestAndFees(
 			0,
 			0,
-			gracePeriod
+			delinquencyGracePeriod
 		);
 		assertEq(state.lastInterestAccruedTimestamp, block.timestamp);
 		assertTrue(didUpdate, 'did not update');

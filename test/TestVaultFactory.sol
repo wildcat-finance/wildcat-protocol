@@ -14,10 +14,10 @@ contract FactoryTest is BaseVaultTest {
 		assertEq(vault.symbol(), 'WCTKN', 'symbol');
 		require(vault.maxTotalSupply() == DefaultMaximumSupply);
 		require(vault.annualInterestBips() == DefaultInterest);
-		require(vault.penaltyFeeBips() == DefaultPenaltyFee);
-		require(vault.gracePeriod() == DefaultGracePeriod);
+		require(vault.delinquencyFeeBips() == DefaultPenaltyFee);
+		require(vault.delinquencyGracePeriod() == DefaultGracePeriod);
 		require(vault.liquidityCoverageRatio() == DefaultLiquidityCoverage);
-		require(vault.interestFeeBips() == DefaultInterestFee);
+		require(vault.protocolFeeBips() == DefaultInterestFee);
 		require(vault.feeRecipient() == feeRecipient);
 		require(vault.borrower() == borrower);
 		require(vault.asset() == address(asset));

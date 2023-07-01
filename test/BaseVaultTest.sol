@@ -62,10 +62,10 @@ contract BaseVaultTest is Test, Assertions {
 			symbolPrefix: 'WC',
 			maxTotalSupply: DefaultMaximumSupply,
 			annualInterestBips: DefaultInterest,
-			penaltyFeeBips: DefaultPenaltyFee,
-			gracePeriod: DefaultGracePeriod,
+			delinquencyFeeBips: DefaultPenaltyFee,
+			delinquencyGracePeriod: DefaultGracePeriod,
 			liquidityCoverageRatio: DefaultLiquidityCoverage,
-			interestFeeBips: DefaultInterestFee,
+			protocolFeeBips: DefaultInterestFee,
 			feeRecipient: feeRecipient
 		});
 		setupVault();
@@ -74,9 +74,9 @@ contract BaseVaultTest is Test, Assertions {
 	function pendingState() internal view returns (VaultState memory state, uint256 protocolFees) {
 		state = previousState;
 		(uint256 feesAccrued, bool didUpdate) = state.calculateInterestAndFees(
-			parameters.interestFeeBips,
-			parameters.penaltyFeeBips,
-			parameters.gracePeriod
+			parameters.protocolFeeBips,
+			parameters.delinquencyFeeBips,
+			parameters.delinquencyGracePeriod
 		);
 		protocolFees = lastProtocolFees + feesAccrued;
 	}
