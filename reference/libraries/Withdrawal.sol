@@ -3,11 +3,14 @@ pragma solidity >=0.8.17;
 
 import './VaultState.sol';
 import './FeeMath.sol';
+import './Uint32Array.sol';
+import '../interfaces/IVaultEventsAndErrors.sol';
 
 using MathUtils for uint256;
 using FeeMath for VaultState;
 using SafeCastLib for uint256;
 using WithdrawalLib for WithdrawalBatch global;
+using WithdrawalLib for WithdrawalData global;
 
 struct WithdrawalBatch {
 	// Amount of scaled tokens that have been paid by borrower
@@ -23,29 +26,18 @@ struct AccountWithdrawalStatus {
 	uint128 lastNormalizedAmountWithdrawn;
 }
 
+struct WithdrawalData {
+	Uint32Array unpaidBatches;
+	mapping(uint32 => WithdrawalBatch) batches;
+	mapping(uint256 => mapping(address => AccountWithdrawalStatus)) accountStatuses;
+}
+
 library WithdrawalLib {
-	// Get batch amount owed
-	function owedAmount(
-		WithdrawalBatch memory batch,
-		VaultState memory state
-	) internal pure returns (uint256) {
-		// Normalize unpaid amount with current scaleFactor, since pending withdrawals accrue interest
-		return state.normalizeAmount(batch.scaledTotalAmount - batch.scaledPaidAmount);
-	}
-
-	// Get total underlying value of withdrawal batch
-	function totalNormalizedAmount(
-		WithdrawalBatch memory batch,
-		VaultState memory state
-	) internal pure returns (uint256) {
-		return batch.normalizedPaidAmount + batch.owedAmount(state);
-	}
-
 	function processPayment(
+		WithdrawalBatch storage batch,
 		VaultState memory state,
-		WithdrawalBatch memory batch,
 		uint256 scaledAmount
-	) internal pure {
+	) internal {
 		scaledAmount = MathUtils.min(scaledAmount, batch.scaledTotalAmount - batch.scaledPaidAmount);
 
 		state.decreaseScaledTotalSupply(scaledAmount);
@@ -60,39 +52,97 @@ library WithdrawalLib {
 		state.reservedAssets = (uint256(state.reservedAssets) + normalizedAmount).safeCastTo128();
 	}
 
+	function processNextBatch(
+		WithdrawalData storage data,
+		VaultState memory state,
+		uint256 totalAssets
+	) internal {
+		if (data.unpaidBatches.isEmpty()) {
+			// @todo revert
+			return;
+		}
+		uint32 expiry = data.unpaidBatches.first();
+		WithdrawalBatch storage batch = data.batches[expiry];
+		uint256 availableLiquidity = totalAssets - state.reservedAssets;
+		uint256 scaledAmount = state.scaleAmount(availableLiquidity);
+		processPayment(batch, state, scaledAmount);
+		if (batch.scaledPaidAmount == batch.scaledTotalAmount) {
+			data.unpaidBatches.shift();
+		}
+	}
+
+	function addWithdrawalRequest(
+		WithdrawalData storage data,
+		VaultState memory state,
+		address account,
+		uint104 scaledAmount,
+		uint256 withdrawalBatchDuration
+	) internal {
+		uint32 expiry = state.pendingWithdrawalExpiry;
+		// Create a new batch if necessary
+		if (expiry == 0) {
+			// @todo emit event
+			expiry = uint32(block.timestamp + withdrawalBatchDuration);
+			state.pendingWithdrawalExpiry = expiry;
+		}
+		WithdrawalBatch storage batch = data.batches[expiry];
+		AccountWithdrawalStatus storage status = data.accountStatuses[expiry][account];
+		// Add to account withdrawal status
+		status.scaledAmount += scaledAmount;
+		batch.scaledTotalAmount += scaledAmount;
+		// Add to pending withdrawals
+		state.scaledPendingWithdrawals += scaledAmount;
+	}
+
 	// Get amount user can withdraw now
 	function withdrawableAmount(
 		WithdrawalBatch memory batch,
-		AccountWithdrawalStatus memory account
+		AccountWithdrawalStatus memory status
 	) internal pure returns (uint256) {
 		// Rounding errors will lead to some dust accumulating in the batch, but the cost of
 		// executing a withdrawal will be lower for users.
-		uint256 normalizedAmountOwed = (account.scaledAmount * batch.normalizedPaidAmount) /
+		uint256 normalizedAmountOwed = (status.scaledAmount * batch.normalizedPaidAmount) /
 			batch.scaledTotalAmount;
-		return account.lastNormalizedAmountWithdrawn - normalizedAmountOwed;
+		return normalizedAmountOwed - status.lastNormalizedAmountWithdrawn;
 	}
 
 	function withdrawAvailable(
+		WithdrawalData storage data,
 		VaultState memory state,
-		WithdrawalBatch memory batch,
-		AccountWithdrawalStatus memory status
-	) internal pure returns (uint128 normalizedAmountWithdrawn) {
+		address account,
+		uint32 expiry
+	) internal returns (uint128 normalizedAmountWithdrawn) {
+		WithdrawalBatch memory batch = data.batches[expiry];
+		AccountWithdrawalStatus storage status = data.accountStatuses[expiry][account];
 		normalizedAmountWithdrawn = withdrawableAmount(batch, status).safeCastTo128();
 		status.lastNormalizedAmountWithdrawn += normalizedAmountWithdrawn;
 		state.reservedAssets -= normalizedAmountWithdrawn;
 	}
 
+	function availableLiquidityForBatch(
+		WithdrawalBatch memory batch,
+		VaultState memory state,
+		uint256 totalAssets
+	) internal pure returns (uint256) {
+		uint256 priorScaledAmountPending = (state.scaledPendingWithdrawals - batch.scaledTotalAmount);
+		uint256 totalReservedAssets = state.reservedAssets +
+			state.normalizeAmount(priorScaledAmountPending);
+		return totalAssets - totalReservedAssets;
+	}
+
 	/**
+	 *
 	 * When a withdrawal batch expires, the vault will checkpoint the scale factor
 	 * as of the time of expiry and retrieve the current liquid assets in the vault
 	 * (assets which are not already owed to protocol fees or prior withdrawal batches).
 	 */
 	function processExpiredBatch(
+		WithdrawalData storage data,
 		VaultState memory state,
-    mapping(uint256 => WithdrawalBatch) storage batches,
-		uint256 availableLiquidity
+		uint256 totalAssets
 	) internal returns (WithdrawalBatch memory) {
-    WithdrawalBatch storage batch = batches[state.pendingWithdrawalExpiry];
+		WithdrawalBatch storage batch = data.batches[state.pendingWithdrawalExpiry];
+		uint256 availableLiquidity = availableLiquidityForBatch(batch, state, totalAssets);
 
 		uint104 scaledTotalAmount = batch.scaledTotalAmount;
 
@@ -106,146 +156,15 @@ library WithdrawalLib {
 		batch.scaledPaidAmount = scaledPaidAmount;
 		batch.normalizedPaidAmount = normalizedPaidAmount;
 
-    state.pendingWithdrawalExpiry = 0;
+		if (scaledPaidAmount < scaledTotalAmount) {
+			data.unpaidBatches.push(state.pendingWithdrawalExpiry);
+		}
+
+		state.pendingWithdrawalExpiry = 0;
 		state.reservedAssets += normalizedPaidAmount;
 		state.scaledPendingWithdrawals -= scaledPaidAmount;
 		state.decreaseScaledTotalSupply(scaledPaidAmount);
 
-    return batch;
+		return batch;
 	}
-
-	/*
-  scaleFactor should grow until full owed amount is deposited
-  can calculate current debt with
-  if withdrawals still accrue interest, easy way to game the system, albeit with no
-  real benefit to the user
-
-  struct WithdrawalBatch {
-    uint104 scaledTotalAmount;
-    uint104 scaledPaidAmount;
-    uint128 normalizedPaidAmount;
-  }
-
-  struct AccountWithdrawalStatus {
-    uint104 scaledAmount;
-    uint104 lastScaledAmountWithdrawn;
-  }
-
-  // Get batch amount owed
-  function owedAmount(WithdrawalBatch memory batch) internal pure returns (uint256) {
-    // Normalize unpaid amount with current scaleFactor, since pending withdrawals accrue interest
-    return state.normalizeAmount(batch.scaledTotalAmount - batch.scaledPaidAmount);
-  }
-
-  // Get total underlying value of withdrawal batch
-  function totalNormalizedAmount(WithdrawalBatch memory batch) internal pure returns (uint256) {
-    return batch.normalizedPaidAmount + batch.owedAmount();
-  }
-
-  function repayAmount(VaultState memory state, WithdrawalBatch memory batch, uint256 scaledAmount) internal pure {
-    batch.scaledPaidAmount += scaledAmount;
-    state.decreaseScaledTotalSupply(scaledAmount);
-    uint256 normalizedAmount = state.normalizeAmount(scaledAmount);
-    state.pendingScaledWithdrawals -= scaledAmount;
-    state.reservedAssets += normalizedAmount;
-    batch.normalizedPaidAmount += normalizedAmount;
-  }
-
-  // Get amount user can withdraw now
-  function withdrawableAmount(WithdrawalBatch memory batch, AccountWithdrawalStatus memory account) internal pure returns (uint256) {
-    // Rounding errors will lead to some dust accumulating in the batch, but the cost of
-    // executing a withdrawal will be lower for users.
-    uint256 normalizedAmountOwed = (account.scaledAmount * batch.normalizedPaidAmount) / batch.scaledTotalAmount;
-    return account.normalizedAmountOwed - account.lastNormalizedAmountWithdrawn;
-  }
-
-  function finalizeWithdrawal(VaultState memory state, WithdrawalBatch memory batch, AccountWithdrawalStatus memory account) internal {
-    uint256 normalizedAmountWithdrawable = withdrawableAmount(batch, account);
-    account.lastNormalizedAmountWithdrawn += normalizedAmountWithdrawable;
-    state.reservedAssets -= normalizedAmountWithdrawable;
-  }
-
-  // Get user amount owed
-  scaleFactor = batch.finished() ? batch.scaleFactor : state.scaleFactor;
-  
-  normalizedAmountOwed = userBatch.scaledAmount * scaleFactor;
-
-  state.scaleFactor * (batch.scaledAmountDeposited 
-*/
-
-	// function handleWithdrawalBatchExpiry(
-	// 	VaultState memory state,
-	// 	uint256 batchDuration,
-	// 	uint256 availableLiquidity,
-	// 	uint256 protocolFeeBips,
-	// 	uint256 delinquencyFeeBips,
-	// 	uint256 delinquencyGracePeriod
-	// ) internal view returns (WithdrawalBatch memory batch, uint256 protocolFee) {
-	// 	(, ,  protocolFee) = state.updateScaleFactor(
-	// 		state.pendingWithdrawalExpiry,
-	// 		protocolFeeBips,
-	// 		delinquencyFeeBips,
-	// 		delinquencyGracePeriod
-	// 	);
-
-	// 	uint256 scaledPendingWithdrawals = state.scaledPendingWithdrawals;
-	// 	uint256 normalizedPendingWithdrawals = state.normalizeAmount(scaledPendingWithdrawals);
-
-	// 	batch.scaledTotalAmount = scaledPendingWithdrawals.safeCastTo104();
-
-	// 	if (availableLiquidity >= normalizedPendingWithdrawals) {
-	// 		batch.normalizedRedeemedAmount = normalizedPendingWithdrawals.safeCastTo128();
-	// 		// there is enough liquidity to cover the entire batch
-	// 		batch.redemptionRate = RAY.safeCastTo144();
-	// 		// reduce the supply by the amount withdrawn
-	// 		state.decreaseScaledTotalSupply(scaledPendingWithdrawals);
-	// 		state.pendingWithdrawalExpiry = 0;
-	// 		state.scaledPendingWithdrawals = 0;
-	// 	} else {
-	// 		// there is not enough liquidity to cover the entire batch
-	// 		uint256 redemptionRate = availableLiquidity.rayDiv(normalizedPendingWithdrawals);
-	// 		batch.normalizedRedeemedAmount = availableLiquidity.safeCastTo128();
-	// 		batch.redemptionRate = redemptionRate.safeCastTo144();
-	// 		uint256 scaledWithdrawnAmount = redemptionRate.rayMul(scaledPendingWithdrawals);
-	// 		// reduce the supply by the amount withdrawn
-	// 		state.decreaseScaledTotalSupply(scaledWithdrawnAmount);
-	// 		// set the remainder as the new pending withdrawal amount
-	// 		state.scaledPendingWithdrawals = (scaledPendingWithdrawals - scaledWithdrawnAmount)
-	// 			.safeCastTo104();
-	// 		// reset the withdrawal batch expiry
-	// 		state.pendingWithdrawalExpiry = (block.timestamp + batchDuration).safeCastTo32();
-	// 	}
-
-	// 	if (block.timestamp > state.pendingWithdrawalExpiry) {
-	// 		(uint256 feesAccruedAfterExpiry, ) = state.updateScaleFactor(
-	// 			block.timestamp,
-	// 			protocolFeeBips,
-	// 			delinquencyFeeBips,
-	// 			delinquencyGracePeriod
-	// 		);
-	// 		feesAccrued += feesAccruedAfterExpiry;
-	// 	}
-	// }
 }
-
-/*
-
-We want to be able to keep accurate accounting for amounts in finalized withdrawals.
-
-When a batch is finalized, it's easy to figure out the scale factor for it as of expiry and save that
-with the normalized amount, then create a new batch for the remainder.
-However, when we process the same for a user, we need to be able to map that user's withdrawal to the
-correct future batch, and we need to be able to do that without iterating over all the batches.
-As soon as any batch 
-
-
-
-On user withdrawal:
-- Reduce balance by scaled withdrawal amount
-- Add scaled withdrawal amount to scaled pending withdrawals
-- If there is no pending withdrawal batch, set the next withdrawal expiry to the current time + batch duration
-
-On withdrawal batch expiry:
-
-
-*/
