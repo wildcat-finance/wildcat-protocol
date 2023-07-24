@@ -95,7 +95,6 @@ interface IVaultEventsAndErrors {
   event WithdrawalExecuted(
     uint256 expiry,
     address account,
-    uint256 scaledAmount,
     uint256 normalizedAmount
   );
 
