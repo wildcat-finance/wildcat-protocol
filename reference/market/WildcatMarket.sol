@@ -1,9 +1,20 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.17;
+
 import '../libraries/FeeMath.sol';
 import './WildcatMarketBase.sol';
 import './WildcatMarketConfig.sol';
 import './WildcatMarketToken.sol';
+import './WildcatMarketWithdrawals.sol';
 
-contract WildcatMarket is WildcatMarketBase, WildcatMarketConfig, WildcatMarketToken {
+contract WildcatMarket is
+	WildcatMarketBase,
+	WildcatMarketConfig,
+	WildcatMarketToken,
+	WildcatMarketWithdrawals
+{
+  using SafeTransferLib for address;
+
 	function depositUpTo(
 		uint256 amount
 	) public virtual nonReentrant returns (uint256 /* actualAmount */) {
@@ -46,31 +57,40 @@ contract WildcatMarket is WildcatMarketBase, WildcatMarketConfig, WildcatMarketT
 		}
 	}
 
-	function withdraw(uint256 amount) external virtual nonReentrant {
-		// Get current state
+	function collectFees() external nonReentrant {
 		VaultState memory state = _getCurrentStateAndAccrueFees();
-
-		// Scale the actual mint amount
-		uint256 scaledAmount = state.scaleAmount(amount);
-
-		// Update account
-		Account memory account = _getAccount(msg.sender);
-		_checkAccountAuthorization(msg.sender, account, AuthRole.WithdrawOnly);
-
-		account.decreaseScaledBalance(scaledAmount);
-		_accounts[msg.sender] = account;
-
-		// Reduce caller's balance
-		emit Transfer(msg.sender, address(0), amount);
-		emit Withdrawal(msg.sender, amount, scaledAmount);
-
-		// Reduce supply
-		state.decreaseScaledTotalSupply(scaledAmount);
-
-		// Transfer withdrawn assets to `to`
-		asset.safeTransfer(msg.sender, amount);
-
-		// Update stored state
+		// Coverage for deposits takes precedence over fee revenue.
+		uint256 assetsRequiredForDeposits = state.liquidityRequired();
+		if (totalAssets() < assetsRequiredForDeposits) {
+			revert InsufficientCoverageForFeeWithdrawal();
+		}
+		uint256 fees = state.accruedProtocolFees;
 		_writeState(state);
+		asset.safeTransfer(feeRecipient, fees);
+		emit FeesCollected(fees);
+	}
+
+	function borrow(uint256 amount) external onlyBorrower nonReentrant {
+		VaultState memory state = _getCurrentStateAndAccrueFees();
+		uint256 borrowable = state.liquidityRequired();
+		if (amount > borrowable) {
+			revert BorrowAmountTooHigh();
+		}
+		_writeState(state);
+		asset.safeTransfer(msg.sender, amount);
+		emit Borrow(amount);
+	}
+
+	/**
+	 * @dev Sets the vault APR to 0% and transfers the outstanding balance for full redemption
+	 */
+	function closeVault() external onlyController nonReentrant {
+		VaultState memory state = _getCurrentStateAndAccrueFees();
+		state.setAnnualInterestBips(0);
+		uint256 currentlyHeld = totalAssets();
+		uint256 outstanding = state.getTotalSupply() - currentlyHeld;
+		_writeState(state);
+		asset.safeTransferFrom(msg.sender, address(this), outstanding);
+		emit VaultClosed(block.timestamp);
 	}
 }
