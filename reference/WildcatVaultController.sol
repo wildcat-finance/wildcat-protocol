@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.17;
 
-import './DebtTokenBase.sol';
+import './market/WildcatMarket.sol';
 import './interfaces/IWildcatVaultFactory.sol';
 import 'solady/auth/Ownable.sol';
 
@@ -12,23 +12,23 @@ struct TemporaryLiquidityCoverage {
 
 contract WildcatVaultController is Ownable {
 	address public immutable factory;
-  address public immutable feeRecipient;
+	address public immutable feeRecipient;
 
 	mapping(address => bool) public vaults;
 
 	mapping(address => TemporaryLiquidityCoverage) public temporaryExcessLiquidityCoverage;
 
-  mapping(address => bool) public isAuthorizedLender;
+	mapping(address => bool) public isAuthorizedLender;
 
 	constructor(address _feeRecipient, address _factory) {
 		_initializeOwner(msg.sender);
-    feeRecipient = _feeRecipient;
+		feeRecipient = _feeRecipient;
 		factory = _factory;
 	}
 
-  function approveLender(address lender) external onlyOwner {
-    isAuthorizedLender[lender] = true;
-  }
+	function approveLender(address lender) external onlyOwner {
+		isAuthorizedLender[lender] = true;
+	}
 
 	function checkGte(
 		uint256 value,
@@ -98,7 +98,7 @@ contract WildcatVaultController is Ownable {
 	 */
 	function reduceInterestRate(address vault, uint256 amount) external {
 		require(
-			msg.sender == DebtTokenBase(vault).borrower(),
+			msg.sender == WildcatMarket(vault).borrower(),
 			'WildcatVaultController: Not owner or borrower'
 		);
 
@@ -109,11 +109,11 @@ contract WildcatVaultController is Ownable {
 			'WildcatVaultController: Excess liquidity coverage already active'
 		);
 
-		uint256 liquidityCoverageRatio = DebtTokenBase(vault).liquidityCoverageRatio();
-		DebtTokenBase(vault).setAnnualInterestBips(amount);
+		uint256 liquidityCoverageRatio = WildcatMarket(vault).liquidityCoverageRatio();
+		WildcatMarket(vault).setAnnualInterestBips(amount);
 
 		// Require 90% liquidity coverage for the next 2 weeks
-		DebtTokenBase(vault).setLiquidityCoverageRatio(9000);
+		WildcatMarket(vault).setLiquidityCoverageRatio(9000);
 
 		temporaryExcessLiquidityCoverage[vault] = TemporaryLiquidityCoverage(
 			uint128(liquidityCoverageRatio),
@@ -127,7 +127,7 @@ contract WildcatVaultController is Ownable {
 			block.timestamp >= tmp.expiry,
 			'WildcatVaultController: Excess liquidity coverage still active'
 		);
-		DebtTokenBase(vault).setLiquidityCoverageRatio(tmp.liquidityCoverageRatio);
+		WildcatMarket(vault).setLiquidityCoverageRatio(tmp.liquidityCoverageRatio);
 		delete temporaryExcessLiquidityCoverage[vault];
 	}
 }
