@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 import '../libraries/FeeMath.sol';
+import '../libraries/SafeCastLib.sol';
 import './WildcatMarketBase.sol';
 
 contract WildcatMarketConfig is WildcatMarketBase {
+	using SafeCastLib for uint256;
+
 	/**
 	 * @dev Revoke an account's authorization to deposit assets.
 	 */
