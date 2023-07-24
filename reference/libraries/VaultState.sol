@@ -42,7 +42,6 @@ struct VaultState {
 struct Account {
 	AuthRole approval;
 	uint104 scaledBalance;
-	// uint32 pendingWithdrawalExpiry;
 }
 
 library VaultStateLib {
@@ -103,6 +102,10 @@ library VaultStateLib {
 		state.annualInterestBips = annualInterestBips.safeCastTo16();
 	}
 
+	/**
+	 * Collateralization requires all pending withdrawals be covered
+	 * and coverage ratio for remaining liquidity.
+	 */
 	function liquidityRequired(
 		VaultState memory state
 	) internal pure returns (uint256 _liquidityRequired) {
@@ -140,4 +143,3 @@ library VaultStateLib {
 		}
 	}
 }
-
