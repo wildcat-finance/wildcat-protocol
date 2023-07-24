@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
-import { FeeMath, MathUtils, SafeCastLib, VaultState, WadRayMath, HALF_RAY, RAY } from 'reference/libraries/FeeMath.sol';
+import { FeeMath, MathUtils, SafeCastLib, VaultState, HALF_RAY, RAY } from 'reference/libraries/FeeMath.sol';
 import 'forge-std/Test.sol';
 import 'forge-std/console2.sol';
 import 'forge-std/StdError.sol';
-import "solmate/test/utils/mocks/MockERC20.sol";
+import 'solmate/test/utils/mocks/MockERC20.sol';
 
 // scaleFactor = 112 bits
 // RAY = 89 bits
@@ -49,16 +49,15 @@ struct FuzzContext {
 contract BaseTest is Test {
 	using MathUtils for uint256;
 	using SafeCastLib for uint256;
-	using WadRayMath for uint256;
 
-  MockERC20 internal baseToken;
-  string internal constant baseName = "TestToken";
-  string internal constant baseSymbol = "TST";
-  uint8 internal constant baseDecimals = 18;
+	MockERC20 internal baseToken;
+	string internal constant baseName = 'TestToken';
+	string internal constant baseSymbol = 'TST';
+	uint8 internal constant baseDecimals = 18;
 
-  function setUp() public virtual {
-    baseToken = new MockERC20(baseName, baseSymbol, baseDecimals);
-  }
+	function setUp() public virtual {
+		baseToken = new MockERC20(baseName, baseSymbol, baseDecimals);
+	}
 
 	function maxRayMulRhs(uint256 left) internal pure returns (uint256 maxRight) {
 		if (left == 0) return type(uint256).max;
@@ -68,12 +67,11 @@ contract BaseTest is Test {
 	function getValidState(
 		StateFuzzInputs calldata inputs
 	) private view returns (VaultState memory state) {
-		state.scaleFactor = bound(inputs.scaleFactor, RAY, type(uint112).max)
-			.safeCastTo112();
+		state.scaleFactor = bound(inputs.scaleFactor, RAY, type(uint112).max).safeCastTo112();
 
 		state.scaledTotalSupply = bound(
 			inputs.scaledTotalSupply,
-			WadRayMath.rayDiv(1e18, state.scaleFactor),
+			uint256(1e18).rayDiv(state.scaleFactor),
 			type(uint104).max
 		).safeCastTo104();
 
@@ -83,38 +81,21 @@ contract BaseTest is Test {
 			uint256(state.scaledTotalSupply).rayMul(state.scaleFactor),
 			type(uint128).max
 		).safeCastTo128();
-		state.timeDelinquent = bound(
-			inputs.timeDelinquent,
-			0,
-			inputs.lastInterestAccruedTimestamp
-		).safeCastTo32();
-		state.annualInterestBips = bound(inputs.annualInterestBips, 1, 1e4)
-			.safeCastTo16();
+		state.timeDelinquent = bound(inputs.timeDelinquent, 0, inputs.lastInterestAccruedTimestamp)
+			.safeCastTo32();
+		state.annualInterestBips = bound(inputs.annualInterestBips, 1, 1e4).safeCastTo16();
 		// state.lastInterestAccruedTimestamp = bound(inputs.lastInterestAccruedTimestamp, 1, block.timestamp - 10).safeCastTo32();
 	}
 
-	function getFuzzContext(
-		FuzzInput calldata input
-	) internal returns (FuzzContext memory context) {
+	function getFuzzContext(FuzzInput calldata input) internal returns (FuzzContext memory context) {
 		context.state = getValidState(input.state);
-		context.liquidityCoverageRatio = bound(
-			input.liquidityCoverageRatio,
-			1,
-			1e4
-		).safeCastTo16();
-		context.protocolFeeBips = bound(input.protocolFeeBips, 1, 1e4)
-			.safeCastTo16();
+		context.liquidityCoverageRatio = bound(input.liquidityCoverageRatio, 1, 1e4).safeCastTo16();
+		context.protocolFeeBips = bound(input.protocolFeeBips, 1, 1e4).safeCastTo16();
 		context.delinquencyFeeBips = bound(input.delinquencyFeeBips, 1, 1e4).safeCastTo16();
 		context.delinquencyGracePeriod = input.delinquencyGracePeriod;
 		context.timeDelta = bound(input.timeDelta, 0, type(uint32).max);
-		uint256 currentBlockTime = bound(
-			block.timestamp,
-			context.timeDelta,
-			type(uint32).max
-		);
+		uint256 currentBlockTime = bound(block.timestamp, context.timeDelta, type(uint32).max);
 		vm.warp(currentBlockTime);
-		context.state.lastInterestAccruedTimestamp = uint32(
-			currentBlockTime - context.timeDelta
-		);
+		context.state.lastInterestAccruedTimestamp = uint32(currentBlockTime - context.timeDelta);
 	}
 }
