@@ -68,10 +68,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 
 	mapping(address => Account) internal _accounts;
 
-	mapping(uint256 => WithdrawalBatch) internal _withdrawalBatches;
-
-	mapping(uint256 => mapping(address => AccountWithdrawalStatus))
-		internal _accountWithdrawalStatuses;
+	WithdrawalData internal _withdrawalData;
 
 	// ===================================================================== //
 	//                             Constructor                               //
@@ -274,10 +271,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 				uint256 protocolFee
 			) = _updateScaleFactorAndFees(state, expiry);
 			emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
-			WithdrawalBatch memory batch = state.processExpiredBatch(
-				_withdrawalBatches,
-				state.liquidAssets(totalAssets())
-			);
+			WithdrawalBatch memory batch = _withdrawalData.processExpiredBatch(state, totalAssets());
 			emit WithdrawalBatchExpired(
 				expiry,
 				batch.scaledTotalAmount,
@@ -307,7 +301,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 		if (block.timestamp >= state.pendingWithdrawalExpiry) {
 			uint256 expiry = state.pendingWithdrawalExpiry;
 			_updateScaleFactorAndFees(state, expiry);
-      // @todo: fix this (make view version of processExpiredBatch)
+			// @todo: fix this (make view version of processExpiredBatch)
 			// WithdrawalBatch memory batch = state.processExpiredBatch(state.liquidAssets(totalAssets()));
 		}
 		_updateScaleFactorAndFees(state, block.timestamp);
