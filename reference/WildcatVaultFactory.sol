@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.17;
 import './interfaces/IWildcatVaultController.sol';
-import { WildcatVaultToken } from './WildcatVaultToken.sol';
+import { WildcatMarket } from './market/WildcatMarket.sol';
 
 contract WildcatVaultFactory {
 	/// @dev temporary storage for vault parameters, used during vault deployment
 	VaultParameters internal _tmpVaultParameters;
 
 	/// @dev hash of the vault creation code, used for computing the vault address
-	bytes32 public immutable VaultInitCodeHash = keccak256(type(WildcatVaultToken).creationCode);
+	bytes32 public immutable VaultInitCodeHash = keccak256(type(WildcatMarket).creationCode);
 
 	function getVaultParameters() external view returns (VaultParameters memory) {
 		return _tmpVaultParameters;
@@ -23,10 +23,6 @@ contract WildcatVaultFactory {
 		// Allow controller to make any modifications to the vault parameters
 		vaultParameters = controller.handleDeployVault(vault, msg.sender, vaultParameters);
 		_tmpVaultParameters = vaultParameters;
-		require(
-			vault == address(new WildcatVaultToken{ salt: salt }()),
-			'Sanity check failed: vault address'
-		);
 		emit VaultDeployed(vaultParameters.controller, vaultParameters.asset, vault);
 	}
 
