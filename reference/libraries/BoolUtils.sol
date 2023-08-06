@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity >=0.8.20;
 
 library BoolUtils {
 	function and(bool a, bool b) internal pure returns (bool c) {
