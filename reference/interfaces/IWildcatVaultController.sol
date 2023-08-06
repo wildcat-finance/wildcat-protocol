@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity >=0.8.20;
 
 import { VaultParameters } from "./WildcatStructsAndEnums.sol";
 
@@ -24,12 +24,12 @@ interface IWildcatVaultController {
 
 	function feeRecipient() external view returns (address);
 
-	function getVaultParameters(
+	function getFinalVaultParameters(
 		address,
 		VaultParameters calldata vaultParameters
 	) external view returns (VaultParameters memory);
 
-	function handleDeployVault(
+	function beforeDeployVault(
 		address vault,
 		address deployer,
 		VaultParameters calldata vaultParameters
