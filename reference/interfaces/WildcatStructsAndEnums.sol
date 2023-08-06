@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity >=0.8.20;
 
 import { VaultState } from "../libraries/VaultState.sol";
 
@@ -20,13 +20,13 @@ struct VaultParameters {
   address feeRecipient;
   address sentinel;
 
-	uint256 maxTotalSupply;
+	uint128 maxTotalSupply;
 
-	uint256 protocolFeeBips;
-	uint256 annualInterestBips;
-	uint256 delinquencyFeeBips;
+	uint16 protocolFeeBips;
+	uint16 annualInterestBips;
+	uint16 delinquencyFeeBips;
 
-  uint256 withdrawalBatchDuration;
-	uint256 liquidityCoverageRatio;
-	uint256 delinquencyGracePeriod;
+  uint32 withdrawalBatchDuration;
+	uint16 liquidityCoverageRatio;
+	uint32 delinquencyGracePeriod;
 }
