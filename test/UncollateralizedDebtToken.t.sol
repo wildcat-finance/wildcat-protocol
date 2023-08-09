@@ -1,5 +1,5 @@
 // // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.17;
+// pragma solidity ^0.8.20;
 
 // import "./shared/BaseTest.sol";
 // import "reference/interfaces/IWildcatVaultFactory.sol";
@@ -17,7 +17,7 @@
 // 	uint256 protocolFeeBips; */
 
 // contract UncollateralizedDebtTokenTest is BaseTest {
-//   VaultParameters public getVaultParameters;
+//   VaultParameters public getFinalVaultParameters;
 
 //   function setUp() public virtual override {
 //     super.setUp();
@@ -25,11 +25,11 @@
 //   }
 
 //   function setVaultParameters(VaultParameters memory parameters) external  {
-//     getVaultParameters = parameters;
+//     getFinalVaultParameters = parameters;
 //   }
 
 //   function _deployVault(FuzzContext memory input) internal {
-//     getVaultParameters = VaultParameters({
+//     getFinalVaultParameters = VaultParameters({
 //       asset: address(baseToken),
 //       namePrefix: "Wildcat ",
 //       symbolPrefix: "WC",

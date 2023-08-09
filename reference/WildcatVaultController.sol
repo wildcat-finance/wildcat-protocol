@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.17;
+pragma solidity >=0.8.20;
 
 import './market/WildcatMarket.sol';
 import './interfaces/IWildcatVaultFactory.sol';
@@ -11,14 +11,29 @@ struct TemporaryLiquidityCoverage {
 }
 
 contract WildcatVaultController is Ownable {
+	using SafeCastLib for uint256;
+
 	address public immutable factory;
 	address public immutable feeRecipient;
 
-	mapping(address => bool) public vaults;
+	uint256 public constant MaximumDelinquencyGracePeriod = 1 days;
+	uint256 public constant MinimumLiquidityCoverageRatio = 1000;
+	uint256 public constant MinimumDelinquencyFee = 1000;
+
+	error InvalidControllerParameter();
+	error DelinquencyFeeTooLow();
+	error DelinquencyGracePeriodTooHigh();
+	error LiquidityCoverageRatioTooLow();
+	error NotControlledVault();
+	error CallerNotBorrower();
+	error CallerNotFactory();
+	error ExcessLiquidityCoverageStillActive();
+
+	mapping(address => bool) public isControlledVault;
 
 	mapping(address => TemporaryLiquidityCoverage) public temporaryExcessLiquidityCoverage;
 
-	mapping(address => bool) public isAuthorizedLender;
+	mapping(address => bool) internal _authorizedLenders;
 
 	constructor(address _feeRecipient, address _factory) {
 		_initializeOwner(msg.sender);
@@ -26,108 +41,129 @@ contract WildcatVaultController is Ownable {
 		factory = _factory;
 	}
 
-	function approveLender(address lender) external onlyOwner {
-		isAuthorizedLender[lender] = true;
+	function authorizeLender(address lender) external virtual onlyOwner {
+		_authorizedLenders[lender] = true;
+	}
+
+	function deauthorizeLender(address lender) external virtual onlyOwner {
+		_authorizedLenders[lender] = false;
+	}
+
+	function isAuthorizedLender(address lender) external view virtual returns (bool) {
+		return _authorizedLenders[lender];
+	}
+
+	function getFinalVaultParameters(
+		address /* deployer */,
+		VaultParameters memory vaultParameters
+	) public view virtual returns (VaultParameters memory) {
+		// Doesn't do anything when called by the factory
+		if (vaultParameters.controller != address(this)) {
+			revert InvalidControllerParameter();
+		}
+
+		vaultParameters.feeRecipient = feeRecipient;
+
+		vaultParameters.delinquencyGracePeriod = uint32(
+			checkLte(
+				vaultParameters.delinquencyGracePeriod,
+				MaximumDelinquencyGracePeriod,
+				DelinquencyGracePeriodTooHigh.selector
+			)
+		);
+
+		vaultParameters.liquidityCoverageRatio = uint16(
+			checkGte(
+				vaultParameters.liquidityCoverageRatio,
+				MinimumLiquidityCoverageRatio,
+				LiquidityCoverageRatioTooLow.selector
+			)
+		);
+
+		vaultParameters.delinquencyFeeBips = uint16(
+			checkGte(
+				vaultParameters.delinquencyFeeBips,
+				MinimumDelinquencyFee,
+				DelinquencyFeeTooLow.selector
+			)
+		);
+
+		return vaultParameters;
+	}
+
+	function beforeDeployVault(
+		address vault,
+		address deployer,
+		VaultParameters memory vaultParameters  
+	) external virtual returns (VaultParameters memory) {
+		if (msg.sender != factory) {
+			revertWithSelector(CallerNotFactory.selector);
+		}
+
+		isControlledVault[vault] = true;
+
+		return getFinalVaultParameters(deployer, vaultParameters);
+
+	}
+
+	/**
+	 * @dev Modify the interest rate for a vault.
+	 * If the new interest rate is lower than the current interest rate,
+	 * the liquidity coverage ratio is set to 90% for the next two weeks.
+	 */
+	function setAnnualInterestBips(address vault, uint256 annualInterestBips) external virtual {
+		if (!isControlledVault[vault]) {
+			revertWithSelector(NotControlledVault.selector);
+		}
+
+		if (msg.sender != WildcatMarket(vault).borrower()) {
+			revertWithSelector(CallerNotBorrower.selector);
+		}
+
+		// If borrower is reducing the interest rate, increase the liquidity
+		// coverage ratio for the next two weeks.
+		if (annualInterestBips < WildcatMarket(vault).annualInterestBips()) {
+			TemporaryLiquidityCoverage storage tmp = temporaryExcessLiquidityCoverage[vault];
+
+			if (tmp.expiry == 0) {
+				tmp.liquidityCoverageRatio = uint128(WildcatMarket(vault).liquidityCoverageRatio());
+
+				// Require 90% liquidity coverage for the next 2 weeks
+				WildcatMarket(vault).setLiquidityCoverageRatio(9000);
+			}
+
+			tmp.expiry = uint128(block.timestamp + 2 weeks);
+		}
+
+		WildcatMarket(vault).setAnnualInterestBips(uint256(annualInterestBips).toUint16());
+	}
+
+	function resetLiquidityCoverage(address vault) external virtual {
+		TemporaryLiquidityCoverage memory tmp = temporaryExcessLiquidityCoverage[vault];
+		if (block.timestamp < tmp.expiry) {
+			revertWithSelector(ExcessLiquidityCoverageStillActive.selector);
+		}
+		WildcatMarket(vault).setLiquidityCoverageRatio(uint256(tmp.liquidityCoverageRatio).toUint16());
+		delete temporaryExcessLiquidityCoverage[vault];
 	}
 
 	function checkGte(
 		uint256 value,
 		uint256 defaultValue,
-		string memory err
+		bytes4 errorSelector
 	) internal pure returns (uint256) {
 		if (value == 0) return defaultValue;
-		require(value >= defaultValue, err);
+		if (value < defaultValue) revertWithSelector(errorSelector);
 		return value;
 	}
 
 	function checkLte(
 		uint256 value,
 		uint256 defaultValue,
-		string memory err
+		bytes4 errorSelector
 	) internal pure returns (uint256) {
 		if (value == 0) return defaultValue;
-		require(value <= defaultValue, err);
+		if (value > defaultValue) revertWithSelector(errorSelector);
 		return value;
-	}
-
-	function getVaultParameters(
-		address /* deployer */,
-		VaultParameters memory vaultParameters
-	) public view returns (VaultParameters memory) {
-		// Doesn't do anything when called by the factory
-		require(vaultParameters.controller == address(this), 'WildcatVaultController: Not controller');
-
-		vaultParameters.feeRecipient = feeRecipient;
-
-		vaultParameters.delinquencyGracePeriod = checkLte(
-			vaultParameters.delinquencyGracePeriod,
-			1 days,
-			'WildcatVaultController: Grace period too long'
-		);
-
-		vaultParameters.liquidityCoverageRatio = checkGte(
-			vaultParameters.liquidityCoverageRatio,
-			1000,
-			'WildcatVaultController: Liquidity coverage ratio too low'
-		);
-
-		vaultParameters.delinquencyFeeBips = checkGte(
-			vaultParameters.delinquencyFeeBips,
-			1000,
-			'WildcatVaultController: Penalty fee too low'
-		);
-
-		return vaultParameters;
-	}
-
-	function handleDeployVault(
-		address vault,
-		address deployer,
-		VaultParameters memory vaultParameters
-	) external returns (VaultParameters memory) {
-		require(msg.sender == factory, 'WildcatVaultController: Not factory');
-
-		vaults[vault] = true;
-
-		return getVaultParameters(deployer, vaultParameters);
-	}
-
-	/**
-	 * @dev Reduces the interest rate for a vault and increases
-	 * the liquidity coverage ratio for the next two weeks.
-	 */
-	function reduceInterestRate(address vault, uint256 amount) external {
-		require(
-			msg.sender == WildcatMarket(vault).borrower(),
-			'WildcatVaultController: Not owner or borrower'
-		);
-
-		require(vaults[vault], 'WildcatVaultController: Unknown vault');
-
-		require(
-			temporaryExcessLiquidityCoverage[vault].expiry == 0,
-			'WildcatVaultController: Excess liquidity coverage already active'
-		);
-
-		uint256 liquidityCoverageRatio = WildcatMarket(vault).liquidityCoverageRatio();
-		WildcatMarket(vault).setAnnualInterestBips(amount);
-
-		// Require 90% liquidity coverage for the next 2 weeks
-		WildcatMarket(vault).setLiquidityCoverageRatio(9000);
-
-		temporaryExcessLiquidityCoverage[vault] = TemporaryLiquidityCoverage(
-			uint128(liquidityCoverageRatio),
-			uint128(block.timestamp + 2 weeks)
-		);
-	}
-
-	function resetLiquidityCoverage(address vault) external {
-		TemporaryLiquidityCoverage memory tmp = temporaryExcessLiquidityCoverage[vault];
-		require(
-			block.timestamp >= tmp.expiry,
-			'WildcatVaultController: Excess liquidity coverage still active'
-		);
-		WildcatMarket(vault).setLiquidityCoverageRatio(tmp.liquidityCoverageRatio);
-		delete temporaryExcessLiquidityCoverage[vault];
 	}
 }

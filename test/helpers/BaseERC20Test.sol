@@ -2,7 +2,8 @@
 pragma solidity >=0.8.17;
 
 import 'reference/interfaces/IERC20Metadata.sol';
-import { DSTestPlus } from 'solmate/test/utils/DSTestPlus.sol';
+import 'reference/libraries/MathUtils.sol';
+import { Test } from 'forge-std/Test.sol';
 import { DSInvariantTest } from 'solmate/test/utils/DSInvariantTest.sol';
 
 bytes32 constant PERMIT_TYPEHASH = keccak256(
@@ -16,15 +17,27 @@ bytes32 constant PERMIT_TYPEHASH = keccak256(
  * @author transmissions11
  * Modified from https://github.com/transmissions11/solmate
  */
-abstract contract BaseERC20Test is DSTestPlus {
+abstract contract BaseERC20Test is Test {
 	IERC20Metadata token;
 	string _name;
 	string _symbol;
 	uint8 _decimals;
 
+	function _maxAmount() internal virtual returns (uint256) {
+		return type(uint256).max;
+	}
+
+	function _minAmount() internal virtual returns (uint256) {
+		return 0;
+	}
+
 	function _mint(address to, uint256 amount) internal virtual;
 
 	function _burn(address from, uint256 amount) internal virtual;
+
+	function _assertTokenAmountEq(uint256 expected, uint256 actual) internal virtual {
+		assertEq(expected, actual);
+	}
 
 	function setUp() public virtual;
 
@@ -37,8 +50,8 @@ abstract contract BaseERC20Test is DSTestPlus {
 	function testMint() public {
 		_mint(address(0xBEEF), 1e18);
 
-		assertEq(token.totalSupply(), 1e18);
-		assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+		_assertTokenAmountEq(token.totalSupply(), 1e18);
+		_assertTokenAmountEq(token.balanceOf(address(0xBEEF)), 1e18);
 	}
 
 	function testApprove() public {
@@ -51,10 +64,10 @@ abstract contract BaseERC20Test is DSTestPlus {
 		_mint(address(this), 1e18);
 
 		assertTrue(token.transfer(address(0xBEEF), 1e18));
-		assertEq(token.totalSupply(), 1e18);
+		_assertTokenAmountEq(token.totalSupply(), 1e18);
 
-		assertEq(token.balanceOf(address(this)), 0);
-		assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+		_assertTokenAmountEq(token.balanceOf(address(this)), 0);
+		_assertTokenAmountEq(token.balanceOf(address(0xBEEF)), 1e18);
 	}
 
 	function testTransferFrom() public {
@@ -62,16 +75,16 @@ abstract contract BaseERC20Test is DSTestPlus {
 
 		_mint(from, 1e18);
 
-		hevm.prank(from);
+		vm.prank(from);
 		token.approve(address(this), 1e18);
 
 		assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
-		assertEq(token.totalSupply(), 1e18);
+		_assertTokenAmountEq(token.totalSupply(), 1e18);
 
 		assertEq(token.allowance(from, address(this)), 0);
 
-		assertEq(token.balanceOf(from), 0);
-		assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+		_assertTokenAmountEq(token.balanceOf(from), 0);
+		_assertTokenAmountEq(token.balanceOf(address(0xBEEF)), 1e18);
 	}
 
 	function testInfiniteApproveTransferFrom() public {
@@ -79,16 +92,16 @@ abstract contract BaseERC20Test is DSTestPlus {
 
 		_mint(from, 1e18);
 
-		hevm.prank(from);
+		vm.prank(from);
 		token.approve(address(this), type(uint256).max);
 
 		assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
-		assertEq(token.totalSupply(), 1e18);
+		_assertTokenAmountEq(token.totalSupply(), 1e18);
 
 		assertEq(token.allowance(from, address(this)), type(uint256).max);
 
-		assertEq(token.balanceOf(from), 0);
-		assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+		_assertTokenAmountEq(token.balanceOf(from), 0);
+		_assertTokenAmountEq(token.balanceOf(address(0xBEEF)), 1e18);
 	}
 
 	// function testPermit() public {
@@ -122,7 +135,7 @@ abstract contract BaseERC20Test is DSTestPlus {
 
 		_mint(from, 1e18);
 
-		hevm.prank(from);
+		vm.prank(from);
 		token.approve(address(this), 0.9e18);
 
 		token.transferFrom(from, address(0xBEEF), 1e18);
@@ -133,7 +146,7 @@ abstract contract BaseERC20Test is DSTestPlus {
 
 		_mint(from, 0.9e18);
 
-		hevm.prank(from);
+		vm.prank(from);
 		token.approve(address(this), 1e18);
 
 		token.transferFrom(from, address(0xBEEF), 1e18);
@@ -251,24 +264,26 @@ abstract contract BaseERC20Test is DSTestPlus {
 	// }
 
 	function testMint(address from, uint256 amount) public {
+		amount = bound(amount, _minAmount(), _maxAmount());
 		_mint(from, amount);
 
-		assertEq(token.totalSupply(), amount);
-		assertEq(token.balanceOf(from), amount);
+		_assertTokenAmountEq(token.totalSupply(), amount);
+		_assertTokenAmountEq(token.balanceOf(from), amount);
 	}
 
-	function testBurn(
-		address from,
-		uint256 mintAmount,
-		uint256 burnAmount
-	) public {
-		burnAmount = bound(burnAmount, 0, mintAmount);
+	function testBurn(address from, uint256 mintAmount, uint256 burnAmount) public {
+		mintAmount = bound(mintAmount, _minAmount(), _maxAmount());
+		burnAmount = bound(burnAmount, _minAmount(), mintAmount);
 
 		_mint(from, mintAmount);
 		_burn(from, burnAmount);
 
-		assertEq(token.totalSupply(), mintAmount - burnAmount);
-		assertEq(token.balanceOf(from), mintAmount - burnAmount);
+		_assertTokenAmountEq(token.totalSupply(), mintAmount - burnAmount);
+		_assertTokenAmountEq(token.balanceOf(from), mintAmount - burnAmount);
+	}
+
+	function assertApproxEq(uint256 a, uint256 b, uint256) internal {
+		assertEq(a, b);
 	}
 
 	function testApprove(address to, uint256 amount) public {
@@ -278,46 +293,43 @@ abstract contract BaseERC20Test is DSTestPlus {
 	}
 
 	function testTransfer(address from, uint256 amount) public {
+		vm.assume(from != address(0) && amount > 0);
+		amount = bound(amount, _minAmount(), _maxAmount());
 		_mint(address(this), amount);
 
 		assertTrue(token.transfer(from, amount));
-		assertEq(token.totalSupply(), amount);
+		_assertTokenAmountEq(token.totalSupply(), amount);
 
 		if (address(this) == from) {
-			assertEq(token.balanceOf(address(this)), amount);
+			_assertTokenAmountEq(token.balanceOf(address(this)), amount);
 		} else {
-			assertEq(token.balanceOf(address(this)), 0);
-			assertEq(token.balanceOf(from), amount);
+			_assertTokenAmountEq(token.balanceOf(address(this)), 0);
+			_assertTokenAmountEq(token.balanceOf(from), amount);
 		}
 	}
 
-	function testTransferFrom(
-		address to,
-		uint256 approval,
-		uint256 amount
-	) public {
-		amount = bound(amount, 0, approval);
+	function testTransferFrom(address to, uint256 approval, uint256 amount) public {
+		approval = bound(approval, _minAmount(), type(uint256).max);
+		amount = bound(amount, _minAmount(), MathUtils.min(_maxAmount(), approval));
 
 		address from = address(0xABCD);
 
 		_mint(from, amount);
 
-		hevm.prank(from);
+		vm.prank(from);
 		token.approve(address(this), approval);
 
-		assertTrue(token.transferFrom(from, to, amount));
-		assertEq(token.totalSupply(), amount);
+		assertEq(token.transferFrom(from, to, amount), true, 'transferFrom failed');
+		_assertTokenAmountEq(token.totalSupply(), amount);
 
-		uint256 app = from == address(this) || approval == type(uint256).max
-			? approval
-			: approval - amount;
-		assertEq(token.allowance(from, address(this)), app);
+		uint256 app = approval == type(uint256).max ? approval : approval - amount;
+		assertEq(token.allowance(from, address(this)), app, 'allowance != expected');
 
 		if (from == to) {
-			assertEq(token.balanceOf(from), amount);
+			_assertTokenAmountEq(token.balanceOf(from), amount);
 		} else {
-			assertEq(token.balanceOf(from), 0);
-			assertEq(token.balanceOf(to), amount);
+			_assertTokenAmountEq(token.balanceOf(from), 0);
+			_assertTokenAmountEq(token.balanceOf(to), amount);
 		}
 	}
 
@@ -366,7 +378,8 @@ abstract contract BaseERC20Test is DSTestPlus {
 		uint256 mintAmount,
 		uint256 sendAmount
 	) public {
-		sendAmount = bound(sendAmount, mintAmount + 1, type(uint256).max);
+		mintAmount = bound(mintAmount, _minAmount(), _maxAmount());
+		sendAmount = bound(sendAmount, mintAmount + _minAmount(), type(uint256).max);
 
 		_mint(address(this), mintAmount);
 		token.transfer(to, sendAmount);
@@ -377,13 +390,14 @@ abstract contract BaseERC20Test is DSTestPlus {
 		uint256 approval,
 		uint256 amount
 	) public {
+		amount = bound(amount, _minAmount(), _maxAmount());
 		amount = bound(amount, approval + 1, type(uint256).max);
 
 		address from = address(0xABCD);
 
 		_mint(from, amount);
 
-		hevm.prank(from);
+		vm.prank(from);
 		token.approve(address(this), approval);
 
 		token.transferFrom(from, to, amount);
@@ -394,13 +408,14 @@ abstract contract BaseERC20Test is DSTestPlus {
 		uint256 mintAmount,
 		uint256 sendAmount
 	) public {
-		sendAmount = bound(sendAmount, mintAmount + 1, type(uint256).max);
+		mintAmount = bound(mintAmount, _minAmount(), _maxAmount());
+		sendAmount = bound(sendAmount, mintAmount + _minAmount(), type(uint256).max);
 
 		address from = address(0xABCD);
 
 		_mint(from, mintAmount);
 
-		hevm.prank(from);
+		vm.prank(from);
 		token.approve(address(this), sendAmount);
 
 		token.transferFrom(from, to, sendAmount);
@@ -532,7 +547,7 @@ abstract contract BaseERC20Test is DSTestPlus {
 // 	) internal virtual returns (ERC20Handler);
 
 // 	function invariant_totalSupply() public virtual {
-// 		assertEq(token.totalSupply(), handler.sumDeposits());
+// 		_assertTokenAmountEq(token.totalSupply(), handler.sumDeposits());
 // 	}
 
 // 	function invariant_callSummary() public view {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.17;
+pragma solidity >=0.8.20;
 
 import './Errors.sol';
 
@@ -21,6 +21,10 @@ uint256 constant SECONDS_IN_365_DAYS = 365 days;
 library MathUtils {
 	error InvalidNullValue();
 
+	/// @dev The multiply-divide operation failed, either due to a
+	/// multiplication overflow, or a division by a zero.
+	error MulDivFailed();
+
 	using MathUtils for uint256;
 
 	/**
@@ -35,10 +39,10 @@ library MathUtils {
 		uint256 timeDelta
 	) internal pure returns (uint256 result) {
 		uint256 rate = rateBip.bipToRay();
-    uint256 accumulatedInterestRay = rate * timeDelta;
-    unchecked {
-      return accumulatedInterestRay / SECONDS_IN_365_DAYS;
-    }
+		uint256 accumulatedInterestRay = rate * timeDelta;
+		unchecked {
+			return accumulatedInterestRay / SECONDS_IN_365_DAYS;
+		}
 	}
 
 	/**
@@ -153,6 +157,7 @@ library MathUtils {
 	function rayMul(uint256 a, uint256 b) internal pure returns (uint256 c) {
 		// to avoid overflow, a <= (type(uint256).max - HALF_RAY) / b
 		assembly {
+      // equivalent to `require(b == 0 || a <= (type(uint256).max - HALF_RAY) / b)`
 			if iszero(or(iszero(b), iszero(gt(a, div(sub(not(0), HALF_RAY), b))))) {
 				mstore(0, Panic_ErrorSelector)
 				mstore(Panic_ErrorCodePointer, Panic_Arithmetic)
@@ -163,16 +168,10 @@ library MathUtils {
 		}
 	}
 
-	/**
-	 * @notice Divides two ray, rounding half up to the nearest ray
-	 * @dev assembly optimized for improved gas savings, see https://twitter.com/transmissions11/status/1451131036377571328
-	 * @param a Ray
-	 * @param b Ray
-	 * @return c = a raydiv b
-	 */
+  /// @dev Multiply two ray, rounding half up to the nearest ray
 	function rayDiv(uint256 a, uint256 b) internal pure returns (uint256 c) {
-		// to avoid overflow, a <= (type(uint256).max - halfB) / RAY
 		assembly {
+      // equivalent to `require(b != 0 && a <= (type(uint256).max - halfB) / RAY)`
 			if or(iszero(b), iszero(iszero(gt(a, div(sub(not(0), div(b, 2)), RAY))))) {
 				mstore(0, Panic_ErrorSelector)
 				mstore(Panic_ErrorCodePointer, Panic_Arithmetic)
@@ -180,6 +179,40 @@ library MathUtils {
 			}
 
 			c := div(add(mul(a, RAY), div(b, 2)), b)
+		}
+	}
+
+	/// @dev Returns `floor(x * y / d)`.
+	/// Reverts if `x * y` overflows, or `d` is zero.
+	/// @custom:author solady/src/utils/FixedPointMathLib.sol
+	function mulDiv(uint256 x, uint256 y, uint256 d) internal pure returns (uint256 z) {
+		/// @solidity memory-safe-assembly
+		assembly {
+			// Equivalent to require(d != 0 && (y == 0 || x <= type(uint256).max / y))
+			if iszero(mul(d, iszero(mul(y, gt(x, div(not(0), y)))))) {
+				// Store the function selector of `MulDivFailed()`.
+				mstore(0x00, 0xad251c27)
+				// Revert with (offset, size).
+				revert(0x1c, 0x04)
+			}
+			z := div(mul(x, y), d)
+		}
+	}
+
+	/// @dev Returns `ceil(x * y / d)`.
+	/// Reverts if `x * y` overflows, or `d` is zero.
+	/// @custom:author solady/src/utils/FixedPointMathLib.sol
+	function mulDivUp(uint256 x, uint256 y, uint256 d) internal pure returns (uint256 z) {
+		/// @solidity memory-safe-assembly
+		assembly {
+			// Equivalent to require(d != 0 && (y == 0 || x <= type(uint256).max / y))
+			if iszero(mul(d, iszero(mul(y, gt(x, div(not(0), y)))))) {
+				// Store the function selector of `MulDivFailed()`.
+				mstore(0x00, 0xad251c27)
+				// Revert with (offset, size).
+				revert(0x1c, 0x04)
+			}
+			z := add(iszero(iszero(mod(mul(x, y), d))), div(mul(x, y), d))
 		}
 	}
 }

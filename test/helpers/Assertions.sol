@@ -1,4 +1,4 @@
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
 import 'reference/libraries/VaultState.sol';
 import { StdAssertions } from 'forge-std/StdAssertions.sol';

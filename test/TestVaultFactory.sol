@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
 import 'forge-std/Test.sol';
 import 'reference/WildcatVaultFactory.sol';
@@ -14,10 +14,10 @@ contract FactoryTest is BaseVaultTest {
 		assertEq(vault.symbol(), 'WCTKN', 'symbol');
 		require(vault.maxTotalSupply() == DefaultMaximumSupply);
 		require(vault.annualInterestBips() == DefaultInterest);
-		require(vault.delinquencyFeeBips() == DefaultPenaltyFee);
+		require(vault.delinquencyFeeBips() == DefaultDelinquencyFee);
 		require(vault.delinquencyGracePeriod() == DefaultGracePeriod);
 		require(vault.liquidityCoverageRatio() == DefaultLiquidityCoverage);
-		require(vault.protocolFeeBips() == DefaultInterestFee);
+		require(vault.protocolFeeBips() == DefaultProtocolFeeBips);
 		require(vault.feeRecipient() == feeRecipient);
 		require(vault.borrower() == borrower);
 		require(vault.asset() == address(asset));

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity >=0.8.20;
 import './WildcatMarketBase.sol';
 
 contract WildcatMarketToken is WildcatMarketBase {
@@ -15,7 +15,7 @@ contract WildcatMarketToken is WildcatMarketBase {
 	/// @notice Returns the normalized total supply with interest.
 	function totalSupply() external view virtual nonReentrantView returns (uint256) {
 		VaultState memory state = _calculateCurrentState();
-		return state.getTotalSupply();
+		return state.totalSupply();
 	}
 
 	// =====================================================================//
@@ -25,6 +25,11 @@ contract WildcatMarketToken is WildcatMarketBase {
 	function approve(address spender, uint256 amount) external virtual returns (bool) {
 		_approve(msg.sender, spender, amount);
 
+		return true;
+	}
+
+	function transfer(address to, uint256 amount) external virtual nonReentrant returns (bool) {
+		_transfer(msg.sender, to, amount);
 		return true;
 	}
 
@@ -52,10 +57,11 @@ contract WildcatMarketToken is WildcatMarketBase {
 	}
 
 	function _transfer(address from, address to, uint256 amount) internal virtual {
-		VaultState memory state = _getCurrentStateAndAccrueFees();
+		VaultState memory state = _getUpdatedState();
 		uint256 scaledAmount = state.scaleAmount(amount);
 
 		Account memory fromAccount = _getAccount(from);
+    
 		fromAccount.decreaseScaledBalance(scaledAmount);
 		_accounts[from] = fromAccount;
 
@@ -63,6 +69,7 @@ contract WildcatMarketToken is WildcatMarketBase {
 		toAccount.increaseScaledBalance(scaledAmount);
 		_accounts[to] = toAccount;
 
+		_writeState(state);
 		emit Transfer(from, to, amount);
 	}
 }

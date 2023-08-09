@@ -19,4 +19,10 @@ library BoolUtils {
 			c := xor(a, b)
 		}
 	}
+
+	function not(bool a) internal pure returns (bool b) {
+		assembly {
+			b := not(a)
+		}
+	}
 }

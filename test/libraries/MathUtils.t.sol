@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.20;
+
 import "reference/libraries/MathUtils.sol";
 import "forge-std/Test.sol";
 
@@ -11,5 +14,13 @@ contract MathUtilsTest is Test {
       MathUtils.calculateLinearInterestFromBips(1000, 365 days),
       1e26
     );
+  }
+
+  function testSatSub(uint256 a, uint256 b) external {
+    if (b > a) {
+      assertEq(MathUtils.satSub(a, b), 0);
+    } else {
+      assertEq(MathUtils.satSub(a, b), a - b);
+    }
   }
 }

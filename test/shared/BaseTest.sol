@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
 import { FeeMath, MathUtils, SafeCastLib, VaultState, HALF_RAY, RAY } from 'reference/libraries/FeeMath.sol';
 import 'forge-std/Test.sol';
@@ -67,31 +67,31 @@ contract BaseTest is Test {
 	function getValidState(
 		StateFuzzInputs calldata inputs
 	) private view returns (VaultState memory state) {
-		state.scaleFactor = bound(inputs.scaleFactor, RAY, type(uint112).max).safeCastTo112();
+		state.scaleFactor = bound(inputs.scaleFactor, RAY, type(uint112).max).toUint112();
 
 		state.scaledTotalSupply = bound(
 			inputs.scaledTotalSupply,
 			uint256(1e18).rayDiv(state.scaleFactor),
 			type(uint104).max
-		).safeCastTo104();
+		).toUint104();
 
 		state.isDelinquent = inputs.isDelinquent;
 		state.maxTotalSupply = bound(
 			inputs.maxTotalSupply,
 			uint256(state.scaledTotalSupply).rayMul(state.scaleFactor),
 			type(uint128).max
-		).safeCastTo128();
+		).toUint128();
 		state.timeDelinquent = bound(inputs.timeDelinquent, 0, inputs.lastInterestAccruedTimestamp)
-			.safeCastTo32();
-		state.annualInterestBips = bound(inputs.annualInterestBips, 1, 1e4).safeCastTo16();
-		// state.lastInterestAccruedTimestamp = bound(inputs.lastInterestAccruedTimestamp, 1, block.timestamp - 10).safeCastTo32();
+			.toUint32();
+		state.annualInterestBips = bound(inputs.annualInterestBips, 1, 1e4).toUint16();
+		// state.lastInterestAccruedTimestamp = bound(inputs.lastInterestAccruedTimestamp, 1, block.timestamp - 10).toUint32();
 	}
 
 	function getFuzzContext(FuzzInput calldata input) internal returns (FuzzContext memory context) {
 		context.state = getValidState(input.state);
-		context.liquidityCoverageRatio = bound(input.liquidityCoverageRatio, 1, 1e4).safeCastTo16();
-		context.protocolFeeBips = bound(input.protocolFeeBips, 1, 1e4).safeCastTo16();
-		context.delinquencyFeeBips = bound(input.delinquencyFeeBips, 1, 1e4).safeCastTo16();
+		context.liquidityCoverageRatio = bound(input.liquidityCoverageRatio, 1, 1e4).toUint16();
+		context.protocolFeeBips = bound(input.protocolFeeBips, 1, 1e4).toUint16();
+		context.delinquencyFeeBips = bound(input.delinquencyFeeBips, 1, 1e4).toUint16();
 		context.delinquencyGracePeriod = input.delinquencyGracePeriod;
 		context.timeDelta = bound(input.timeDelta, 0, type(uint32).max);
 		uint256 currentBlockTime = bound(block.timestamp, context.timeDelta, type(uint32).max);

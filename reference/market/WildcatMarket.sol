@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity >=0.8.20;
 
 import '../libraries/FeeMath.sol';
 import './WildcatMarketBase.sol';
@@ -7,12 +7,14 @@ import './WildcatMarketConfig.sol';
 import './WildcatMarketToken.sol';
 import './WildcatMarketWithdrawals.sol';
 
+
 contract WildcatMarket is
 	WildcatMarketBase,
 	WildcatMarketConfig,
 	WildcatMarketToken,
 	WildcatMarketWithdrawals
 {
+  using MathUtils for uint256;
   using SafeTransferLib for address;
 
 	function depositUpTo(
@@ -20,13 +22,17 @@ contract WildcatMarket is
 	) public virtual nonReentrant returns (uint256 /* actualAmount */) {
 		// Get current state
 
-		VaultState memory state = _getCurrentStateAndAccrueFees();
+		VaultState memory state = _getUpdatedState();
 
 		// Reduce amount if it would exceed totalSupply
-		amount = MathUtils.min(amount, state.getMaximumDeposit());
+		amount = MathUtils.min(amount, state.maximumDeposit());
 
 		// Scale the actual mint amount
 		uint256 scaledAmount = state.scaleAmount(amount);
+
+    if (scaledAmount == 0) {
+      revert NullMintAmount();
+    }
 
 		// Transfer deposit from caller
 		asset.safeTransferFrom(msg.sender, address(this), amount);
@@ -58,7 +64,7 @@ contract WildcatMarket is
 	}
 
 	function collectFees() external nonReentrant {
-		VaultState memory state = _getCurrentStateAndAccrueFees();
+		VaultState memory state = _getUpdatedState();
 		// Coverage for deposits takes precedence over fee revenue.
 		uint256 assetsRequiredForDeposits = state.liquidityRequired();
 		if (totalAssets() < assetsRequiredForDeposits) {
@@ -71,8 +77,8 @@ contract WildcatMarket is
 	}
 
 	function borrow(uint256 amount) external onlyBorrower nonReentrant {
-		VaultState memory state = _getCurrentStateAndAccrueFees();
-		uint256 borrowable = state.liquidityRequired();
+		VaultState memory state = _getUpdatedState();
+		uint256 borrowable = totalAssets().satSub(state.liquidityRequired());
 		if (amount > borrowable) {
 			revert BorrowAmountTooHigh();
 		}
@@ -85,10 +91,10 @@ contract WildcatMarket is
 	 * @dev Sets the vault APR to 0% and transfers the outstanding balance for full redemption
 	 */
 	function closeVault() external onlyController nonReentrant {
-		VaultState memory state = _getCurrentStateAndAccrueFees();
-		state.setAnnualInterestBips(0);
+		VaultState memory state = _getUpdatedState();
+		state.annualInterestBips = 0;
 		uint256 currentlyHeld = totalAssets();
-		uint256 outstanding = state.getTotalSupply() - currentlyHeld;
+		uint256 outstanding = state.totalSupply() - currentlyHeld;
 		_writeState(state);
 		asset.safeTransferFrom(msg.sender, address(this), outstanding);
 		emit VaultClosed(block.timestamp);

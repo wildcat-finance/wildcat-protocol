@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity >=0.8.20;
+
 import './BoolUtils.sol';
 import './MathUtils.sol';
 import './SafeCastLib.sol';
@@ -12,8 +13,16 @@ using BoolUtils for bool;
 
 // scaleFactor = 112 bits
 // RAY = 89 bits
-// so, rayMul by scaleFactor can grow by 23 bits
-// if maxTotalSupply is 128 bits, scaledTotalSupply should be 104 bits
+// normalize(x) = (x * scaleFactor) / RAY
+// which can grow x by 23 bits
+// for 128 bit scaled amounts, normalized amounts can't exceed 105 bits (104 since that's a valid type)
+
+/*
+rayDiv of normalized amount `x` can reduce result by 23 bits
+rayMul of scaled amount `x` can increase result by 23 bits
+scaled amount always
+
+*/
 
 struct VaultState {
 	uint128 maxTotalSupply;
@@ -48,25 +57,19 @@ library VaultStateLib {
 	using MathUtils for uint256;
 	using SafeCastLib for uint256;
 
+	// =====================================================================//
+	//                            Read Methods                              //
+	// =====================================================================//
+
 	/// @dev Returns the normalized total supply of the vault.
-	function getTotalSupply(VaultState memory state) internal pure returns (uint256) {
+	function totalSupply(VaultState memory state) internal pure returns (uint256) {
 		return state.normalizeAmount(state.scaledTotalSupply);
 	}
 
 	/// @dev Returns the maximum amount of tokens that can be deposited without
 	///      reaching the maximum total supply.
-	function getMaximumDeposit(VaultState memory state) internal pure returns (uint256) {
-		return uint256(state.maxTotalSupply).satSub(state.getTotalSupply());
-	}
-
-	/// @dev Increase the scaled total supply.
-	function increaseScaledTotalSupply(VaultState memory state, uint256 scaledAmount) internal pure {
-		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) + scaledAmount).safeCastTo104();
-	}
-
-	/// @dev Decrease the scaled total supply.
-	function decreaseScaledTotalSupply(VaultState memory state, uint256 scaledAmount) internal pure {
-		state.scaledTotalSupply = (uint256(state.scaledTotalSupply) - scaledAmount).safeCastTo104();
+	function maximumDeposit(VaultState memory state) internal pure returns (uint256) {
+		return uint256(state.maxTotalSupply).satSub(state.totalSupply());
 	}
 
 	/// @dev Normalize an amount of scaled tokens using the current scale factor.
@@ -82,26 +85,6 @@ library VaultStateLib {
 		return amount.rayDiv(state.scaleFactor);
 	}
 
-	function setLiquidityCoverageRatio(
-		VaultState memory state,
-		uint256 liquidityCoverageRatio
-	) internal pure {
-		if (liquidityCoverageRatio > BIP) {
-			revert IVaultEventsAndErrors.LiquidityCoverageRatioTooHigh();
-		}
-		state.liquidityCoverageRatio = liquidityCoverageRatio.safeCastTo16();
-	}
-
-	function setAnnualInterestBips(
-		VaultState memory state,
-		uint256 annualInterestBips
-	) internal pure {
-		if (annualInterestBips > BIP) {
-			revert IVaultEventsAndErrors.InterestRateTooHigh();
-		}
-		state.annualInterestBips = annualInterestBips.safeCastTo16();
-	}
-
 	/**
 	 * Collateralization requires all pending withdrawals be covered
 	 * and coverage ratio for remaining liquidity.
@@ -114,14 +97,6 @@ library VaultStateLib {
 			state.liquidityCoverageRatio
 		) + scaledWithdrawals;
 		return state.normalizeAmount(scaledCoverageLiquidity) + state.accruedProtocolFees;
-	}
-
-	function decreaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
-		account.scaledBalance = (uint256(account.scaledBalance) - scaledAmount).safeCastTo104();
-	}
-
-	function increaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
-		account.scaledBalance = (uint256(account.scaledBalance) + scaledAmount).safeCastTo104();
 	}
 
 	function liquidAssets(
@@ -141,5 +116,27 @@ library VaultStateLib {
 			// Equivalent to expiry > 0 && expiry <= block.timestamp
 			result := gt(timestamp(), sub(expiry, 1))
 		}
+	}
+
+	// =====================================================================//
+	//                        Simple State Updates                          //
+	// =====================================================================//
+
+	/// @dev Decrease the scaled total supply.
+	function decreaseScaledTotalSupply(VaultState memory state, uint256 scaledAmount) internal pure {
+		state.scaledTotalSupply -= scaledAmount.toUint104();
+	}
+
+	/// @dev Increase the scaled total supply.
+	function increaseScaledTotalSupply(VaultState memory state, uint256 scaledAmount) internal pure {
+		state.scaledTotalSupply += scaledAmount.toUint104();
+	}
+
+	function decreaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
+		account.scaledBalance -= scaledAmount.toUint104();
+	}
+
+	function increaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
+		account.scaledBalance += scaledAmount.toUint104();
 	}
 }

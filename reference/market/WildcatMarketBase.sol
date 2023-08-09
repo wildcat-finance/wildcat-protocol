@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity >=0.8.20;
 
 import '../interfaces/IERC20.sol';
 import '../libraries/FeeMath.sol';
@@ -13,12 +13,14 @@ import '../interfaces/IWildcatVaultController.sol';
 import '../interfaces/IWildcatVaultFactory.sol';
 import { IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
+import "../libraries/BoolUtils.sol";
 
 contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	using WithdrawalLib for VaultState;
 	using FeeMath for VaultState;
 	using SafeCastLib for uint256;
 	using MathUtils for uint256;
+  using BoolUtils for bool;
 
 	// ==================================================================== //
 	//                       Vault Config (immutable)                       //
@@ -77,7 +79,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	constructor() {
 		VaultParameters memory parameters = IWildcatVaultFactory(msg.sender).getVaultParameters();
 
-		if (parameters.protocolFeeBips > 0 && parameters.feeRecipient == address(0)) {
+		if ((parameters.protocolFeeBips > 0).and(parameters.feeRecipient == address(0))) {
 			revert FeeSetWithoutRecipient();
 		}
 		if (parameters.annualInterestBips > BIP) {
@@ -100,7 +102,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 		decimals = IERC20Metadata(parameters.asset).decimals();
 
 		_state = VaultState({
-			maxTotalSupply: parameters.maxTotalSupply.safeCastTo128(),
+			maxTotalSupply: parameters.maxTotalSupply,
 			accruedProtocolFees: 0,
 			reservedAssets: 0,
 			scaledTotalSupply: 0,
@@ -108,8 +110,8 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 			pendingWithdrawalExpiry: 0,
 			isDelinquent: false,
 			timeDelinquent: 0,
-			annualInterestBips: parameters.annualInterestBips.safeCastTo16(),
-			liquidityCoverageRatio: parameters.liquidityCoverageRatio.safeCastTo16(),
+			annualInterestBips: parameters.annualInterestBips,
+			liquidityCoverageRatio: parameters.liquidityCoverageRatio,
 			scaleFactor: uint112(RAY),
 			lastInterestAccruedTimestamp: uint32(block.timestamp)
 		});
@@ -174,37 +176,16 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 		}
 	}
 
-	// ===================================================================== //
-	//                      External Config Getters                          //
-	// ===================================================================== //
-
-	/**
-	 * @dev Returns the maximum amount of underlying asset that can
-	 *      currently be deposited to the market.
-	 */
-	function maximumDeposit() external view returns (uint256) {
-		return _calculateCurrentState().getMaximumDeposit();
-	}
-
-	/**
-	 * @dev Returns the maximum supply the market can reach via
-	 *      deposits (does not apply to interest accrual).
-	 */
-	function maxTotalSupply() external view returns (uint256) {
-		return _state.maxTotalSupply;
-	}
-
-	/**
-	 * @dev Returns the annual interest rate earned by lenders
-	 *      in bips.
-	 */
-	function annualInterestBips() external view returns (uint256) {
-		return _state.annualInterestBips;
-	}
-
-	function liquidityCoverageRatio() external view returns (uint256) {
-		return _state.liquidityCoverageRatio;
-	}
+	/* 	function effectiveAnnualInterestBips() external view returns (uint256) {
+		VaultState memory state = _calculateCurrentState();
+		return (state.annualInterestBips +
+			protocolFeeBips +
+			(
+				(state.isDelinquent && state.timeDelinquent > delinquencyGracePeriod)
+					? delinquencyFeeBips
+					: 0
+			));
+	} */
 
 	// ===================================================================== //
 	//                       External State Getters                          //
@@ -226,7 +207,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 
 	/// @dev  Balance in underlying asset which is not owed in fees.
 	///       Returns current value after calculating new protocol fees.
-	function borrowableAssets() public view nonReentrantView returns (uint256) {
+	function borrowableAssets() external view nonReentrantView returns (uint256) {
 		return totalAssets().satSub(coverageLiquidity());
 	}
 
@@ -257,37 +238,32 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	 *
 	 * @return state Vault state after interest is accrued.
 	 */
-	function _getCurrentStateAndAccrueFees() internal returns (VaultState memory state) {
+	function _getUpdatedState() internal returns (VaultState memory state) {
 		state = _state;
 		if (block.timestamp == state.lastInterestAccruedTimestamp) {
 			return state;
 		}
 		// Handle expired withdrawal batch
-		if (block.timestamp >= state.pendingWithdrawalExpiry) {
+		if ((block.timestamp >= state.pendingWithdrawalExpiry).and(state.pendingWithdrawalExpiry != 0)) {
 			uint256 expiry = state.pendingWithdrawalExpiry;
-			(
-				uint256 baseInterestRay,
-				uint256 delinquencyFeeRay,
-				uint256 protocolFee
-			) = _updateScaleFactorAndFees(state, expiry);
+			(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
+				.updateScaleFactorAndFees(
+					protocolFeeBips,
+					delinquencyFeeBips,
+					delinquencyGracePeriod,
+					expiry
+				);
 			emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
-			WithdrawalBatch memory batch = _withdrawalData.processExpiredBatch(state, totalAssets());
-			emit WithdrawalBatchExpired(
-				expiry,
-				batch.scaledTotalAmount,
-				batch.scaledPaidAmount,
-				batch.normalizedPaidAmount
-			);
-			if (state.scaledPendingWithdrawals > 0) {
-				emit WithdrawalBatchCreated(state.pendingWithdrawalExpiry, state.scaledPendingWithdrawals);
-			}
+			_processExpiredWithdrawalBatch(state);
 		}
 		{
-			(
-				uint256 baseInterestRay,
-				uint256 delinquencyFeeRay,
-				uint256 protocolFee
-			) = _updateScaleFactorAndFees(state, block.timestamp);
+			(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
+				.updateScaleFactorAndFees(
+					protocolFeeBips,
+					delinquencyFeeBips,
+					delinquencyGracePeriod,
+					block.timestamp
+				);
 			emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
 		}
 	}
@@ -298,15 +274,29 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 			return state;
 		}
 		// Handle expired withdrawal batch
-		if (block.timestamp >= state.pendingWithdrawalExpiry) {
+		if ((state.pendingWithdrawalExpiry != 0 ).and(block.timestamp >= state.pendingWithdrawalExpiry)) {
 			uint256 expiry = state.pendingWithdrawalExpiry;
-			_updateScaleFactorAndFees(state, expiry);
+			state.updateScaleFactorAndFees(
+				protocolFeeBips,
+				delinquencyFeeBips,
+				delinquencyGracePeriod,
+				expiry
+			);
 			// @todo: fix this (make view version of processExpiredBatch)
 			// WithdrawalBatch memory batch = state.processExpiredBatch(state.liquidAssets(totalAssets()));
 		}
-		_updateScaleFactorAndFees(state, block.timestamp);
+		state.updateScaleFactorAndFees(
+			protocolFeeBips,
+			delinquencyFeeBips,
+			delinquencyGracePeriod,
+			block.timestamp
+		);
 	}
 
+	/**
+	 * @dev Writes the cached VaultState to storage and emits an event.
+	 *      Used at the end of all functions which modify `state`.
+	 */
 	function _writeState(VaultState memory state) internal {
 		bool isDelinquent = state.liquidityRequired() > totalAssets();
 		state.isDelinquent = isDelinquent;
@@ -315,46 +305,50 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	}
 
 	/**
-	 * @dev Calculates interest and delinquency/protocol fees accrued since last state update
-	 *      and applies it to cached state, returning the rates for base interest and delinquency
-	 *      fees and the normalized amount of protocol fees accrued.
-	 *
-	 * @param state Vault scale parameters
-	 * @param timestamp Time to calculate interest and fees accrued until
-	 * @return baseInterestRay Interest accrued to lenders (ray)
-	 * @return delinquencyFeeRay Penalty fee incurred by borrower for delinquency (ray).
-	 * @return protocolFee Protocol fee charged on interest (normalized token amount).
+	 * @dev When a withdrawal batch expires, the vault will checkpoint the scale factor
+	 *      as of the time of expiry and retrieve the current liquid assets in the vault
+	 * (assets which are not already owed to protocol fees or prior withdrawal batches).
 	 */
-	function _updateScaleFactorAndFees(
-		VaultState memory state,
-		uint256 timestamp
-	)
-		internal
-		view
-		returns (uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee)
-	{
-		baseInterestRay = FeeMath.calculateLinearInterestFromBips(
-			state.annualInterestBips,
-			timestamp - state.lastInterestAccruedTimestamp
+	function _processExpiredWithdrawalBatch(VaultState memory state) internal {
+		WithdrawalBatch storage batch = _withdrawalData.batches[state.pendingWithdrawalExpiry];
+
+		// Get the liquidity which is not already reserved for prior withdrawal batches
+		// or owed to protocol fees.
+		uint256 availableLiquidity = batch.availableLiquidityForBatch(state, totalAssets());
+
+		uint104 scaledTotalAmount = batch.scaledTotalAmount;
+
+		uint128 normalizedOwedAmount = state.normalizeAmount(scaledTotalAmount).toUint128();
+
+		(uint104 scaledAmountBurned, uint128 normalizedAmountPaid) = (availableLiquidity >=
+			normalizedOwedAmount)
+			? (scaledTotalAmount, normalizedOwedAmount)
+			: (state.scaleAmount(availableLiquidity).toUint104(), availableLiquidity.toUint128());
+
+		batch.scaledAmountBurned = scaledAmountBurned;
+		batch.normalizedAmountPaid = normalizedAmountPaid;
+
+		emit WithdrawalBatchExpired(
+			state.pendingWithdrawalExpiry,
+			scaledTotalAmount,
+			scaledAmountBurned,
+			normalizedAmountPaid
 		);
 
-		if (protocolFeeBips > 0) {
-			protocolFee = state.applyProtocolFee(baseInterestRay, protocolFeeBips);
+		if (scaledAmountBurned < scaledTotalAmount) {
+			_withdrawalData.unpaidBatches.push(state.pendingWithdrawalExpiry);
+		} else {
+			emit WithdrawalBatchClosed(state.pendingWithdrawalExpiry);
 		}
 
-		if (delinquencyFeeBips > 0) {
-			delinquencyFeeRay = state.updateDelinquency(
-				timestamp,
-				delinquencyFeeBips,
-				delinquencyGracePeriod
-			);
+		state.pendingWithdrawalExpiry = 0;
+		state.reservedAssets += normalizedAmountPaid;
+
+		if (scaledAmountBurned > 0) {
+			// Emit transfer for external trackers to indicate burn
+			emit Transfer(address(this), address(0), normalizedAmountPaid);
+			state.scaledPendingWithdrawals -= scaledAmountBurned;
+			state.scaledTotalSupply -= scaledAmountBurned;
 		}
-
-		// Calculate new scaleFactor
-		uint256 prevScaleFactor = state.scaleFactor;
-		uint256 scaleFactorDelta = prevScaleFactor.rayMul(baseInterestRay + delinquencyFeeRay);
-
-		state.scaleFactor = (prevScaleFactor + scaleFactorDelta).safeCastTo112();
-		state.lastInterestAccruedTimestamp = uint32(timestamp);
 	}
 }

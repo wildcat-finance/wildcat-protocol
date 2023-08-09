@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: NONE
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.20;
 
 import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
 
@@ -9,13 +9,15 @@ import 'forge-std/Vm.sol';
 import 'reference/WildcatVaultController.sol';
 import 'reference/WildcatVaultFactory.sol';
 import './helpers/Assertions.sol';
+import './helpers/MockController.sol';
 
-uint256 constant DefaultMaximumSupply = 100_000e18;
-uint256 constant DefaultInterest = 1000;
-uint256 constant DefaultPenaltyFee = 1000;
-uint256 constant DefaultLiquidityCoverage = 2000;
-uint256 constant DefaultGracePeriod = 2000;
-uint256 constant DefaultInterestFee = 1000;
+uint128 constant DefaultMaximumSupply = 100_000e18;
+uint16 constant DefaultInterest = 1000;
+uint16 constant DefaultDelinquencyFee = 1000;
+uint16 constant DefaultLiquidityCoverage = 2000;
+uint32 constant DefaultGracePeriod = 2000;
+uint16 constant DefaultProtocolFeeBips = 1000;
+uint32 constant DefaultWithdrawalBatchDuration = 86400;
 
 uint256 constant DefaultInterestPerSecondRay = (DefaultInterest * 1e23) / SecondsIn365Days;
 
@@ -30,6 +32,7 @@ address constant borrower = address(0xb04405e4);
 contract BaseVaultTest is Test, Assertions {
 	using stdStorage for StdStorage;
 	using FeeMath for VaultState;
+	using SafeCastLib for uint256;
 
 	WildcatVaultFactory internal factory;
 	WildcatVaultController internal controller;
@@ -45,13 +48,14 @@ contract BaseVaultTest is Test, Assertions {
 	address internal _pranking;
 
 	VaultState internal previousState;
+	WithdrawalData internal _withdrawalData;
 	uint256 internal lastProtocolFees;
 	uint256 internal lastTotalAssets;
 
 	function setUp() public {
 		factory = new WildcatVaultFactory();
-		controller = new WildcatVaultController(feeRecipient, address(factory));
-		controller.approveLender(alice);
+		controller = new MockController(feeRecipient, address(factory));
+		controller.authorizeLender(alice);
 		asset = new MockERC20('Token', 'TKN', 18);
 		parameters = VaultParameters({
 			asset: address(asset),
@@ -61,19 +65,73 @@ contract BaseVaultTest is Test, Assertions {
 			controller: address(controller),
 			feeRecipient: feeRecipient,
 			sentinel: sentinel,
-			maxTotalSupply: DefaultMaximumSupply,
-			protocolFeeBips: DefaultInterestFee,
+			maxTotalSupply: uint128(DefaultMaximumSupply),
+			protocolFeeBips: DefaultProtocolFeeBips,
 			annualInterestBips: DefaultInterest,
-			delinquencyFeeBips: DefaultPenaltyFee,
-			withdrawalBatchDuration: 7 days,
+			delinquencyFeeBips: DefaultDelinquencyFee,
+			withdrawalBatchDuration: DefaultWithdrawalBatchDuration,
 			liquidityCoverageRatio: DefaultLiquidityCoverage,
 			delinquencyGracePeriod: DefaultGracePeriod
 		});
 		setupVault();
 	}
 
-	function pendingState() internal view returns (VaultState memory state, uint256 protocolFees) {
+	/**
+	 * @dev When a withdrawal batch expires, the vault will checkpoint the scale factor
+	 *      as of the time of expiry and retrieve the current liquid assets in the vault
+	 * (assets which are not already owed to protocol fees or prior withdrawal batches).
+	 */
+	function _processExpiredWithdrawalBatch(VaultState memory state) internal {
+		WithdrawalBatch storage batch = _withdrawalData.batches[state.pendingWithdrawalExpiry];
+
+		// Get the liquidity which is not already reserved for prior withdrawal batches
+		// or owed to protocol fees.
+		uint256 availableLiquidity = batch.availableLiquidityForBatch(state, lastTotalAssets);
+
+		uint104 scaledTotalAmount = batch.scaledTotalAmount;
+
+		uint128 normalizedOwedAmount = state.normalizeAmount(scaledTotalAmount).toUint128();
+
+		(uint104 scaledAmountBurned, uint128 normalizedAmountPaid) = (availableLiquidity >=
+			normalizedOwedAmount)
+			? (scaledTotalAmount, normalizedOwedAmount)
+			: (state.scaleAmount(availableLiquidity).toUint104(), availableLiquidity.toUint128());
+
+		batch.scaledAmountBurned = scaledAmountBurned;
+		batch.normalizedAmountPaid = normalizedAmountPaid;
+
+		if (scaledAmountBurned < scaledTotalAmount) {
+			_withdrawalData.unpaidBatches.push(state.pendingWithdrawalExpiry);
+		}
+
+		state.pendingWithdrawalExpiry = 0;
+		state.reservedAssets += normalizedAmountPaid;
+
+		if (scaledAmountBurned > 0) {
+			state.scaledPendingWithdrawals -= scaledAmountBurned;
+			state.scaledTotalSupply -= scaledAmountBurned;
+		}
+	}
+
+	function pendingState() internal returns (VaultState memory state) {
 		state = previousState;
+		if (block.timestamp >= state.pendingWithdrawalExpiry && state.pendingWithdrawalExpiry != 0) {
+			uint256 expiry = state.pendingWithdrawalExpiry;
+			state.updateScaleFactorAndFees(
+				parameters.protocolFeeBips,
+				parameters.delinquencyFeeBips,
+				parameters.delinquencyGracePeriod,
+				expiry
+			);
+      _processExpiredWithdrawalBatch(state);
+		}
+		state
+			.updateScaleFactorAndFees(
+				parameters.protocolFeeBips,
+				parameters.delinquencyFeeBips,
+				parameters.delinquencyGracePeriod,
+				block.timestamp
+			);
 		// (uint256 feesAccrued, bool didUpdate) = state.calculateInterestAndFees(
 		// 	parameters.protocolFeeBips,
 		// 	parameters.delinquencyFeeBips,
@@ -82,47 +140,57 @@ contract BaseVaultTest is Test, Assertions {
 		// protocolFees = lastProtocolFees + feesAccrued;
 	}
 
-	function updateState(VaultState memory state, uint256 protocolFees) internal {
+	function updateState(VaultState memory state) internal {
 		state.isDelinquent = state.liquidityRequired() > lastTotalAssets;
 		previousState = state;
-		lastProtocolFees = protocolFees;
 	}
 
 	function _deposit(address from, uint256 amount) internal asAccount(from) returns (uint256) {
 		if (_pranking != address(0)) {
 			vm.stopPrank();
 		}
-		controller.approveLender(from);
+		controller.authorizeLender(from);
 		if (_pranking != address(0)) {
 			vm.startPrank(_pranking);
 		}
-		(VaultState memory state, uint256 protocolFees) = pendingState();
-		uint256 realAmount = MathUtils.min(amount, state.getMaximumDeposit());
-		uint256 scaledAmount = state.scaleAmount(realAmount);
+		asset.mint(from, amount);
+		asset.approve(address(vault), amount);
+		VaultState memory state = pendingState();
+		uint256 expectedNormalizedAmount = MathUtils.min(amount, state.maximumDeposit());
+		uint256 scaledAmount = state.scaleAmount(expectedNormalizedAmount);
 		state.increaseScaledTotalSupply(scaledAmount);
-		uint256 actualAmount = vault.depositUpTo(amount);
-		assertEq(actualAmount, realAmount, 'Actual amount deposited');
-		lastTotalAssets += actualAmount;
-		updateState(state, protocolFees);
-		return actualAmount;
+		uint256 actualNormalizedAmount = vault.depositUpTo(amount);
+		assertEq(actualNormalizedAmount, expectedNormalizedAmount, 'Actual amount deposited');
+		lastTotalAssets += actualNormalizedAmount;
+		updateState(state);
+		return actualNormalizedAmount;
 	}
 
 	function _withdraw(address from, uint256 amount) internal asAccount(from) {
 		// @todo fix
-		/* 		(VaultState memory state, uint256 protocolFees) = pendingState();
+		/* 		VaultState memory state = pendingState();
 		uint256 scaledAmount = state.scaleAmount(amount);
 		state.decreaseScaledTotalSupply(scaledAmount);
 		vault.withdraw(amount);
-		updateState(state, protocolFees);
+		updateState(state);
 		lastTotalAssets -= amount;
 		_checkState(); */
 	}
 
+	event Borrow(uint256 assetAmount);
+	event DebtRepaid(uint256 assetAmount);
+	event Transfer(address indexed from, address indexed to, uint256 value);
+
 	function _borrow(uint256 amount) internal asAccount(borrower) {
-		(VaultState memory state, uint256 protocolFees) = pendingState();
+		VaultState memory state = pendingState();
+
+		vm.expectEmit(address(vault));
+		emit Borrow(amount);
+		// _expectTransfer(address(asset), borrower, address(vault), amount);
 		vault.borrow(amount);
-		updateState(state, protocolFees);
+
 		lastTotalAssets -= amount;
+		updateState(state);
 		_checkState();
 	}
 
@@ -146,13 +214,17 @@ contract BaseVaultTest is Test, Assertions {
 	}
 
 	modifier asAccount(address account) {
-		bool resetPrank = _pranking != address(0) && account != _pranking;
-		if (resetPrank) vm.stopPrank();
-		if (account != _pranking) vm.startPrank(account);
-		_;
-		if (account != _pranking) vm.stopPrank();
-		if (resetPrank) {
-			vm.startPrank(_pranking);
+		address previousPrank = _pranking;
+		if (account != previousPrank) {
+			if (previousPrank != address(0)) vm.stopPrank();
+			vm.startPrank(account);
+			_pranking = account;
+			_;
+			vm.stopPrank();
+			if (previousPrank != address(0)) vm.startPrank(previousPrank);
+			_pranking = previousPrank;
+		} else {
+			_;
 		}
 	}
 
@@ -166,6 +238,10 @@ contract BaseVaultTest is Test, Assertions {
 
 	function _warpOneSecond() internal {
 		vm.warp(block.timestamp + 1);
+	}
+
+	function _warp(uint256 time) internal {
+		vm.warp(block.timestamp + time);
 	}
 
 	function _deployVault() internal {

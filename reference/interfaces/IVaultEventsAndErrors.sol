@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity >=0.8.20;
 
-import { VaultState } from "../libraries/VaultState.sol";
-import { AuthRole } from "./WildcatStructsAndEnums.sol";
+import { VaultState } from '../libraries/VaultState.sol';
+import { AuthRole } from './WildcatStructsAndEnums.sol';
 
 interface IVaultEventsAndErrors {
 	/// @notice Error thrown when deposit exceeds maxTotalSupply
@@ -48,19 +48,26 @@ interface IVaultEventsAndErrors {
 
 	error InsufficientCoverageForFeeWithdrawal();
 
+	/// @notice Error thrown when liquidity coverage ratio set to value
+	///         the vault currently would not meet.
+
+  error NullMintAmount();
+
+  error NullBurnAmount();
+  
+	error InsufficientCoverageForNewLiquidityRatio();
+
 	event Transfer(address indexed from, address indexed to, uint256 value);
 
 	event Approval(address indexed owner, address indexed spender, uint256 value);
 
-	event MaxSupplyUpdated(uint256 assets);
+	event MaxTotalSupplyUpdated(uint256 assets);
 
 	event AnnualInterestBipsUpdated(uint256 annualInterestBipsUpdated);
 
 	event LiquidityCoverageRatioUpdated(uint256 liquidityCoverageRatioUpdated);
 
 	event Deposit(address indexed account, uint256 assetAmount, uint256 scaledAmount);
-
-	event Withdrawal(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
 	event Borrow(uint256 assetAmount);
 
@@ -77,26 +84,36 @@ interface IVaultEventsAndErrors {
 		uint256 protocolFee
 	);
 
+	event AuthorizationStatusUpdated(address indexed account, AuthRole role);
+
+	// =====================================================================//
+	//                          Withdrawl Events                            //
+	// =====================================================================//
+
 	event WithdrawalBatchExpired(
 		uint256 expiry,
 		uint256 scaledTotalAmount,
-		uint256 scaledPaidAmount,
-		uint256 normalizedPaidAmount
+		uint256 scaledAmountBurned,
+		uint256 normalizedAmountPaid
 	);
 
-  event WithdrawalBatchCreated(uint256 expiry, uint256 totalScaledAmount);
+	/** @dev Emitted when a new withdrawal batch is created. */
+	event WithdrawalBatchCreated(uint256 expiry);
 
-  event WithdrawalRequestCreated(
-    uint256 expiry,
-    address account,
-    uint256 scaledAmount
-  );
+	/** @dev Emitted when a withdrawal batch is paid off. */
+	event WithdrawalBatchClosed(
+		uint256 expiry
+	);
 
-  event WithdrawalExecuted(
-    uint256 expiry,
-    address account,
-    uint256 normalizedAmount
-  );
+	event WithdrawalBatchPayment(
+		uint256 expiry,
+		uint256 scaledAmountBurned,
+		uint256 normalizedAmountPaid
+	);
 
-	event AuthorizationStatusUpdated(address indexed account, AuthRole role);
+	event WithdrawalQueued(uint256 expiry, address account, uint256 scaledAmount);
+
+	event WithdrawalExecuted(uint256 expiry, address account, uint256 normalizedAmount);
+
+	event Withdrawal(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 }

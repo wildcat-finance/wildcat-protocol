@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity >=0.8.20;
 
 import './MathUtils.sol';
 import './SafeCastLib.sol';
@@ -8,6 +8,7 @@ import './VaultState.sol';
 // using Math for uint256;
 using SafeCastLib for uint256;
 using MathUtils for uint256;
+using FeeMath for VaultState;
 
 library FeeMath {
 	/**
@@ -37,19 +38,18 @@ library FeeMath {
 			timestamp - state.lastInterestAccruedTimestamp
 		);
 	}
-
+  
 	function applyProtocolFee(
 		VaultState memory state,
 		uint256 baseInterestRay,
 		uint256 protocolFeeBips
 	) internal pure returns (uint256 protocolFee) {
 		// Protocol fee is charged in addition to the interest paid to lenders.
-		// It is not applied to the scale factor.
 		uint256 protocolFeeRay = protocolFeeBips.bipMul(baseInterestRay);
 		protocolFee = uint256(state.scaledTotalSupply).rayMul(
 			uint256(state.scaleFactor).rayMul(protocolFeeRay)
 		);
-    state.accruedProtocolFees = (state.accruedProtocolFees + protocolFee).safeCastTo128();
+    state.accruedProtocolFees = (state.accruedProtocolFees + protocolFee).toUint128();
 	}
 
 	function updateDelinquency(
@@ -57,7 +57,7 @@ library FeeMath {
 		uint256 timestamp,
 		uint256 delinquencyFeeBips,
 		uint256 delinquencyGracePeriod
-	) internal pure returns (uint256 penaltyFee) {
+	) internal pure returns (uint256 delinquencyFeeRay) {
 		// Calculate the number of seconds the borrower spent in penalized
 		// delinquency since the last update.
 		uint256 timeWithPenalty = updateTimeDelinquentAndGetPenaltyTime(
@@ -68,7 +68,7 @@ library FeeMath {
 
 		if (timeWithPenalty > 0) {
 			// Calculate penalty fees on the interest accrued.
-			penaltyFee = calculateLinearInterestFromBips(delinquencyFeeBips, timeWithPenalty);
+			delinquencyFeeRay = calculateLinearInterestFromBips(delinquencyFeeBips, timeWithPenalty);
 		}
 	}
 
@@ -99,7 +99,7 @@ library FeeMath {
 		if (state.isDelinquent) {
 			// Since the borrower is still delinquent, increase the total
 			// time in delinquency by the time elapsed.
-			state.timeDelinquent = (previousTimeDelinquent + timeDelta).safeCastTo32();
+			state.timeDelinquent = (previousTimeDelinquent + timeDelta).toUint32();
 
 			// Calculate the number of seconds the borrower had remaining
 			// in the grace period.
@@ -114,7 +114,7 @@ library FeeMath {
 
 		// Reduce the total time in delinquency by the time elapsed, stopping
 		// when it reaches zero.
-		state.timeDelinquent = previousTimeDelinquent.satSub(timeDelta).safeCastTo32();
+		state.timeDelinquent = previousTimeDelinquent.satSub(timeDelta).toUint32();
 
 		// Calculate the number of seconds the old timeDelinquent had remaining
 		// outside the grace period, or zero if it was already in the grace period.
@@ -123,50 +123,54 @@ library FeeMath {
 		// Only apply penalties for the remaining time outside of the grace period.
 		return MathUtils.min(secondsRemainingWithPenalty, timeDelta);
 	}
+
+	/**
+	 * @dev Calculates interest and delinquency/protocol fees accrued since last state update
+	 *      and applies it to cached state, returning the rates for base interest and delinquency
+	 *      fees and the normalized amount of protocol fees accrued.
+	 *
+   *      Takes `timestamp` as input to allow separate calculation of interest
+   *      before and after withdrawal batch expiry.
+   * 
+	 * @param state Vault scale parameters
+   * @param protocolFeeBips Protocol fee rate (in bips)
+   * @param delinquencyFeeBips Delinquency fee rate (in bips)
+   * @param delinquencyGracePeriod Grace period (in seconds) before delinquency fees apply
+	 * @param timestamp Time to calculate interest and fees accrued until
+	 * @return baseInterestRay Interest accrued to lenders (ray)
+	 * @return delinquencyFeeRay Penalty fee incurred by borrower for delinquency (ray).
+	 * @return protocolFee Protocol fee charged on interest (normalized token amount).
+	 */
+	function updateScaleFactorAndFees(
+		VaultState memory state,
+    uint256 protocolFeeBips,
+    uint256 delinquencyFeeBips,
+    uint256 delinquencyGracePeriod,
+		uint256 timestamp
+	)
+		internal
+		pure
+		returns (uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee)
+	{
+		baseInterestRay = state.calculateBaseInterest(timestamp);
+
+		if (protocolFeeBips > 0) {
+			protocolFee = state.applyProtocolFee(baseInterestRay, protocolFeeBips);
+		}
+
+		if (delinquencyFeeBips > 0) {
+			delinquencyFeeRay = state.updateDelinquency(
+				timestamp,
+				delinquencyFeeBips,
+				delinquencyGracePeriod
+			);
+		}
+
+		// Calculate new scaleFactor
+		uint256 prevScaleFactor = state.scaleFactor;
+		uint256 scaleFactorDelta = prevScaleFactor.rayMul(baseInterestRay + delinquencyFeeRay);
+
+		state.scaleFactor = (prevScaleFactor + scaleFactorDelta).toUint112();
+		state.lastInterestAccruedTimestamp = uint32(timestamp);
+	}
 }
-
-// /**
-//  * @dev Calculate the new total time in delinquency and the time
-//  * outside of the grace period since the last update.
-//  * @param state Encoded state parameters
-//  * @param timeElapsed Time since last update
-//  * @param delinquencyGracePeriod Threshold before delinquency incurs penalties
-//  * @return timeWithPenalty Seconds since last update where penalties applied
-//  */
-// function _calculateDelinquencyTime(
-// 	VaultState memory state,
-// 	uint256 timeElapsed,
-// 	uint256 delinquencyGracePeriod
-// ) pure returns (uint256 timeWithPenalty) {
-// 	bool isDelinquent = state.isDelinquent;
-// 	uint256 timeDelinquent = state.timeDelinquent;
-
-// 	uint256 previousTimeDelinquent = state.timeDelinquent;
-
-// 	if (isDelinquent) {
-// 		state.timeDelinquent = (timeDelinquent + timeElapsed).safeCastTo32();
-
-// 		// Get the number of seconds the old timeDelinquent was from exceeding
-// 		// the grace period, or zero if it was already past the grace period.
-// 		uint256 secondsWithoutPenalty = delinquencyGracePeriod.satSub(
-// 			previousTimeDelinquent
-// 		);
-
-// 		/*  max(elapsed - max(delinquencyGracePeriod - timeDelinquent, 0), 0) */
-// 		// Subtract the remainder of the grace period from the time elapsed
-// 		timeWithPenalty = uint256(timeElapsed).satSub(secondsWithoutPenalty);
-// 	} else {
-// 		// Get the number of seconds the old timeDelinquent had remaining
-// 		// in the grace period, or zero if it was already in the grace period.
-// 		uint256 secondsWithPenalty = timeDelinquent.satSub(delinquencyGracePeriod);
-// 		// The time with penalty in the last interval is the min of:
-// 		// timeDelinquent - delinquencyGracePeriod, timeElapsed, 0
-// 		timeWithPenalty = Math.min(secondsWithPenalty, timeElapsed);
-// 		// Reduce `timeDelinquent` by time elapsed until it hits zero
-// 		state.timeDelinquent = timeDelinquent
-// 			.satSub(timeElapsed)
-// 			.safeCastTo32();
-
-// 		/* min(timeElapsed, max(timeDelinquent - delinquencyGracePeriod, 0)) */
-// 	}
-// }
