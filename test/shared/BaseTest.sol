@@ -6,27 +6,7 @@ import 'forge-std/Test.sol';
 import 'forge-std/console2.sol';
 import 'forge-std/StdError.sol';
 import 'solmate/test/utils/mocks/MockERC20.sol';
-
-// scaleFactor = 112 bits
-// RAY = 89 bits
-// so, rayMul by scaleFactor can grow by 23 bits
-// if maxTotalSupply is 128 bits, scaledTotalSupply should be 104 bits
-struct StateFuzzInputs {
-	// Maximum allowed token supply
-	uint128 maxTotalSupply;
-	// Scaled token supply (divided by scaleFactor)
-	uint104 scaledTotalSupply;
-	// Whether vault is currently delinquent (liquidity under requirement)
-	bool isDelinquent;
-	// Seconds in delinquency status
-	uint32 timeDelinquent;
-	// Max APR is ~655%
-	uint16 annualInterestBips;
-	// Max scale factor is ~52m
-	uint112 scaleFactor;
-	// Last time vault accrued interest
-	uint32 lastInterestAccruedTimestamp;
-}
+import { FuzzConfigInputs } from './FuzzInputs.sol';
 
 struct FuzzInput {
 	StateFuzzInputs state;
@@ -46,17 +26,53 @@ struct FuzzContext {
 	uint256 timeDelta;
 }
 
+address constant sentinel = address(0x533);
+
+address constant borrower = address(0xb04405e4);
+
 contract BaseTest is Test {
 	using MathUtils for uint256;
 	using SafeCastLib for uint256;
 
-	MockERC20 internal baseToken;
-	string internal constant baseName = 'TestToken';
-	string internal constant baseSymbol = 'TST';
-	uint8 internal constant baseDecimals = 18;
+	WildcatVaultFactory internal factory;
+	WildcatVaultController internal controller;
+	MockERC20 internal asset;
 
-	function setUp() public virtual {
-		baseToken = new MockERC20(baseName, baseSymbol, baseDecimals);
+	function deployVault(FuzzConfigInputs memory inputs) internal returns (WildcatMarket vault) {
+		factory = new WildcatVaultFactory();
+		controller = new MockController(feeRecipient, address(factory));
+		asset = new MockERC20('Token', 'TKN', 18);
+    VaultParameters memory parameters = getVaultParameters(inputs);
+    vault = WildcatMarket(factory.deployVault(parameters));
+	}
+
+	function getVaultParameters(
+		FuzzConfigInputs memory inputs
+	) internal view returns (VaultParameters memory parameters) {
+		inputs.constrain();
+		parameters = VaultParameters({
+			asset: address(asset),
+			namePrefix: 'Wildcat ',
+			symbolPrefix: 'WC',
+			borrower: borrower,
+			controller: address(controller),
+			feeRecipient: inputs.feeRecipient,
+			sentinel: sentinel,
+			maxTotalSupply: inputs.maxTotalSupply,
+			protocolFeeBips: inputs.protocolFeeBips,
+			annualInterestBips: inputs.annualInterestBips,
+			delinquencyFeeBips: inputs.delinquencyFeeBips,
+			withdrawalBatchDuration: inputs.withdrawalBatchDuration,
+			liquidityCoverageRatio: inputs.liquidityCoverageRatio,
+			delinquencyGracePeriod: inputs.delinquencyGracePeriod
+		});
+	}
+
+	function getVaultState(
+		StateFuzzInputs memory inputs
+	) internal pure returns (VaultState memory state) {
+		inputs.constrain();
+		return inputs.toState();
 	}
 
 	function maxRayMulRhs(uint256 left) internal pure returns (uint256 maxRight) {
@@ -64,31 +80,8 @@ contract BaseTest is Test {
 		maxRight = (type(uint256).max - HALF_RAY) / left;
 	}
 
-	function getValidState(
-		StateFuzzInputs calldata inputs
-	) private view returns (VaultState memory state) {
-		state.scaleFactor = bound(inputs.scaleFactor, RAY, type(uint112).max).toUint112();
-
-		state.scaledTotalSupply = bound(
-			inputs.scaledTotalSupply,
-			uint256(1e18).rayDiv(state.scaleFactor),
-			type(uint104).max
-		).toUint104();
-
-		state.isDelinquent = inputs.isDelinquent;
-		state.maxTotalSupply = bound(
-			inputs.maxTotalSupply,
-			uint256(state.scaledTotalSupply).rayMul(state.scaleFactor),
-			type(uint128).max
-		).toUint128();
-		state.timeDelinquent = bound(inputs.timeDelinquent, 0, inputs.lastInterestAccruedTimestamp)
-			.toUint32();
-		state.annualInterestBips = bound(inputs.annualInterestBips, 1, 1e4).toUint16();
-		// state.lastInterestAccruedTimestamp = bound(inputs.lastInterestAccruedTimestamp, 1, block.timestamp - 10).toUint32();
-	}
-
 	function getFuzzContext(FuzzInput calldata input) internal returns (FuzzContext memory context) {
-		context.state = getValidState(input.state);
+		context.state = getVaultState(input.state);
 		context.liquidityCoverageRatio = bound(input.liquidityCoverageRatio, 1, 1e4).toUint16();
 		context.protocolFeeBips = bound(input.protocolFeeBips, 1, 1e4).toUint16();
 		context.delinquencyFeeBips = bound(input.delinquencyFeeBips, 1, 1e4).toUint16();
