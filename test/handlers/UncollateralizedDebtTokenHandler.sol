@@ -8,10 +8,10 @@
 
 // abstract contract ERC20WrapperHandler is ERC20Handler {
 // 	using LibAddressSet for AddressSet;
-// 	IERC20 baseToken;
+// 	IERC20 asset;
 
-// 	constructor(IERC20 _token, IERC20 _baseToken) ERC20Handler(_token) {
-// 		baseToken = _baseToken;
+// 	constructor(IERC20 _token, IERC20 _asset) ERC20Handler(_token) {
+// 		asset = _asset;
 //     _mintBaseTokenToSelf(BASE_TOKEN_SUPPLY);
 // 	}
 
@@ -28,7 +28,7 @@
 //    * @dev Internal wrapper for mint tests
 //    */
 // 	// function _mint(address to, uint256 amount) internal virtual override {
-//   //   baseToken.transfer(to, amount);
+//   //   asset.transfer(to, amount);
 //   //   vm.prank(to);
 //   //   _executeDeposit(to, amount);
 //   // }
@@ -38,7 +38,7 @@
 //   // }
 
 // 	// function _boundMint(uint256 amount) internal virtual override returns (uint256) {
-//   //   return bound(amount, 0, _convertToWrapped(baseToken.balanceOf(address(this))));
+//   //   return bound(amount, 0, _convertToWrapped(asset.balanceOf(address(this))));
 //   // }
 
 
@@ -51,11 +51,11 @@
 // 	function deposit(
 // 		uint256 amount
 // 	) public virtual createActor countCall('deposit') {
-// 		amount = bound(amount, 0, _convertToWrapped(baseToken.balanceOf(address(this))));
+// 		amount = bound(amount, 0, _convertToWrapped(asset.balanceOf(address(this))));
 
 // 		if (amount == 0) ghost_zeroMints++;
 
-//     baseToken.transfer(currentActor, amount);
+//     asset.transfer(currentActor, amount);
 //     vm.prank(currentActor);
 //     _executeDeposit(currentActor, amount);
 
@@ -72,7 +72,7 @@
 
 //     vm.startPrank(currentActor);
 // 		_executeWithdraw(currentActor, amount);
-//     // baseToken.transfer(address(this), amount)
+//     // asset.transfer(address(this), amount)
 
 // 		ghost_burnSum += amount;
 // 	}
