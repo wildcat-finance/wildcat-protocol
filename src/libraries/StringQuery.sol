@@ -15,17 +15,17 @@ error InvalidReturnDataString();
 error InvalidCompactString();
 
 function bytes32ToString(bytes32 value) pure returns (string memory str) {
-  uint256 size;
-  unchecked {
-    uint256 sizeInBits = 255 - uint256(value).ffs();
-    size = (sizeInBits + 7) / 8;
-  }
-  assembly {
-    str := mload(0x40)
-    mstore(0x40, add(str, 0x40))
-    mstore(str, size)
-    mstore(add(str, 0x20), value)
-  }
+	uint256 size;
+	unchecked {
+		uint256 sizeInBits = 255 - uint256(value).ffs();
+		size = (sizeInBits + 7) / 8;
+	}
+	assembly {
+		str := mload(0x40)
+		mstore(0x40, add(str, 0x40))
+		mstore(str, size)
+		mstore(add(str, 0x20), value)
+	}
 }
 
 function queryStringOrBytes32AsString(
@@ -94,20 +94,12 @@ function queryStringOrBytes32AsString(
 
 function queryName(address target) view returns (string memory) {
 	return
-		queryStringOrBytes32AsString(
-			target,
-			NameFunction_selector,
-			UnknownNameQueryError_selector
-		);
+		queryStringOrBytes32AsString(target, NameFunction_selector, UnknownNameQueryError_selector);
 }
 
 function querySymbol(address target) view returns (string memory) {
 	return
-		queryStringOrBytes32AsString(
-			target,
-			SymbolFunction_selector,
-			UnknownSymbolQueryError_selector
-		);
+		queryStringOrBytes32AsString(target, SymbolFunction_selector, UnknownSymbolQueryError_selector);
 }
 
 uint256 constant UnknownNameQueryError_selector = (

@@ -94,7 +94,7 @@ contract WildcatVaultController is Ownable {
 	function beforeDeployVault(
 		address vault,
 		address deployer,
-		VaultParameters memory vaultParameters  
+		VaultParameters memory vaultParameters
 	) external virtual returns (VaultParameters memory) {
 		if (msg.sender != factory) {
 			revertWithSelector(CallerNotFactory.selector);
@@ -103,7 +103,6 @@ contract WildcatVaultController is Ownable {
 		isControlledVault[vault] = true;
 
 		return getFinalVaultParameters(deployer, vaultParameters);
-
 	}
 
 	/**

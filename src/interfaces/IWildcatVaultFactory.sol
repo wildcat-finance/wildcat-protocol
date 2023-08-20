@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: NONE
 pragma solidity >=0.8.20;
 
-import { VaultParameters } from "./WildcatStructsAndEnums.sol";
+import { VaultParameters } from './WildcatStructsAndEnums.sol';
 
 interface IWildcatVaultFactory {
 	function getVaultParameters() external view returns (VaultParameters memory);
@@ -10,10 +10,7 @@ interface IWildcatVaultFactory {
 
 	function controllerAddress() external view returns (address);
 
-	function isVaultValidated(
-		address _controller,
-		address _underlying
-	) external view returns (bool);
+	function isVaultValidated(address _controller, address _underlying) external view returns (bool);
 
 	function computeVaultAddress(bytes32 salt) external view returns (address);
 

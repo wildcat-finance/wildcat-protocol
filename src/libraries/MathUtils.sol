@@ -155,7 +155,7 @@ library MathUtils {
 	function rayMul(uint256 a, uint256 b) internal pure returns (uint256 c) {
 		// to avoid overflow, a <= (type(uint256).max - HALF_RAY) / b
 		assembly {
-      // equivalent to `require(b == 0 || a <= (type(uint256).max - HALF_RAY) / b)`
+			// equivalent to `require(b == 0 || a <= (type(uint256).max - HALF_RAY) / b)`
 			if iszero(or(iszero(b), iszero(gt(a, div(sub(not(0), HALF_RAY), b))))) {
 				mstore(0, Panic_ErrorSelector)
 				mstore(Panic_ErrorCodePointer, Panic_Arithmetic)
@@ -166,10 +166,10 @@ library MathUtils {
 		}
 	}
 
-  /// @dev Multiply two ray, rounding half up to the nearest ray
+	/// @dev Multiply two ray, rounding half up to the nearest ray
 	function rayDiv(uint256 a, uint256 b) internal pure returns (uint256 c) {
 		assembly {
-      // equivalent to `require(b != 0 && a <= (type(uint256).max - halfB) / RAY)`
+			// equivalent to `require(b != 0 && a <= (type(uint256).max - halfB) / RAY)`
 			if or(iszero(b), iszero(iszero(gt(a, div(sub(not(0), div(b, 2)), RAY))))) {
 				mstore(0, Panic_ErrorSelector)
 				mstore(Panic_ErrorCodePointer, Panic_Arithmetic)

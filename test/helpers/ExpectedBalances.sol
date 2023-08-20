@@ -433,10 +433,16 @@ contract ERC721Balances {
 		EnumerableSet.UintSet touchedIdentifiers;
 		EnumerableMap.AddressToUintMap accountBalances;
 	}
+
 	EnumerableSet.AddressSet private tokens;
 	mapping(address => TokenData721) private tokenDatas;
 
-	function expectERC721Transfer(address token, address from, address to, uint256 identifier) public {
+	function expectERC721Transfer(
+		address token,
+		address from,
+		address to,
+		uint256 identifier
+	) public {
 		tokens.add(token);
 		TokenData721 storage tokenData = tokenDatas[token];
 

@@ -151,12 +151,12 @@ contract BaseVaultTest is Test, Assertions {
 	function _withdraw(address from, uint256 amount) internal asAccount(from) {
 		// @todo fix
 		/* 		VaultState memory state = pendingState();
-		uint256 scaledAmount = state.scaleAmount(amount);
-		state.decreaseScaledTotalSupply(scaledAmount);
-		vault.withdraw(amount);
-		updateState(state);
-		lastTotalAssets -= amount;
-		_checkState(); */
+    uint256 scaledAmount = state.scaleAmount(amount);
+    state.decreaseScaledTotalSupply(scaledAmount);
+    vault.withdraw(amount);
+    updateState(state);
+    lastTotalAssets -= amount;
+    _checkState(); */
 	}
 
 	event Borrow(uint256 assetAmount);
@@ -234,15 +234,15 @@ contract BaseVaultTest is Test, Assertions {
 		_deployVault();
 		// @todo fix
 		/* 		previousState = VaultState({
-			maxTotalSupply: uint128(parameters.maxTotalSupply),
-			scaledTotalSupply: 0,
-			isDelinquent: false,
-			timeDelinquent: 0,
-			liquidityCoverageRatio: uint16(parameters.liquidityCoverageRatio),
-			annualInterestBips: uint16(parameters.annualInterestBips),
-			scaleFactor: uint112(RAY),
-			lastInterestAccruedTimestamp: uint32(block.timestamp)
-		}); */
+    maxTotalSupply: uint128(parameters.maxTotalSupply),
+    scaledTotalSupply: 0,
+    isDelinquent: false,
+    timeDelinquent: 0,
+    liquidityCoverageRatio: uint16(parameters.liquidityCoverageRatio),
+    annualInterestBips: uint16(parameters.annualInterestBips),
+    scaleFactor: uint112(RAY),
+    lastInterestAccruedTimestamp: uint32(block.timestamp)
+    }); */
 		lastProtocolFees = 0;
 		lastTotalAssets = 0;
 

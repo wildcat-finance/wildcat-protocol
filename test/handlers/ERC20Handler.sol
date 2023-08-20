@@ -24,38 +24,38 @@ contract ERC20Handler is BaseHandler {
 		uint256 _maxActors
 	) BaseHandler(_label, _maxActors) {
 		token = _token;
-    _mint(address(this), INIT_SUPPLY);
+		_mint(address(this), INIT_SUPPLY);
 	}
 
 	function mint(
-    uint256 actorSeed,
+		uint256 actorSeed,
 		uint256 amount
 	) external virtual useActor(actorSeed, msg.sender) countCall('mint') {
-    _mint(currentActor, amount);
+		_mint(currentActor, amount);
 	}
 
-  function _mint(address to, uint256 amount) internal virtual {
-    if (amount == 0) {
-      ghost_zeroMints++;
-      _countCall("mint.zero");
-    }
-    ghost_mintSum += amount;
+	function _mint(address to, uint256 amount) internal virtual {
+		if (amount == 0) {
+			ghost_zeroMints++;
+			_countCall('mint.zero');
+		}
+		ghost_mintSum += amount;
 		MockERC20(address(token)).mint(to, amount);
-  }
+	}
 
 	function burn(
-    uint256 actorSeed,
+		uint256 actorSeed,
 		uint256 amount
 	) external virtual useActor(actorSeed, msg.sender) countCall('burn') {
-    vm.stopPrank();
-    amount = bound(amount, 0, token.balanceOf(address(this)));
-    token.transfer(currentActor, amount);
+		vm.stopPrank();
+		amount = bound(amount, 0, token.balanceOf(address(this)));
+		token.transfer(currentActor, amount);
 		if (amount == 0) {
-      ghost_zeroBurns++;
-      _countCall("burn.zero");
-    }
+			ghost_zeroBurns++;
+			_countCall('burn.zero');
+		}
 		ghost_burnSum += amount;
-    vm.prank(currentActor);
+		vm.prank(currentActor);
 		MockERC20(address(token)).burn(currentActor, amount);
 	}
 
@@ -77,13 +77,13 @@ contract ERC20Handler is BaseHandler {
 
 		amount = bound(amount, 0, token.balanceOf(currentActor));
 		if (amount == 0) {
-      ghost_zeroTransfers++;
-      _countCall("transfer.zero");
-    }
+			ghost_zeroTransfers++;
+			_countCall('transfer.zero');
+		}
 
 		if (amount > 0) {
-      token.transfer(to, amount);
-    }
+			token.transfer(to, amount);
+		}
 	}
 
 	function transferFrom(
@@ -105,9 +105,9 @@ contract ERC20Handler is BaseHandler {
 			amount = bound(amount, 0, token.allowance(currentActor, from));
 		}
 		if (amount == 0) {
-      ghost_zeroTransferFroms++;
-      _countCall("transferFrom.zero");
-    }
+			ghost_zeroTransferFroms++;
+			_countCall('transferFrom.zero');
+		}
 
 		vm.prank(currentActor);
 		token.transferFrom(from, to, amount);
@@ -117,7 +117,7 @@ contract ERC20Handler is BaseHandler {
 		super.callSummary();
 		console.log('-------------------');
 
-    console.log('Zero mints:', ghost_zeroMints);
+		console.log('Zero mints:', ghost_zeroMints);
 		console.log('Zero burns:', ghost_zeroBurns);
 		console.log('Zero transferFroms:', ghost_zeroTransferFroms);
 		console.log('Zero transfers:', ghost_zeroTransfers);

@@ -7,7 +7,7 @@ import { StdUtils } from 'forge-std/StdUtils.sol';
 import '../helpers/AddressSet.sol';
 import 'src/libraries/StringQuery.sol';
 import { console } from 'forge-std/console.sol';
-import { logCall } from "../helpers/Metrics.sol";
+import { logCall } from '../helpers/Metrics.sol';
 
 abstract contract BaseHandler is CommonBase, StdCheats, StdUtils {
 	using LibAddressSet for AddressSet;
@@ -47,11 +47,11 @@ abstract contract BaseHandler is CommonBase, StdCheats, StdUtils {
 	}
 
 	modifier useActor(uint256 actorIndexSeed, address defaultActor) {
-    if (_actors.count() == maxActors || _actors.contains(defaultActor)) {
-      currentActor = _actors.rand(actorIndexSeed);
-    } else {
-      _addActor(defaultActor, true);
-    }
+		if (_actors.count() == maxActors || _actors.contains(defaultActor)) {
+			currentActor = _actors.rand(actorIndexSeed);
+		} else {
+			_addActor(defaultActor, true);
+		}
 		vm.startPrank(currentActor);
 		_;
 		vm.stopPrank();
@@ -62,13 +62,17 @@ abstract contract BaseHandler is CommonBase, StdCheats, StdUtils {
 		_;
 	}
 
-	modifier useTwoActors(uint256 actorIndexSeed, address defaultSecondActor, uint256 secondActorIndexSeed) {
+	modifier useTwoActors(
+		uint256 actorIndexSeed,
+		address defaultSecondActor,
+		uint256 secondActorIndexSeed
+	) {
 		currentActor = _actors.rand(actorIndexSeed);
-    if (_actors.count() == maxActors || _actors.contains(defaultSecondActor)) {
-      secondActor = _actors.rand(secondActorIndexSeed);
-    } else {
-      _addActor(defaultSecondActor, false);
-    }
+		if (_actors.count() == maxActors || _actors.contains(defaultSecondActor)) {
+			secondActor = _actors.rand(secondActorIndexSeed);
+		} else {
+			_addActor(defaultSecondActor, false);
+		}
 
 		vm.startPrank(currentActor);
 		_;
@@ -86,7 +90,7 @@ abstract contract BaseHandler is CommonBase, StdCheats, StdUtils {
 			callKeys.push(key);
 		}
 		// calls[key] = count + 1;
-    logCall(bytes32ToString(key));
+		logCall(bytes32ToString(key));
 	}
 
 	function actors() external view returns (address[] memory) {

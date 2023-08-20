@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
+
 import './interfaces/IWildcatVaultController.sol';
 import { WildcatMarket } from './market/WildcatMarket.sol';
 
@@ -7,9 +8,9 @@ contract WildcatVaultFactory {
 	/// @dev temporary storage for vault parameters, used during vault deployment
 	VaultParameters internal _tmpVaultParameters;
 
-  constructor() {
-    resetTmpVaultParameters();
-  }
+	constructor() {
+		resetTmpVaultParameters();
+	}
 
 	function resetTmpVaultParameters() internal {
 		_tmpVaultParameters = VaultParameters({
@@ -60,12 +61,12 @@ contract WildcatVaultFactory {
 		if (vaultParameters.controller != msg.sender) {
 			IWildcatVaultController controller = IWildcatVaultController(vaultParameters.controller);
 			// Allow controller to make modifications to the vault parameters and handle any
-      // other checks or state changes prior to the vault's deployment.
+			// other checks or state changes prior to the vault's deployment.
 			vaultParameters = controller.beforeDeployVault(vault, msg.sender, vaultParameters);
 		}
 		_tmpVaultParameters = vaultParameters;
 		new WildcatMarket{ salt: salt }();
-    resetTmpVaultParameters();
+		resetTmpVaultParameters();
 
 		emit VaultDeployed(vaultParameters.controller, vaultParameters.asset, vault);
 	}

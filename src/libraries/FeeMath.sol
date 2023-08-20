@@ -38,7 +38,7 @@ library FeeMath {
 			timestamp - state.lastInterestAccruedTimestamp
 		);
 	}
-  
+
 	function applyProtocolFee(
 		VaultState memory state,
 		uint256 baseInterestRay,
@@ -49,7 +49,7 @@ library FeeMath {
 		protocolFee = uint256(state.scaledTotalSupply).rayMul(
 			uint256(state.scaleFactor).rayMul(protocolFeeRay)
 		);
-    state.accruedProtocolFees = (state.accruedProtocolFees + protocolFee).toUint128();
+		state.accruedProtocolFees = (state.accruedProtocolFees + protocolFee).toUint128();
 	}
 
 	function updateDelinquency(
@@ -129,13 +129,13 @@ library FeeMath {
 	 *      and applies it to cached state, returning the rates for base interest and delinquency
 	 *      fees and the normalized amount of protocol fees accrued.
 	 *
-   *      Takes `timestamp` as input to allow separate calculation of interest
-   *      before and after withdrawal batch expiry.
-   * 
+	 *      Takes `timestamp` as input to allow separate calculation of interest
+	 *      before and after withdrawal batch expiry.
+	 *
 	 * @param state Vault scale parameters
-   * @param protocolFeeBips Protocol fee rate (in bips)
-   * @param delinquencyFeeBips Delinquency fee rate (in bips)
-   * @param delinquencyGracePeriod Grace period (in seconds) before delinquency fees apply
+	 * @param protocolFeeBips Protocol fee rate (in bips)
+	 * @param delinquencyFeeBips Delinquency fee rate (in bips)
+	 * @param delinquencyGracePeriod Grace period (in seconds) before delinquency fees apply
 	 * @param timestamp Time to calculate interest and fees accrued until
 	 * @return baseInterestRay Interest accrued to lenders (ray)
 	 * @return delinquencyFeeRay Penalty fee incurred by borrower for delinquency (ray).
@@ -143,9 +143,9 @@ library FeeMath {
 	 */
 	function updateScaleFactorAndFees(
 		VaultState memory state,
-    uint256 protocolFeeBips,
-    uint256 delinquencyFeeBips,
-    uint256 delinquencyGracePeriod,
+		uint256 protocolFeeBips,
+		uint256 delinquencyFeeBips,
+		uint256 delinquencyGracePeriod,
 		uint256 timestamp
 	)
 		internal

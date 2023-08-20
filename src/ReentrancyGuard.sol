@@ -21,26 +21,26 @@ contract ReentrancyGuard {
 	uint256 private constant _NOT_ENTERED = 1;
 	uint256 private constant _ENTERED = 2;
 
-  /**
-   * @dev Reentrancy guard for state-changing functions.
-   *      Reverts if the reentrancy guard is currently set; otherwise, sets
-   *      the reentrancy guard, executes the function body, then clears the
-   *      reentrancy guard.
-   */
-  modifier nonReentrant {
-    _setReentrancyGuard();
-    _;
-    _clearReentrancyGuard();
-  }
+	/**
+	 * @dev Reentrancy guard for state-changing functions.
+	 *      Reverts if the reentrancy guard is currently set; otherwise, sets
+	 *      the reentrancy guard, executes the function body, then clears the
+	 *      reentrancy guard.
+	 */
+	modifier nonReentrant() {
+		_setReentrancyGuard();
+		_;
+		_clearReentrancyGuard();
+	}
 
-  /**
-   * @dev Reentrancy guard for view functions.
-   *      Reverts if the reentrancy guard is currently set.
-   */
-  modifier nonReentrantView {
-    _assertNonReentrant();
-    _;
-  }
+	/**
+	 * @dev Reentrancy guard for view functions.
+	 *      Reverts if the reentrancy guard is currently set.
+	 */
+	modifier nonReentrantView() {
+		_assertNonReentrant();
+		_;
+	}
 
 	/**
 	 * @dev Initialize the reentrancy guard during deployment.
@@ -74,9 +74,9 @@ contract ReentrancyGuard {
 	}
 
 	/**
-     * @dev Internal view function to ensure that a sentinel value for the
-            reentrancy guard is not currently set.
-     */
+	 * @dev Internal view function to ensure that a sentinel value for the
+	 *         reentrancy guard is not currently set.
+	 */
 	function _assertNonReentrant() internal view {
 		// Ensure that the reentrancy guard is not currently set.
 		if (_reentrancyGuard != _NOT_ENTERED) {

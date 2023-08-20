@@ -80,14 +80,14 @@ contract DebtTokenTest is BaseERC20Test {
 	}
 
 	function _assertTokenAmountEq(uint256 expected, uint256 actual) internal virtual override {
-    assertEq(expected, actual);
+		assertEq(expected, actual);
 	}
 
 	function _mint(address to, uint256 amount) internal override {
 		controller.authorizeLender(to);
 		controller.authorizeLender(address(this));
 		require(amount <= _maxAmount(), 'amount too large');
-    vm.startPrank(to);
+		vm.startPrank(to);
 		asset.mint(to, amount);
 		asset.mint(to, amount);
 		// vm.startPrank(to);

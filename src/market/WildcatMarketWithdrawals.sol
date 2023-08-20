@@ -122,5 +122,5 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     }
     
     _writeState(state);
-  } */
+    } */
 }

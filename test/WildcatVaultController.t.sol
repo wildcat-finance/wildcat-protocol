@@ -9,18 +9,22 @@ import 'src/libraries/VaultState.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
 contract WildcatVaultControllerTest is BaseVaultTest {
+	function _check(
+		uint256 apr,
+		uint256 coverage,
+		uint256 cachedCoverage,
+		uint256 tmpExpiry
+	) internal {
+		(uint256 liquidityCoverageRatio, uint256 expiry) = controller.temporaryExcessLiquidityCoverage(
+			address(vault)
+		);
 
-  function _check(uint256 apr, uint256 coverage, uint256 cachedCoverage, uint256 tmpExpiry) internal {
-    (uint256 liquidityCoverageRatio, uint256 expiry) = controller.temporaryExcessLiquidityCoverage(
-      address(vault)
-    );
+		assertEq(vault.annualInterestBips(), apr, 'APR');
+		assertEq(vault.liquidityCoverageRatio(), coverage, 'Liquidity coverage ratio');
 
-    assertEq(vault.annualInterestBips(), apr, 'APR');
-    assertEq(vault.liquidityCoverageRatio(), coverage, 'Liquidity coverage ratio');
-
-    assertEq(liquidityCoverageRatio, cachedCoverage, 'Previous liquidity coverage');
-    assertEq(expiry, tmpExpiry, 'Temporary coverage expiry');
-  }
+		assertEq(liquidityCoverageRatio, cachedCoverage, 'Previous liquidity coverage');
+		assertEq(expiry, tmpExpiry, 'Temporary coverage expiry');
+	}
 
 	function test_setAnnualInterestBips_UnknownVault() public {
 		vm.prank(borrower);
@@ -36,24 +40,24 @@ contract WildcatVaultControllerTest is BaseVaultTest {
 	function test_setAnnualInterestBips_Decrease() public {
 		vm.prank(borrower);
 		controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
-    _check(DefaultInterest - 1, 9000, DefaultLiquidityCoverage, block.timestamp + 2 weeks);
+		_check(DefaultInterest - 1, 9000, DefaultLiquidityCoverage, block.timestamp + 2 weeks);
 	}
 
 	function test_setAnnualInterestBips_Decrease_AlreadyPending() public {
 		vm.prank(borrower);
 		controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
 
-    uint256 expiry = block.timestamp + 2 weeks;
+		uint256 expiry = block.timestamp + 2 weeks;
 		_check(DefaultInterest - 1, 9000, DefaultLiquidityCoverage, expiry);
 
-    _warp(2 weeks);
-    vm.prank(borrower);
+		_warp(2 weeks);
+		vm.prank(borrower);
 		controller.setAnnualInterestBips(address(vault), DefaultInterest - 2);
 		_check(DefaultInterest - 2, 9000, DefaultLiquidityCoverage, expiry + 2 weeks);
 	}
 
 	function test_setAnnualInterestBips_Decrease_Undercollateralized() public {
-    _deposit(alice, 50_000e18);
+		_deposit(alice, 50_000e18);
 		vm.prank(borrower);
 		vault.borrow(5_000e18 + 1);
 
@@ -66,7 +70,7 @@ contract WildcatVaultControllerTest is BaseVaultTest {
 		vm.prank(borrower);
 		controller.setAnnualInterestBips(address(vault), DefaultInterest + 1);
 
-    _check(DefaultInterest + 1, DefaultLiquidityCoverage, 0, 0);
+		_check(DefaultInterest + 1, DefaultLiquidityCoverage, 0, 0);
 	}
 
 	function test_setAnnualInterestBips_Increase_Undercollateralized() public {
@@ -104,6 +108,6 @@ contract WildcatVaultControllerTest is BaseVaultTest {
 			'Liquidity coverage ratio not reset'
 		);
 
-    _check(DefaultInterest - 1, DefaultLiquidityCoverage, 0, 0);
+		_check(DefaultInterest - 1, DefaultLiquidityCoverage, 0, 0);
 	}
 }

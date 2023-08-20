@@ -51,10 +51,10 @@ interface IVaultEventsAndErrors {
 	/// @notice Error thrown when liquidity coverage ratio set to value
 	///         the vault currently would not meet.
 
-  error NullMintAmount();
+	error NullMintAmount();
 
-  error NullBurnAmount();
-  
+	error NullBurnAmount();
+
 	error InsufficientCoverageForNewLiquidityRatio();
 
 	event Transfer(address indexed from, address indexed to, uint256 value);
@@ -97,13 +97,15 @@ interface IVaultEventsAndErrors {
 		uint256 normalizedAmountPaid
 	);
 
-	/** @dev Emitted when a new withdrawal batch is created. */
+	/**
+	 * @dev Emitted when a new withdrawal batch is created.
+	 */
 	event WithdrawalBatchCreated(uint256 expiry);
 
-	/** @dev Emitted when a withdrawal batch is paid off. */
-	event WithdrawalBatchClosed(
-		uint256 expiry
-	);
+	/**
+	 * @dev Emitted when a withdrawal batch is paid off.
+	 */
+	event WithdrawalBatchClosed(uint256 expiry);
 
 	event WithdrawalBatchPayment(
 		uint256 expiry,

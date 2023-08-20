@@ -103,16 +103,15 @@ library WithdrawalLib {
 		WithdrawalBatch memory batch = data.batches[expiry];
 		AccountWithdrawalStatus storage status = data.accountStatuses[expiry][account];
 
-    uint128 previousTotalWithdrawn = status.normalizedAmountWithdrawn;
+		uint128 previousTotalWithdrawn = status.normalizedAmountWithdrawn;
 
-    uint128 newTotalWithdrawn = uint256(batch.normalizedAmountPaid).mulDiv(
-			status.scaledAmount,
-			batch.scaledTotalAmount
-		).toUint128();
+		uint128 newTotalWithdrawn = uint256(batch.normalizedAmountPaid)
+			.mulDiv(status.scaledAmount, batch.scaledTotalAmount)
+			.toUint128();
 
-    normalizedAmountWithdrawn = newTotalWithdrawn - previousTotalWithdrawn;
+		normalizedAmountWithdrawn = newTotalWithdrawn - previousTotalWithdrawn;
 
-    status.normalizedAmountWithdrawn = newTotalWithdrawn;
+		status.normalizedAmountWithdrawn = newTotalWithdrawn;
 
 		state.reservedAssets -= normalizedAmountWithdrawn;
 	}

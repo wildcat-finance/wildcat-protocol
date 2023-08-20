@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
+
 import './WildcatMarketBase.sol';
 
 contract WildcatMarketToken is WildcatMarketBase {
@@ -55,9 +56,9 @@ contract WildcatMarketToken is WildcatMarketBase {
 		return true;
 	}
 
-  // =====================================================================//
-  //                            INTERNAL LOGIC                            //
-  // =====================================================================//
+	// =====================================================================//
+	//                            INTERNAL LOGIC                            //
+	// =====================================================================//
 
 	function _approve(address approver, address spender, uint256 amount) internal virtual {
 		allowance[approver][spender] = amount;

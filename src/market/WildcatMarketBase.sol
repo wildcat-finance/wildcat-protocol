@@ -13,14 +13,14 @@ import '../interfaces/IWildcatVaultController.sol';
 import '../interfaces/IWildcatVaultFactory.sol';
 import { IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
-import "../libraries/BoolUtils.sol";
+import '../libraries/BoolUtils.sol';
 
 contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	using WithdrawalLib for VaultState;
 	using FeeMath for VaultState;
 	using SafeCastLib for uint256;
 	using MathUtils for uint256;
-  using BoolUtils for bool;
+	using BoolUtils for bool;
 
 	// ==================================================================== //
 	//                       Vault Config (immutable)                       //
@@ -177,15 +177,15 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	}
 
 	/* 	function effectiveAnnualInterestBips() external view returns (uint256) {
-		VaultState memory state = _calculateCurrentState();
-		return (state.annualInterestBips +
-			protocolFeeBips +
-			(
-				(state.isDelinquent && state.timeDelinquent > delinquencyGracePeriod)
-					? delinquencyFeeBips
-					: 0
-			));
-	} */
+    VaultState memory state = _calculateCurrentState();
+    return (state.annualInterestBips +
+    protocolFeeBips +
+    (
+    (state.isDelinquent && state.timeDelinquent > delinquencyGracePeriod)
+    	? delinquencyFeeBips
+    	: 0
+    ));
+    } */
 
 	// ===================================================================== //
 	//                       External State Getters                          //
@@ -244,7 +244,9 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 			return state;
 		}
 		// Handle expired withdrawal batch
-		if ((block.timestamp >= state.pendingWithdrawalExpiry).and(state.pendingWithdrawalExpiry != 0)) {
+		if (
+			(block.timestamp >= state.pendingWithdrawalExpiry).and(state.pendingWithdrawalExpiry != 0)
+		) {
 			uint256 expiry = state.pendingWithdrawalExpiry;
 			(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
 				.updateScaleFactorAndFees(
@@ -274,7 +276,9 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 			return state;
 		}
 		// Handle expired withdrawal batch
-		if ((state.pendingWithdrawalExpiry != 0 ).and(block.timestamp >= state.pendingWithdrawalExpiry)) {
+		if (
+			(state.pendingWithdrawalExpiry != 0).and(block.timestamp >= state.pendingWithdrawalExpiry)
+		) {
 			uint256 expiry = state.pendingWithdrawalExpiry;
 			state.updateScaleFactorAndFees(
 				protocolFeeBips,

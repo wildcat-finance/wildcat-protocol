@@ -5,10 +5,9 @@ import 'forge-std/Test.sol';
 import 'src/WildcatVaultFactory.sol';
 import 'src/WildcatVaultController.sol';
 import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
-import "./BaseVaultTest.sol";
+import './BaseVaultTest.sol';
 
 contract FactoryTest is BaseVaultTest {
-
 	function testDeployVault() public {
 		assertEq(vault.name(), 'Wildcat Token', 'name');
 		assertEq(vault.symbol(), 'WCTKN', 'symbol');
@@ -26,8 +25,8 @@ contract FactoryTest is BaseVaultTest {
 
 	function testDeposit() external {
 		asset.mint(address(this), 1e18);
-    asset.approve(address(vault), 1e18);
-    vault.depositUpTo(1e18);
-    assertEq(vault.balanceOf(address(this)), 1e18);
+		asset.approve(address(vault), 1e18);
+		vault.depositUpTo(1e18);
+		assertEq(vault.balanceOf(address(this)), 1e18);
 	}
 }

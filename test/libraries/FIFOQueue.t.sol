@@ -88,9 +88,9 @@ contract FIFOQueueTest is Test {
 	function test_get() external {
 		arr.push(1);
 		assertEq(arr.at(0), 1);
-    arr.push(2);
-    arr.shift();
-    assertEq(arr.at(0), 2);
+		arr.push(2);
+		arr.shift();
+		assertEq(arr.at(0), 2);
 	}
 
 	function test_get_OutOfBounds() external {
@@ -98,22 +98,22 @@ contract FIFOQueueTest is Test {
 		this._get(0);
 	}
 
-  function assertEq(uint32[] memory a, uint32[] memory b) internal {
-    assertEq(a.length, b.length, "length");
-    for (uint256 i = 0; i < a.length; i++) {
-      assertEq(a[i], b[i]);
-    }
-  }
+	function assertEq(uint32[] memory a, uint32[] memory b) internal {
+		assertEq(a.length, b.length, 'length');
+		for (uint256 i = 0; i < a.length; i++) {
+			assertEq(a[i], b[i]);
+		}
+	}
 
-  function test_values() external {
-    assertEq(arr.values().length, 0);
-    uint32[] memory _arr = new uint32[](3);
-    _arr[0] = 1;
-    _arr[1] = 2;
-    _arr[2] = 3;
-    arr.push(1);
-    arr.push(2);
-    arr.push(3);
-    assertEq(arr.values(), _arr);
-  }
+	function test_values() external {
+		assertEq(arr.values().length, 0);
+		uint32[] memory _arr = new uint32[](3);
+		_arr[0] = 1;
+		_arr[1] = 2;
+		_arr[2] = 3;
+		arr.push(1);
+		arr.push(2);
+		arr.push(3);
+		assertEq(arr.values(), _arr);
+	}
 }

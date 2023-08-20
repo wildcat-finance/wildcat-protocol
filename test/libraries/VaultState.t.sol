@@ -136,16 +136,16 @@ contract VaultStateTest is Test {
 		assertEq(state.scaledTotalSupply, scaledTotalSupply + scaledAmount);
 	}
 	/* 
-	function test_decreaseScaledBalance(uint104 scaledAmount) external  {
-		Account memory account;
-		uint256 expected;
-		assertEq(expected, account.decreaseScaledBalance(scaledAmount));
-	}
+    function test_decreaseScaledBalance(uint104 scaledAmount) external  {
+    Account memory account;
+    uint256 expected;
+    assertEq(expected, account.decreaseScaledBalance(scaledAmount));
+    }
 
-	function test_increaseScaledBalance(uint104 scaledAmount) external  {
-		Account memory account;
-		uint256 expected;
-		assertEq(expected, account.increaseScaledBalance(scaledAmount));
-	}
-} */
+    function test_increaseScaledBalance(uint104 scaledAmount) external  {
+    Account memory account;
+    uint256 expected;
+    assertEq(expected, account.increaseScaledBalance(scaledAmount));
+    }
+    } */
 }

@@ -16,7 +16,7 @@ contract DepositsTest is BaseVaultTest {
 
 	/*//////////////////////////////////////////////////////////////
                           deposit() errors
-  //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////*/
 
 	// function testDepositUpTo_NotWhitelisted() public {
 	//     vm.prank(nonalice);
@@ -37,13 +37,13 @@ contract DepositsTest is BaseVaultTest {
 
 	function testDeposit_MaxSupplyExceeded() public asAlice {
 		vault.deposit(DefaultMaximumSupply);
-    vm.expectRevert(IVaultEventsAndErrors.MaxSupplyExceeded.selector);
+		vm.expectRevert(IVaultEventsAndErrors.MaxSupplyExceeded.selector);
 		vault.deposit(1);
 	}
 
 	/*//////////////////////////////////////////////////////////////
                           deposit() success
-  //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////*/
 
 	function testDepositUpTo_Whitelisted() public asAlice {
 		_deposit(alice, 50_000e18);
@@ -52,7 +52,7 @@ contract DepositsTest is BaseVaultTest {
 	function test_BalanceIncreasesOverTime() public asAlice {
 		parameters.protocolFeeBips = 0;
 		setupVault();
-		_deposit(alice,  50_000e18);
+		_deposit(alice, 50_000e18);
 		uint256 startBalance = vault.balanceOf(alice);
 
 		_warpOneYear();
@@ -62,11 +62,11 @@ contract DepositsTest is BaseVaultTest {
 		assertEq(endBalance, startBalance + interest, 'balance != prev + interest');
 		assertGt(endBalance, startBalance, 'balance <= prev');
 
-		_withdraw(alice,  2_499e18);
+		_withdraw(alice, 2_499e18);
 
 		assertEq(vault.balanceOf(alice), (startBalance + interest) - 2_499e18);
 
-		_withdraw(alice,  1e18);
+		_withdraw(alice, 1e18);
 	}
 
 	function test_BalanceIncreasesOverTimeWithFees() public asAlice {
@@ -97,6 +97,6 @@ contract DepositsTest is BaseVaultTest {
 
 		vm.prank(alice);
 		vault.depositUpTo(50_000e18);
-    assertEq(vault.borrowableAssets(), 40_000e18, 'borrowable should be 40k');
+		assertEq(vault.borrowableAssets(), 40_000e18, 'borrowable should be 40k');
 	}
 }

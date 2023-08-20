@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { VaultParameters } from "./WildcatStructsAndEnums.sol";
+import { VaultParameters } from './WildcatStructsAndEnums.sol';
 
 interface IWildcatVaultController {
 	error NewOwnerIsZeroAddress();

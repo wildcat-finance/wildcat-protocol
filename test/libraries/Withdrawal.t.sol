@@ -6,6 +6,7 @@ import 'src/libraries/Withdrawal.sol';
 
 contract WithdrawalTest is Test {
 	WithdrawalData internal _withdrawalData;
+
 	event WithdrawalBatchCreated(uint256 expiry);
 	event WithdrawalQueued(uint256 expiry, address account, uint256 scaledAmount);
 
@@ -49,7 +50,7 @@ contract WithdrawalTest is Test {
 		);
 		vm.expectEmit();
 		emit WithdrawalQueued(uint256(newExpiry), address(account), uint256(scaledAmount));
-    state = this._addWithdrawalRequest(state, account, scaledAmount, withdrawalBatchDuration);
+		state = this._addWithdrawalRequest(state, account, scaledAmount, withdrawalBatchDuration);
 		assertEq(_withdrawalData.accountStatuses[newExpiry][account].scaledAmount, scaledAmount);
 		assertEq(_withdrawalData.batches[newExpiry].scaledTotalAmount, scaledAmount);
 		assertEq(state.scaledPendingWithdrawals, scaledAmount);

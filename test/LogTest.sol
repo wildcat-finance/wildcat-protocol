@@ -1,4 +1,5 @@
 pragma solidity >=0.8.20;
+
 import 'forge-std/Test.sol';
 import 'forge-std/console2.sol';
 import 'solady/utils/FixedPointMathLib.sol';
@@ -21,17 +22,17 @@ contract LogTest is Test {
 	}
 
 	function testLog() external {
-    string memory output = "\n[\n";
-    for (uint256 i = 10; i < 100; i += 15) {
+		string memory output = '\n[\n';
+		for (uint256 i = 10; i < 100; i += 15) {
 			uint256 n = (i * 1e18) / 100;
-      output = string.concat(output, doLog(n, false), "\n");
+			output = string.concat(output, doLog(n, false), '\n');
 		}
 		for (uint256 i = 0; i <= 100; i += 20) {
 			uint256 n = (i ** 3) + 1;
 			n *= 1e18;
-      output = string.concat(output, doLog(n, i == 100), "\n");
+			output = string.concat(output, doLog(n, i == 100), '\n');
 		}
-    output = string.concat(output, "]\n");
-    console2.log(output);
+		output = string.concat(output, ']\n');
+		console2.log(output);
 	}
 }

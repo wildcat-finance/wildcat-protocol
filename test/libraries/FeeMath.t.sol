@@ -74,18 +74,14 @@ contract FeeMathTest is BaseTest {
 		vm.warp(365 days);
 		state.scaleFactor = uint112(RAY);
 		// @todo fix
-		(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state.updateScaleFactorAndFees(
-			1000,
-			1000,
-			delinquencyGracePeriod,
-      block.timestamp
-		);
+		(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
+			.updateScaleFactorAndFees(1000, 1000, delinquencyGracePeriod, block.timestamp);
 		assertEq(state.lastInterestAccruedTimestamp, block.timestamp);
-		
+
 		assertEq(protocolFee, 1e16, 'incorrect feesAccrued');
 		assertEq(state.scaleFactor, 1.2e27, 'incorrect scaleFactor');
-    assertEq(baseInterestRay, 1e26, 'incorrect baseInterestRay');
-    assertEq(delinquencyFeeRay, 1e26, 'incorrect delinquencyFeeRay');
+		assertEq(baseInterestRay, 1e26, 'incorrect baseInterestRay');
+		assertEq(delinquencyFeeRay, 1e26, 'incorrect delinquencyFeeRay');
 	}
 
 	function test_updateScaleFactorAndFees_WithoutFeesOrPenalties() external {
@@ -125,37 +121,56 @@ contract FeeMathTest is BaseTest {
 		);
 		if (isCurrentlyDelinquent) {
 			if (previousTimeDelinquent >= delinquencyGracePeriod) {
-        // If already past grace period, full delta incurs penalty
-				assertEq(timeWithPenalty, timeDelta, "should be full delta when past grace period");
+				// If already past grace period, full delta incurs penalty
+				assertEq(timeWithPenalty, timeDelta, 'should be full delta when past grace period');
 			} else if (previousTimeDelinquent + timeDelta >= delinquencyGracePeriod) {
-        // If delta crosses grace period, only the portion of the delta that is past the grace period incurs penalty
-				assertEq(timeWithPenalty, (previousTimeDelinquent + timeDelta) - delinquencyGracePeriod, "incorrect partial delta when crossing grace period");
+				// If delta crosses grace period, only the portion of the delta that is past the grace period incurs penalty
+				assertEq(
+					timeWithPenalty,
+					(previousTimeDelinquent + timeDelta) - delinquencyGracePeriod,
+					'incorrect partial delta when crossing grace period'
+				);
 			} else {
-        // If delta does not cross grace period, no penalty
-				assertEq(timeWithPenalty, 0, "should be no penalty when not past grace period");
+				// If delta does not cross grace period, no penalty
+				assertEq(timeWithPenalty, 0, 'should be no penalty when not past grace period');
 			}
-      assertEq(state.timeDelinquent, previousTimeDelinquent + timeDelta, "incorrect timeDelinquent");
+			assertEq(
+				state.timeDelinquent,
+				previousTimeDelinquent + timeDelta,
+				'incorrect timeDelinquent'
+			);
 		} else {
-      if (previousTimeDelinquent >= delinquencyGracePeriod) {
-        uint32 timeLeftWithPenalty = previousTimeDelinquent - delinquencyGracePeriod;
-        if (timeLeftWithPenalty >= timeDelta) {
-          // If time left with penalty is greater than delta, full delta incurs penalty
-          assertEq(timeWithPenalty, timeDelta, "should be full delta when time left with penalty is >= delta");
-        } else {
-          // If time left with penalty is less than delta, only the portion of the delta that is past the grace period incurs penalty
-          assertEq(timeWithPenalty, timeLeftWithPenalty, "incorrect partial delta when time left with penalty is less than delta");
-        }
-      } else {
-        // If not past grace period, no penalty
-        assertEq(timeWithPenalty, 0, "should be no penalty when not past grace period");
-      }
+			if (previousTimeDelinquent >= delinquencyGracePeriod) {
+				uint32 timeLeftWithPenalty = previousTimeDelinquent - delinquencyGracePeriod;
+				if (timeLeftWithPenalty >= timeDelta) {
+					// If time left with penalty is greater than delta, full delta incurs penalty
+					assertEq(
+						timeWithPenalty,
+						timeDelta,
+						'should be full delta when time left with penalty is >= delta'
+					);
+				} else {
+					// If time left with penalty is less than delta, only the portion of the delta that is past the grace period incurs penalty
+					assertEq(
+						timeWithPenalty,
+						timeLeftWithPenalty,
+						'incorrect partial delta when time left with penalty is less than delta'
+					);
+				}
+			} else {
+				// If not past grace period, no penalty
+				assertEq(timeWithPenalty, 0, 'should be no penalty when not past grace period');
+			}
 
-      if (previousTimeDelinquent <= timeDelta) {
-        assertEq(state.timeDelinquent, 0, "incorrect timeDelinquent");
-      } else  {
-        assertEq(state.timeDelinquent, previousTimeDelinquent - timeDelta, "incorrect timeDelinquent");
-      }
-      
+			if (previousTimeDelinquent <= timeDelta) {
+				assertEq(state.timeDelinquent, 0, 'incorrect timeDelinquent');
+			} else {
+				assertEq(
+					state.timeDelinquent,
+					previousTimeDelinquent - timeDelta,
+					'incorrect timeDelinquent'
+				);
+			}
 		}
 	}
 

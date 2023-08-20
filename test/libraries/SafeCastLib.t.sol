@@ -9,7 +9,7 @@ uint256 constant Panic_Arithmetic = 0x11;
 
 contract SafeCastLibTest is Test {
 	SafeCastLibExternal internal wrapper = new SafeCastLibExternal();
-  bytes internal ArithmeticError = abi.encodePacked(Panic_ErrorSelector, Panic_Arithmetic);
+	bytes internal ArithmeticError = abi.encodePacked(Panic_ErrorSelector, Panic_Arithmetic);
 
 	function test_toUint8(uint256 x) external {
 		uint256 overflowingX = bound(x, uint256(type(uint8).max) + 1, type(uint256).max);
