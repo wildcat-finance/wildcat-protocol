@@ -6,7 +6,7 @@ import 'forge-std/Test.sol';
 import 'forge-std/console2.sol';
 import 'forge-std/StdError.sol';
 import 'solmate/test/utils/mocks/MockERC20.sol';
-import { FuzzConfigInputs } from './FuzzInputs.sol';
+import { ConfigFuzzInputs } from './FuzzInputs.sol';
 
 struct FuzzInput {
 	StateFuzzInputs state;
@@ -38,7 +38,7 @@ contract BaseTest is Test {
 	WildcatVaultController internal controller;
 	MockERC20 internal asset;
 
-	function deployVault(FuzzConfigInputs memory inputs) internal returns (WildcatMarket vault) {
+	function deployVault(ConfigFuzzInputs memory inputs) internal returns (WildcatMarket vault) {
 		factory = new WildcatVaultFactory();
 		controller = new MockController(feeRecipient, address(factory));
 		asset = new MockERC20('Token', 'TKN', 18);
@@ -47,7 +47,7 @@ contract BaseTest is Test {
 	}
 
 	function getVaultParameters(
-		FuzzConfigInputs memory inputs
+		ConfigFuzzInputs memory inputs
 	) internal view returns (VaultParameters memory parameters) {
 		inputs.constrain();
 		parameters = VaultParameters({
