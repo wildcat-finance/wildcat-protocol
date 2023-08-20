@@ -11,3 +11,6 @@
 	path = lib/solady
 	url = https://github.com/Vectorized/solady
 	branch = v0.0.86
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts

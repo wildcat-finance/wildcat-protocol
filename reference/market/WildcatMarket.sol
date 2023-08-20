@@ -7,15 +7,19 @@ import './WildcatMarketConfig.sol';
 import './WildcatMarketToken.sol';
 import './WildcatMarketWithdrawals.sol';
 
-
 contract WildcatMarket is
 	WildcatMarketBase,
 	WildcatMarketConfig,
 	WildcatMarketToken,
 	WildcatMarketWithdrawals
 {
-  using MathUtils for uint256;
-  using SafeTransferLib for address;
+	using MathUtils for uint256;
+	using SafeTransferLib for address;
+
+	function updateState() external {
+		VaultState memory state = _getUpdatedState();
+		_writeState(state);
+	}
 
 	function depositUpTo(
 		uint256 amount
@@ -30,9 +34,9 @@ contract WildcatMarket is
 		// Scale the actual mint amount
 		uint256 scaledAmount = state.scaleAmount(amount);
 
-    if (scaledAmount == 0) {
-      revert NullMintAmount();
-    }
+		if (scaledAmount == 0) {
+			revert NullMintAmount();
+		}
 
 		// Transfer deposit from caller
 		asset.safeTransferFrom(msg.sender, address(this), amount);
