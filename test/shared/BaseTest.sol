@@ -6,7 +6,12 @@ import 'forge-std/Test.sol';
 import 'forge-std/console2.sol';
 import 'forge-std/StdError.sol';
 import 'solmate/test/utils/mocks/MockERC20.sol';
-import { ConfigFuzzInputs } from './FuzzInputs.sol';
+import { ConfigFuzzInputs, StateFuzzInputs } from './FuzzInputs.sol';
+import { WildcatVaultFactory, VaultParameters } from 'src/WildcatVaultFactory.sol';
+import { WildcatVaultController } from 'src/WildcatVaultController.sol';
+import { WildcatMarket } from 'src/market/WildcatMarket.sol';
+import { MockController } from '../helpers/MockController.sol';
+import './TestConstants.sol';
 
 struct FuzzInput {
 	StateFuzzInputs state;
@@ -26,10 +31,6 @@ struct FuzzContext {
 	uint256 timeDelta;
 }
 
-address constant sentinel = address(0x533);
-
-address constant borrower = address(0xb04405e4);
-
 contract BaseTest is Test {
 	using MathUtils for uint256;
 	using SafeCastLib for uint256;
@@ -42,8 +43,8 @@ contract BaseTest is Test {
 		factory = new WildcatVaultFactory();
 		controller = new MockController(feeRecipient, address(factory));
 		asset = new MockERC20('Token', 'TKN', 18);
-    VaultParameters memory parameters = getVaultParameters(inputs);
-    vault = WildcatMarket(factory.deployVault(parameters));
+		VaultParameters memory parameters = getVaultParameters(inputs);
+		vault = WildcatMarket(factory.deployVault(parameters));
 	}
 
 	function getVaultParameters(
@@ -70,7 +71,7 @@ contract BaseTest is Test {
 
 	function getVaultState(
 		StateFuzzInputs memory inputs
-	) internal pure returns (VaultState memory state) {
+	) internal view returns (VaultState memory state) {
 		inputs.constrain();
 		return inputs.toState();
 	}

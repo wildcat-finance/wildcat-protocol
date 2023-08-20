@@ -79,7 +79,7 @@ library FuzzInputsLib {
 		inputs.maxTotalSupply = uint128(
 			bound(
 				inputs.maxTotalSupply,
-				uint256(inputs.scaledTotalSupply).rayMul(state.scaleFactor),
+				uint256(inputs.scaledTotalSupply).rayMul(inputs.scaleFactor),
 				type(uint128).max
 			)
 		);
