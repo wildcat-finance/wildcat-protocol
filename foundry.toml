@@ -4,7 +4,7 @@ out = 'out'
 libs = ['lib']
 gas_reports = ["*"]
 
-via_ir = true
+# via_ir = true
 
 remappings = [
   'forge-std/=lib/forge-std/src/',
