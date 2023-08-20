@@ -17,9 +17,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 		return _withdrawalData.unpaidBatches.values();
 	}
 
-	function _processNextUnpaidBatch(
-		VaultState memory state
-	) internal {
+	function _processNextUnpaidBatch(VaultState memory state) internal {
 		uint32 expiry = _withdrawalData.unpaidBatches.first();
 		WithdrawalBatch storage batch = _withdrawalData.batches[expiry];
 
@@ -69,9 +67,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 		// Scale the actual withdrawal amount
 		uint256 scaledAmount = state.scaleAmount(amount);
 
-    if (scaledAmount == 0) {
-      revert NullBurnAmount();
-    }
+		if (scaledAmount == 0) {
+			revert NullBurnAmount();
+		}
 
 		// Reduce caller's balance
 		account.decreaseScaledBalance(scaledAmount);
