@@ -96,7 +96,10 @@ library VaultStateLib {
 		uint256 scaledCoverageLiquidity = (state.scaledTotalSupply - scaledWithdrawals).bipMul(
 			state.liquidityCoverageRatio
 		) + scaledWithdrawals;
-		return state.normalizeAmount(scaledCoverageLiquidity) + state.accruedProtocolFees;
+		return
+			state.normalizeAmount(scaledCoverageLiquidity) +
+			state.accruedProtocolFees +
+			state.reservedAssets;
 	}
 
 	function liquidAssets(
