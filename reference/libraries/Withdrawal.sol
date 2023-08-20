@@ -76,7 +76,7 @@ library WithdrawalLib {
 
 		emit WithdrawalQueued(
 			uint256(state.pendingWithdrawalExpiry),
-			address(msg.sender),
+			address(account),
 			uint256(scaledAmount)
 		);
 	}
@@ -103,12 +103,17 @@ library WithdrawalLib {
 		WithdrawalBatch memory batch = data.batches[expiry];
 		AccountWithdrawalStatus storage status = data.accountStatuses[expiry][account];
 
-		normalizedAmountWithdrawn = (uint256(batch.normalizedAmountPaid).mulDiv(
+    uint128 previousTotalWithdrawn = status.normalizedAmountWithdrawn;
+
+    uint128 newTotalWithdrawn = uint256(batch.normalizedAmountPaid).mulDiv(
 			status.scaledAmount,
 			batch.scaledTotalAmount
-		) - status.normalizedAmountWithdrawn).toUint128();
+		).toUint128();
 
-		status.normalizedAmountWithdrawn += normalizedAmountWithdrawn;
+    normalizedAmountWithdrawn = newTotalWithdrawn - previousTotalWithdrawn;
+
+    status.normalizedAmountWithdrawn = newTotalWithdrawn;
+
 		state.reservedAssets -= normalizedAmountWithdrawn;
 	}
 
@@ -127,7 +132,7 @@ library WithdrawalLib {
 		uint256 totalReservedAssets = state.reservedAssets +
 			state.normalizeAmount(priorScaledAmountPending) +
 			state.accruedProtocolFees;
-		return totalAssets - totalReservedAssets;
+		return totalAssets.satSub(totalReservedAssets);
 	}
 }
 
