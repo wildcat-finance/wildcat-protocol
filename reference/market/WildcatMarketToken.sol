@@ -3,6 +3,10 @@ pragma solidity >=0.8.20;
 import './WildcatMarketBase.sol';
 
 contract WildcatMarketToken is WildcatMarketBase {
+	// =====================================================================//
+	//                            ERC20 Queries                             //
+	// =====================================================================//
+
 	mapping(address => mapping(address => uint256)) public allowance;
 
 	/// @notice Returns the normalized balance of `account` with interest.
@@ -51,6 +55,10 @@ contract WildcatMarketToken is WildcatMarketBase {
 		return true;
 	}
 
+  // =====================================================================//
+  //                            INTERNAL LOGIC                            //
+  // =====================================================================//
+
 	function _approve(address approver, address spender, uint256 amount) internal virtual {
 		allowance[approver][spender] = amount;
 		emit Approval(approver, spender, amount);
@@ -61,7 +69,6 @@ contract WildcatMarketToken is WildcatMarketBase {
 		uint256 scaledAmount = state.scaleAmount(amount);
 
 		Account memory fromAccount = _getAccount(from);
-    
 		fromAccount.decreaseScaledBalance(scaledAmount);
 		_accounts[from] = fromAccount;
 
