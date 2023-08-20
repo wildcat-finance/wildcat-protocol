@@ -5,14 +5,7 @@ import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
 import 'reference/WildcatVaultFactory.sol';
 import 'reference/WildcatVaultController.sol';
 import './helpers/BaseERC20Test.sol';
-
-uint128 constant DefaultMaximumSupply = 100_000e18;
-uint16 constant DefaultInterest = 1000;
-uint16 constant DefaultDelinquencyFee = 1000;
-uint16 constant DefaultLiquidityCoverage = 2000;
-uint32 constant DefaultGracePeriod = 2000;
-uint16 constant DefaultProtocolFeeBips = 1000;
-uint32 constant DefaultWithdrawalBatchDuration = 86400;
+import './shared/TestConstants.sol';
 
 bytes32 constant DaiSalt = bytes32(uint256(1));
 
