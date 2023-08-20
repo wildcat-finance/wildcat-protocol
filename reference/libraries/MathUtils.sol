@@ -19,8 +19,6 @@ uint256 constant SECONDS_IN_365_DAYS = 365 days;
  * @notice Provides functions to perform linear and compounded interest calculations
  */
 library MathUtils {
-	error InvalidNullValue();
-
 	/// @dev The multiply-divide operation failed, either due to a
 	/// multiplication overflow, or a division by a zero.
 	error MulDivFailed();
