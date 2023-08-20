@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
+
 import '../libraries/FeeMath.sol';
 import '../libraries/SafeCastLib.sol';
 import './WildcatMarketBase.sol';
@@ -39,9 +40,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
 		return _state.liquidityCoverageRatio;
 	}
 
-  // =====================================================================//
-  //                        External Config Setters                       //
-  // =====================================================================//
+	// =====================================================================//
+	//                        External Config Setters                       //
+	// =====================================================================//
 
 	/**
 	 * @dev Revoke an account's authorization to deposit assets.
@@ -96,11 +97,11 @@ contract WildcatMarketConfig is WildcatMarketBase {
 		uint256 scaledBalance = account.scaledBalance;
 		uint256 amount = state.normalizeAmount(scaledBalance);
 
-    account.approval = AuthRole.Blocked;
-    account.scaledBalance = 0;
-    _accounts[_account] = account;
+		account.approval = AuthRole.Blocked;
+		account.scaledBalance = 0;
+		_accounts[_account] = account;
 
-    if (scaledBalance > 0) {
+		if (scaledBalance > 0) {
 			state.decreaseScaledTotalSupply(scaledBalance);
 		}
 		if (amount > 0) {
