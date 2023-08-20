@@ -2,8 +2,8 @@
 pragma solidity >=0.8.20;
 
 import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
-import 'reference/WildcatVaultFactory.sol';
-import 'reference/WildcatVaultController.sol';
+import 'src/WildcatVaultFactory.sol';
+import 'src/WildcatVaultController.sol';
 import './helpers/BaseERC20Test.sol';
 import './shared/TestConstants.sol';
 

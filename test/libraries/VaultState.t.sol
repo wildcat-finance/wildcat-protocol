@@ -2,8 +2,8 @@
 pragma solidity >=0.8.20;
 
 import 'forge-std/Test.sol';
-import 'reference/libraries/Withdrawal.sol';
-import 'reference/libraries/MathUtils.sol';
+import 'src/libraries/Withdrawal.sol';
+import 'src/libraries/MathUtils.sol';
 
 using MathUtils for uint256;
 

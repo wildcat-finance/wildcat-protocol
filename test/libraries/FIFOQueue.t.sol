@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import 'reference/libraries/FIFOQueue.sol';
+import 'src/libraries/FIFOQueue.sol';
 import 'forge-std/Test.sol';
 
 contract FIFOQueueTest is Test {

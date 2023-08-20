@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import 'reference/libraries/MathUtils.sol';
+import 'src/libraries/MathUtils.sol';
 import 'forge-std/Test.sol';
 
 contract MathUtilsTest is Test {

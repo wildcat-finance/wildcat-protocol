@@ -5,7 +5,7 @@ import { CommonBase } from 'forge-std/Base.sol';
 import { StdCheats } from 'forge-std/StdCheats.sol';
 import { StdUtils } from 'forge-std/StdUtils.sol';
 import '../helpers/AddressSet.sol';
-import 'reference/libraries/StringQuery.sol';
+import 'src/libraries/StringQuery.sol';
 import { console } from 'forge-std/console.sol';
 import { logCall } from "../helpers/Metrics.sol";
 

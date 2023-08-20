@@ -1,6 +1,5 @@
 [profile.default]
-src = 'reference'
-reference = 'reference'
+src = 'src'
 out = 'out'
 libs = ['lib']
 gas_reports = ["*"]

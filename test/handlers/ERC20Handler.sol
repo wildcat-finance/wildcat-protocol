@@ -1,6 +1,6 @@
 pragma solidity >=0.8.20;
 
-import 'reference/interfaces/IERC20.sol';
+import 'src/interfaces/IERC20.sol';
 import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
 import './BaseHandler.sol';
 

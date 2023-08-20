@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.20;
 
-import 'reference/interfaces/IERC20Metadata.sol';
-import 'reference/libraries/MathUtils.sol';
+import 'src/interfaces/IERC20Metadata.sol';
+import 'src/libraries/MathUtils.sol';
 import { Test } from 'forge-std/Test.sol';
 import { DSInvariantTest } from 'solmate/test/utils/DSInvariantTest.sol';
 

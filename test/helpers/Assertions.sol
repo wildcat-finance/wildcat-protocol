@@ -1,6 +1,6 @@
 pragma solidity ^0.8.20;
 
-import 'reference/libraries/VaultState.sol';
+import 'src/libraries/VaultState.sol';
 import { StdAssertions } from 'forge-std/StdAssertions.sol';
 import { LibString } from 'solady/utils/LibString.sol';
 

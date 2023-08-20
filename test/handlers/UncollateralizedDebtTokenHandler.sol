@@ -1,7 +1,7 @@
 // // SPDX-License-Identifier: GPL-3.0-or-later
 // pragma solidity >=0.8.20;
 
-// import 'reference/interfaces/IERC20.sol';
+// import 'src/interfaces/IERC20.sol';
 // import './ERC20Handler.sol';
 
 // uint256 constant BASE_TOKEN_SUPPLY = 100_000_000e18;

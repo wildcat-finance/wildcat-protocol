@@ -1,6 +1,6 @@
 pragma solidity ^0.8.17;
 
-import { SafeCastLib } from 'reference/libraries/SafeCastLib.sol';
+import { SafeCastLib } from 'src/libraries/SafeCastLib.sol';
 
 contract SafeCastLibExternal {
 	function toUint8(uint256 x) external pure returns (uint8 y) {

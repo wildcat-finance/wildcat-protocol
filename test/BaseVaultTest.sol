@@ -6,8 +6,8 @@ import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
 import 'forge-std/Test.sol';
 import 'forge-std/Vm.sol';
 
-import 'reference/WildcatVaultController.sol';
-import 'reference/WildcatVaultFactory.sol';
+import 'src/WildcatVaultController.sol';
+import 'src/WildcatVaultFactory.sol';
 import './helpers/Assertions.sol';
 import './helpers/MockController.sol';
 import './shared/TestConstants.sol';

@@ -2,7 +2,7 @@
 pragma solidity >=0.8.20;
 
 import 'forge-std/Test.sol';
-import 'reference/libraries/StringQuery.sol';
+import 'src/libraries/StringQuery.sol';
 
 contract Bytes32Metadata {
 	bytes32 public constant name = 'TestA';

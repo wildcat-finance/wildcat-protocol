@@ -2,10 +2,10 @@
 pragma solidity ^0.8.13;
 
 import './BaseVaultTest.sol';
-import 'reference/interfaces/IVaultEventsAndErrors.sol';
-import 'reference/libraries/MathUtils.sol';
-import 'reference/libraries/SafeCastLib.sol';
-import 'reference/libraries/VaultState.sol';
+import 'src/interfaces/IVaultEventsAndErrors.sol';
+import 'src/libraries/MathUtils.sol';
+import 'src/libraries/SafeCastLib.sol';
+import 'src/libraries/VaultState.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
 contract WildcatVaultControllerTest is BaseVaultTest {

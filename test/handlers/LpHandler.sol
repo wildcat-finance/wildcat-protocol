@@ -7,7 +7,7 @@
 // import { StdUtils } from 'forge-std/StdUtils.sol';
 // import { Vm } from 'forge-std/Vm.sol';
 
-// import { IWildcatVault } from 'reference/interfaces/IWildcatVault.sol';
+// import { IWildcatVault } from 'src/interfaces/IWildcatVault.sol';
 // import 'solmate/test/utils/mocks/MockERC20.sol';
 // import './BaseHandler.sol';
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import 'reference/libraries/MathUtils.sol';
-import { VaultState } from 'reference/libraries/VaultState.sol';
+import 'src/libraries/MathUtils.sol';
+import { VaultState } from 'src/libraries/VaultState.sol';
 import './TestConstants.sol';
 
 using MathUtils for uint256;

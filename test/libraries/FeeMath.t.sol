@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
-import { FeeMath, MathUtils, SafeCastLib, VaultState } from 'reference/libraries/FeeMath.sol';
+import { FeeMath, MathUtils, SafeCastLib, VaultState } from 'src/libraries/FeeMath.sol';
 import '../shared/BaseTest.sol';
 
 function maxRayMulRhs(uint256 left) pure returns (uint256 maxRight) {
