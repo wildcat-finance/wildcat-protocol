@@ -10,24 +10,7 @@ import 'reference/WildcatVaultController.sol';
 import 'reference/WildcatVaultFactory.sol';
 import './helpers/Assertions.sol';
 import './helpers/MockController.sol';
-
-uint128 constant DefaultMaximumSupply = 100_000e18;
-uint16 constant DefaultInterest = 1000;
-uint16 constant DefaultDelinquencyFee = 1000;
-uint16 constant DefaultLiquidityCoverage = 2000;
-uint32 constant DefaultGracePeriod = 2000;
-uint16 constant DefaultProtocolFeeBips = 1000;
-uint32 constant DefaultWithdrawalBatchDuration = 86400;
-
-uint256 constant DefaultInterestPerSecondRay = (DefaultInterest * 1e23) / SecondsIn365Days;
-
-uint256 constant SecondsIn365Days = 365 days;
-
-address constant alice = address(0xa11ce);
-address constant bob = address(0xb0b);
-address constant sentinel = address(0x533);
-address constant feeRecipient = address(0xfee);
-address constant borrower = address(0xb04405e4);
+import './shared/TestConstants.sol';
 
 contract BaseVaultTest is Test, Assertions {
 	using stdStorage for StdStorage;
@@ -123,15 +106,14 @@ contract BaseVaultTest is Test, Assertions {
 				parameters.delinquencyGracePeriod,
 				expiry
 			);
-      _processExpiredWithdrawalBatch(state);
+			_processExpiredWithdrawalBatch(state);
 		}
-		state
-			.updateScaleFactorAndFees(
-				parameters.protocolFeeBips,
-				parameters.delinquencyFeeBips,
-				parameters.delinquencyGracePeriod,
-				block.timestamp
-			);
+		state.updateScaleFactorAndFees(
+			parameters.protocolFeeBips,
+			parameters.delinquencyFeeBips,
+			parameters.delinquencyGracePeriod,
+			block.timestamp
+		);
 		// (uint256 feesAccrued, bool didUpdate) = state.calculateInterestAndFees(
 		// 	parameters.protocolFeeBips,
 		// 	parameters.delinquencyFeeBips,
