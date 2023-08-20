@@ -30,7 +30,7 @@
 
 //   function _deployVault(FuzzContext memory input) internal {
 //     getFinalVaultParameters = VaultParameters({
-//       asset: address(baseToken),
+//       asset: address(asset),
 //       namePrefix: "Wildcat ",
 //       symbolPrefix: "WC",
 //       borrower: address(this),
