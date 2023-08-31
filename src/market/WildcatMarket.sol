@@ -14,6 +14,7 @@ contract WildcatMarket is
 	WildcatMarketWithdrawals
 {
 	using MathUtils for uint256;
+	using SafeCastLib for uint256;
 	using SafeTransferLib for address;
 
 	function updateState() external {
@@ -25,34 +26,28 @@ contract WildcatMarket is
 		uint256 amount
 	) public virtual nonReentrant returns (uint256 /* actualAmount */) {
 		// Get current state
-
 		VaultState memory state = _getUpdatedState();
 
 		// Reduce amount if it would exceed totalSupply
 		amount = MathUtils.min(amount, state.maximumDeposit());
 
-		// Scale the actual mint amount
-		uint256 scaledAmount = state.scaleAmount(amount);
-
-		if (scaledAmount == 0) {
-			revert NullMintAmount();
-		}
+		// Scale the mint amount
+		uint104 scaledAmount = state.scaleAmount(amount).toUint104();
+		if (scaledAmount == 0) revert NullMintAmount();
 
 		// Transfer deposit from caller
 		asset.safeTransferFrom(msg.sender, address(this), amount);
 
-		// Update account
-		Account memory account = _getAccount(msg.sender);
-		_checkAccountAuthorization(msg.sender, account, AuthRole.DepositAndWithdraw);
-
-		account.increaseScaledBalance(scaledAmount);
+		// Cache account data and revert if not authorized to deposit.
+		Account memory account = _getAccountWithRole(msg.sender, AuthRole.DepositAndWithdraw);
+		account.scaledBalance += scaledAmount;
 		_accounts[msg.sender] = account;
 
 		emit Transfer(address(0), msg.sender, amount);
 		emit Deposit(msg.sender, amount, scaledAmount);
 
 		// Increase supply
-		state.increaseScaledTotalSupply(scaledAmount);
+		state.scaledTotalSupply += scaledAmount;
 
 		// Update stored state
 		_writeState(state);
@@ -82,7 +77,7 @@ contract WildcatMarket is
 
 	function borrow(uint256 amount) external onlyBorrower nonReentrant {
 		VaultState memory state = _getUpdatedState();
-		uint256 borrowable = totalAssets().satSub(state.liquidityRequired());
+		uint256 borrowable = state.borrowableAssets(totalAssets());
 		if (amount > borrowable) {
 			revert BorrowAmountTooHigh();
 		}
