@@ -102,15 +102,11 @@ library VaultStateLib {
 			state.reservedAssets;
 	}
 
-	function liquidAssets(
+	function borrowableAssets(
 		VaultState memory state,
 		uint256 totalAssets
 	) internal pure returns (uint256) {
-		return totalAssets.satSub(state.reservedAssets + state.accruedProtocolFees);
-	}
-
-	function hasPendingBatch(VaultState memory state) internal pure returns (bool) {
-		return state.pendingWithdrawalExpiry != 0;
+		return totalAssets.satSub(state.liquidityRequired());
 	}
 
 	function hasPendingExpiredBatch(VaultState memory state) internal view returns (bool result) {
@@ -119,27 +115,5 @@ library VaultStateLib {
 			// Equivalent to expiry > 0 && expiry <= block.timestamp
 			result := gt(timestamp(), sub(expiry, 1))
 		}
-	}
-
-	// =====================================================================//
-	//                        Simple State Updates                          //
-	// =====================================================================//
-
-	/// @dev Decrease the scaled total supply.
-	function decreaseScaledTotalSupply(VaultState memory state, uint256 scaledAmount) internal pure {
-		state.scaledTotalSupply -= scaledAmount.toUint104();
-	}
-
-	/// @dev Increase the scaled total supply.
-	function increaseScaledTotalSupply(VaultState memory state, uint256 scaledAmount) internal pure {
-		state.scaledTotalSupply += scaledAmount.toUint104();
-	}
-
-	function decreaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
-		account.scaledBalance -= scaledAmount.toUint104();
-	}
-
-	function increaseScaledBalance(Account memory account, uint256 scaledAmount) internal pure {
-		account.scaledBalance += scaledAmount.toUint104();
 	}
 }
