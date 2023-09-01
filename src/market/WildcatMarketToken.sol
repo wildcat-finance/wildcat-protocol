@@ -4,6 +4,8 @@ pragma solidity >=0.8.20;
 import './WildcatMarketBase.sol';
 
 contract WildcatMarketToken is WildcatMarketBase {
+	using SafeCastLib for uint256;
+
 	// =====================================================================//
 	//                            ERC20 Queries                             //
 	// =====================================================================//
@@ -12,14 +14,13 @@ contract WildcatMarketToken is WildcatMarketBase {
 
 	/// @notice Returns the normalized balance of `account` with interest.
 	function balanceOf(address account) public view virtual nonReentrantView returns (uint256) {
-		// Get current state
-		VaultState memory state = _calculateCurrentState();
+		(VaultState memory state,,) = _calculateCurrentState();
 		return state.normalizeAmount(_accounts[account].scaledBalance);
 	}
 
 	/// @notice Returns the normalized total supply with interest.
 	function totalSupply() external view virtual nonReentrantView returns (uint256) {
-		VaultState memory state = _calculateCurrentState();
+		(VaultState memory state,,) = _calculateCurrentState();
 		return state.totalSupply();
 	}
 
@@ -27,9 +28,8 @@ contract WildcatMarketToken is WildcatMarketBase {
 	//                            ERC20 Actions                             //
 	// =====================================================================//
 
-	function approve(address spender, uint256 amount) external virtual returns (bool) {
+	function approve(address spender, uint256 amount) external virtual nonReentrant returns (bool) {
 		_approve(msg.sender, spender, amount);
-
 		return true;
 	}
 
@@ -67,14 +67,14 @@ contract WildcatMarketToken is WildcatMarketBase {
 
 	function _transfer(address from, address to, uint256 amount) internal virtual {
 		VaultState memory state = _getUpdatedState();
-		uint256 scaledAmount = state.scaleAmount(amount);
+		uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 
 		Account memory fromAccount = _getAccount(from);
-		fromAccount.decreaseScaledBalance(scaledAmount);
+		fromAccount.scaledBalance -= scaledAmount;
 		_accounts[from] = fromAccount;
 
 		Account memory toAccount = _getAccount(to);
-		toAccount.increaseScaledBalance(scaledAmount);
+		toAccount.scaledBalance += scaledAmount;
 		_accounts[to] = toAccount;
 
 		_writeState(state);
