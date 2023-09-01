@@ -50,7 +50,7 @@ contract WildcatVaultControllerTest is BaseVaultTest {
 		uint256 expiry = block.timestamp + 2 weeks;
 		_check(DefaultInterest - 1, 9000, DefaultLiquidityCoverage, expiry);
 
-		_warp(2 weeks);
+		fastForward(2 weeks);
 		vm.prank(borrower);
 		controller.setAnnualInterestBips(address(vault), DefaultInterest - 2);
 		_check(DefaultInterest - 2, 9000, DefaultLiquidityCoverage, expiry + 2 weeks);
@@ -99,7 +99,7 @@ contract WildcatVaultControllerTest is BaseVaultTest {
 		vm.prank(borrower);
 		controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
 
-		_warp(2 weeks);
+		fastForward(2 weeks);
 		controller.resetLiquidityCoverage(address(vault));
 
 		assertEq(
