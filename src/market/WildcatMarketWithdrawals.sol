@@ -18,6 +18,10 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 	function getWithdrawalBatch(
 		uint32 expiry
 	) external view nonReentrantView returns (WithdrawalBatch memory) {
+		(, uint32 expiredBatchExpiry, WithdrawalBatch memory expiredBatch) = _calculateCurrentState();
+		if (expiry == expiredBatchExpiry) {
+			return expiredBatch;
+		}
 		return _withdrawalData.batches[expiry];
 	}
 
