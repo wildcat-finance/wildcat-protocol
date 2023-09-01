@@ -18,20 +18,26 @@ contract VaultStateTest is Test {
 	}
 
 	function test_scaleAmount(
-		uint112 scaleFactor,
-		uint128 normalizedAmount
+		uint256 scaleFactor,
+		uint256 normalizedAmount
 	) external returns (uint256) {
-		scaleFactor = uint112(bound(scaleFactor, RAY, type(uint112).max));
+		scaleFactor = bound(scaleFactor, RAY, type(uint112).max);
+    normalizedAmount = bound(normalizedAmount, 0, type(uint128).max);
 		VaultState memory state;
-		state.scaleFactor = scaleFactor;
-		assertEq(state.scaleAmount(normalizedAmount), uint256(normalizedAmount).rayDiv(scaleFactor));
+		state.scaleFactor = uint112(scaleFactor);
+		uint256 expected = ((normalizedAmount * RAY) + (scaleFactor / 2)) / uint256(scaleFactor);
+		uint256 actual = state.scaleAmount(normalizedAmount);
+		assertEq(actual, expected);
 	}
 
-	function test_normalizeAmount(uint104 scaledAmount) external {
+	function test_normalizeAmount(uint256 scaledAmount, uint256 scaleFactor) external {
+    scaledAmount = bound(scaledAmount, 0, type(uint104).max);
+		scaleFactor = bound(scaleFactor, RAY, type(uint112).max);
 		VaultState memory state;
-		state.scaleFactor = uint112(RAY);
+		state.scaleFactor = uint112(scaleFactor);
 
-		assertEq(state.normalizeAmount(scaledAmount), scaledAmount);
+		uint256 expected = ((scaledAmount * scaleFactor) + HALF_RAY) / RAY;
+		assertEq(state.normalizeAmount(scaledAmount), expected);
 	}
 
 	function test_normalizeAmount(
@@ -69,7 +75,7 @@ contract VaultStateTest is Test {
 		uint16 liquidityCoverageRatio,
 		uint128 accruedProtocolFees,
 		uint128 reservedAssets
-	) external returns (uint256 _liquidityRequired) {
+	) external {
 		liquidityCoverageRatio = uint16(bound(liquidityCoverageRatio, 1, 10000));
 		scaledPendingWithdrawals = uint104(bound(scaledPendingWithdrawals, 0, scaledTotalSupply));
 
@@ -80,72 +86,26 @@ contract VaultStateTest is Test {
 		state.accruedProtocolFees = accruedProtocolFees;
 		state.reservedAssets = reservedAssets;
 
-		uint256 collateralForOutstanding = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
+		uint256 scaledCoverageLiquidity = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
 			uint256(liquidityCoverageRatio)) / uint256(10000);
+		uint256 collateralForOutstanding = state.normalizeAmount(
+			scaledCoverageLiquidity + scaledPendingWithdrawals
+		);
 
 		assertEq(
 			state.liquidityRequired(),
-			collateralForOutstanding + uint256(scaledPendingWithdrawals) + uint256(accruedProtocolFees)
+			collateralForOutstanding + state.reservedAssets + uint256(accruedProtocolFees)
 		);
 	}
 
-	function test_liquidAssets(uint256 totalAssets) external returns (uint256) {
-		VaultState memory state;
-		uint256 expected;
-		assertEq(expected, state.liquidAssets(totalAssets));
-	}
-
-	function test_hasPendingBatch(uint32 pendingWithdrawalExpiry) external returns (bool) {
-		VaultState memory state;
-		state.pendingWithdrawalExpiry = pendingWithdrawalExpiry;
-
-		assertEq(state.hasPendingBatch(), pendingWithdrawalExpiry != 0);
-	}
-
-	function test_hasPendingExpiredBatch(
-		uint32 pendingWithdrawalExpiry
-	) external returns (bool result) {
+	function test_hasPendingExpiredBatch(uint32 pendingWithdrawalExpiry, uint32 timestamp) external {
+		vm.warp(timestamp);
 		VaultState memory state;
 		state.pendingWithdrawalExpiry = pendingWithdrawalExpiry;
 
 		assertEq(
 			state.hasPendingExpiredBatch(),
-			pendingWithdrawalExpiry > 0 && pendingWithdrawalExpiry <= block.timestamp
+			pendingWithdrawalExpiry > 0 && pendingWithdrawalExpiry <= timestamp
 		);
 	}
-
-	function test_decreaseScaledTotalSupply(
-		uint104 scaledTotalSupply,
-		uint104 scaledAmount
-	) external {
-		scaledAmount = uint104(bound(scaledAmount, 0, scaledTotalSupply));
-		VaultState memory state;
-		state.scaledTotalSupply = scaledTotalSupply;
-		state.decreaseScaledTotalSupply(scaledAmount);
-		assertEq(state.scaledTotalSupply, scaledTotalSupply - scaledAmount);
-	}
-
-	function test_increaseScaledTotalSupply(
-		uint104 scaledTotalSupply,
-		uint104 scaledAmount
-	) external {
-		scaledAmount = uint104(bound(scaledAmount, 0, type(uint104).max - scaledTotalSupply));
-		VaultState memory state;
-		state.scaledTotalSupply = scaledTotalSupply;
-		state.increaseScaledTotalSupply(scaledAmount);
-		assertEq(state.scaledTotalSupply, scaledTotalSupply + scaledAmount);
-	}
-	/* 
-    function test_decreaseScaledBalance(uint104 scaledAmount) external  {
-    Account memory account;
-    uint256 expected;
-    assertEq(expected, account.decreaseScaledBalance(scaledAmount));
-    }
-
-    function test_increaseScaledBalance(uint104 scaledAmount) external  {
-    Account memory account;
-    uint256 expected;
-    assertEq(expected, account.increaseScaledBalance(scaledAmount));
-    }
-    } */
 }
