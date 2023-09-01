@@ -41,7 +41,9 @@ contract BaseTest is Test {
 
 	function deployVault(ConfigFuzzInputs memory inputs) internal returns (WildcatMarket vault) {
 		factory = new WildcatVaultFactory();
-		controller = new MockController(feeRecipient, address(factory));
+		MockController _controller = new MockController(feeRecipient, address(factory));
+    controller = _controller;
+		_controller.authorizeAll();
 		asset = new MockERC20('Token', 'TKN', 18);
 		VaultParameters memory parameters = getVaultParameters(inputs);
 		vault = WildcatMarket(factory.deployVault(parameters));

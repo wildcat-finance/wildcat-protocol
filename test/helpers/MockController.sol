@@ -9,7 +9,16 @@ contract MockController is WildcatVaultController {
 		address _factory
 	) WildcatVaultController(_feeRecipient, _factory) {}
 
-	function isAuthorizedLender(address) external view virtual override returns (bool) {
-		return true;
+	bool public AUTH_ALL;
+
+	function authorizeAll() external {
+		AUTH_ALL = true;
+	}
+
+	function isAuthorizedLender(address lender) external view virtual override returns (bool) {
+		if (AUTH_ALL) {
+			return true;
+		}
+		return _authorizedLenders[lender];
 	}
 }
