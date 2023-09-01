@@ -20,8 +20,6 @@ contract FeeMathTest is BaseTest {
 		require(vaultSupply > 0);
 	}
 
-	// function testProtocolFees()
-
 	function test_updateScaleFactorAndFees_WithFees() external {
 		VaultState memory state;
 		state.timeDelinquent = 1000;
