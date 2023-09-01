@@ -7,9 +7,7 @@ import '../libraries/Withdrawal.sol';
 import 'solady/utils/SafeTransferLib.sol';
 import { queryName, querySymbol } from '../libraries/StringQuery.sol';
 import '../interfaces/IVaultEventsAndErrors.sol';
-
 import '../interfaces/IWildcatVaultController.sol';
-
 import '../interfaces/IWildcatVaultFactory.sol';
 import { IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
@@ -154,50 +152,41 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	 *
 	 * note: If the account is blacklisted, reverts.
 	 */
-	function _getAccount(address _account) internal view returns (Account memory account) {
-		account = _accounts[_account];
+	function _getAccount(address accountAddress) internal view returns (Account memory account) {
+		account = _accounts[accountAddress];
 		if (account.approval == AuthRole.Blocked) {
 			revert AccountBlacklisted();
 		}
 	}
 
-	function _checkAccountAuthorization(
-		address _account,
-		Account memory account,
+	function _getAccountWithRole(
+		address accountAddress,
 		AuthRole requiredRole
-	) internal {
+	) internal returns (Account memory account) {
+		account = _getAccount(accountAddress);
+		// If account role is insufficient, see if it is authorized on controller.
 		if (uint256(account.approval) < uint256(requiredRole)) {
-			if (IWildcatVaultController(controller).isAuthorizedLender(_account)) {
+			if (IWildcatVaultController(controller).isAuthorizedLender(accountAddress)) {
 				account.approval = AuthRole.DepositAndWithdraw;
-				emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
+				emit AuthorizationStatusUpdated(accountAddress, AuthRole.DepositAndWithdraw);
 			} else {
 				revert NotApprovedLender();
 			}
 		}
 	}
 
-	/* 	function effectiveAnnualInterestBips() external view returns (uint256) {
-    VaultState memory state = _calculateCurrentState();
-    return (state.annualInterestBips +
-    protocolFeeBips +
-    (
-    (state.isDelinquent && state.timeDelinquent > delinquencyGracePeriod)
-    	? delinquencyFeeBips
-    	: 0
-    ));
-    } */
-
 	// ===================================================================== //
 	//                       External State Getters                          //
 	// ===================================================================== //
 
-	function coverageLiquidity() public view nonReentrantView returns (uint256) {
-		VaultState memory state = _calculateCurrentState();
+	function coverageLiquidity() external view nonReentrantView returns (uint256) {
+		(VaultState memory state, , ) = _calculateCurrentState();
 		return state.liquidityRequired();
 	}
 
 	function scaleFactor() external view nonReentrantView returns (uint256) {
-		return _calculateCurrentState().scaleFactor;
+		(VaultState memory state, , ) = _calculateCurrentState();
+		return state.scaleFactor;
 	}
 
 	/// @dev Total balance in underlying asset
@@ -208,11 +197,13 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	/// @dev  Balance in underlying asset which is not owed in fees.
 	///       Returns current value after calculating new protocol fees.
 	function borrowableAssets() external view nonReentrantView returns (uint256) {
-		return totalAssets().satSub(coverageLiquidity());
+		(VaultState memory state, , ) = _calculateCurrentState();
+		return state.borrowableAssets(totalAssets());
 	}
 
 	function accruedProtocolFees() external view nonReentrantView returns (uint256) {
-		return _calculateCurrentState().accruedProtocolFees;
+		(VaultState memory state, , ) = _calculateCurrentState();
+		return state.accruedProtocolFees;
 	}
 
 	function previousState() external view returns (VaultState memory) {
@@ -220,7 +211,44 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	}
 
 	function currentState() external view nonReentrantView returns (VaultState memory state) {
-		return _calculateCurrentState();
+		(state, , ) = _calculateCurrentState();
+	}
+
+	function scaledTotalSupply() external view nonReentrantView returns (uint256) {
+    (VaultState memory state, , ) = _calculateCurrentState();
+		return state.scaledTotalSupply;
+	}
+
+	function scaledBalanceOf(address account) external view nonReentrantView returns (uint256) {
+		return _getAccount(account).scaledBalance;
+	}
+
+	/**
+	 * @dev Calculate effective interest rate currently paid by borrower.
+	 *      Borrower pays base APR, protocol fee (on base APR) and delinquency
+	 *      fee (if delinquent beyond grace period).
+	 */
+	function effectiveBorrowerAPR() external view returns (uint256) {
+		(VaultState memory state, , ) = _calculateCurrentState();
+		// apr + (apr * protocolFee)
+		uint256 apr = MathUtils.bipMul(state.annualInterestBips, BIP + protocolFeeBips);
+		if (state.isDelinquent && state.timeDelinquent > delinquencyGracePeriod) {
+			apr += delinquencyFeeBips;
+		}
+		return apr;
+	}
+
+	/**
+	 * @dev Calculate effective interest rate currently earned by lenders.
+	 *     Lenders earn base APR and delinquency fee (if delinquent beyond grace period)
+	 */
+	function effectiveLenderAPR() external view returns (uint256) {
+		(VaultState memory state, , ) = _calculateCurrentState();
+		uint256 apr = state.annualInterestBips;
+		if (state.isDelinquent && state.timeDelinquent > delinquencyGracePeriod) {
+			apr += delinquencyFeeBips;
+		}
+		return apr;
 	}
 
 	// /*//////////////////////////////////////////////////////////////
@@ -244,9 +272,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 			return state;
 		}
 		// Handle expired withdrawal batch
-		if (
-			(block.timestamp >= state.pendingWithdrawalExpiry).and(state.pendingWithdrawalExpiry != 0)
-		) {
+		if (state.hasPendingExpiredBatch()) {
 			uint256 expiry = state.pendingWithdrawalExpiry;
 			(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
 				.updateScaleFactorAndFees(
@@ -258,7 +284,8 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 			emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
 			_processExpiredWithdrawalBatch(state);
 		}
-		{
+		// Accrue interest between last update (time of expiry or last transaction) and current timestamp
+		if (block.timestamp == state.lastInterestAccruedTimestamp) {
 			(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
 				.updateScaleFactorAndFees(
 					protocolFeeBips,
@@ -270,25 +297,53 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 		}
 	}
 
-	function _calculateCurrentState() internal view returns (VaultState memory state) {
+	/**
+	 * @dev Calculate the current state, applying fees and interest accrued since
+	 *      the last state update as well as the effects of withdrawal batch expiry
+	 *      on the vault state.
+	 *      Identical to _getUpdatedState() except it does not modify storage or
+	 *      or emit events.
+	 *      Returns expired batch data, if any, so queries against batches have
+	 *      access to the most recent data.
+	 */
+	function _calculateCurrentState()
+		internal
+		view
+		returns (
+			VaultState memory state,
+			uint32 expiredBatchExpiry,
+			WithdrawalBatch memory expiredBatch
+		)
+	{
 		state = _state;
 		if (block.timestamp == state.lastInterestAccruedTimestamp) {
-			return state;
+			return (state, 0, expiredBatch);
 		}
 		// Handle expired withdrawal batch
-		if (
-			(state.pendingWithdrawalExpiry != 0).and(block.timestamp >= state.pendingWithdrawalExpiry)
-		) {
-			uint256 expiry = state.pendingWithdrawalExpiry;
+		if (state.hasPendingExpiredBatch()) {
+			expiredBatchExpiry = state.pendingWithdrawalExpiry;
 			state.updateScaleFactorAndFees(
 				protocolFeeBips,
 				delinquencyFeeBips,
 				delinquencyGracePeriod,
-				expiry
+				expiredBatchExpiry
 			);
-			// @todo: fix this (make view version of processExpiredBatch)
-			// WithdrawalBatch memory batch = state.processExpiredBatch(state.liquidAssets(totalAssets()));
+
+			expiredBatch = _withdrawalData.batches[expiredBatchExpiry];
+			uint256 availableLiquidity = expiredBatch.availableLiquidityForPendingBatch(
+				state,
+				totalAssets()
+			);
+			if (availableLiquidity > 0) {
+				_applyWithdrawalBatchPaymentView(
+					expiredBatch,
+					state,
+					availableLiquidity
+				);
+			}
+			state.pendingWithdrawalExpiry = 0;
 		}
+
 		state.updateScaleFactorAndFees(
 			protocolFeeBips,
 			delinquencyFeeBips,
@@ -309,50 +364,101 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	}
 
 	/**
-	 * @dev When a withdrawal batch expires, the vault will checkpoint the scale factor
-	 *      as of the time of expiry and retrieve the current liquid assets in the vault
-	 * (assets which are not already owed to protocol fees or prior withdrawal batches).
+	 * @dev Handles an expired withdrawal batch.
+   *      - Retrieves the amount of underlying assets that can be used to pay for the batch
+   *        (assets which are not owed to protocol fees, prior withdrawal batches).
+	 *      - If the amount is sufficient to pay the full amount owed to the batch, the batch
+            is closed and the total withdrawal amount is reserved.
+   *      - If the amount is insufficient to pay the full amount owed to the batch, the batch
+   *        is recorded as an unpaid batch and the available assets are reserved.
+   *      - The assets reserved for the batch are scaled by the current scale factor and that
+            amount of scaled tokens is burned, ensuring borrowers do not continue paying interest
+            on withdrawn assets.
 	 */
 	function _processExpiredWithdrawalBatch(VaultState memory state) internal {
-		WithdrawalBatch storage batch = _withdrawalData.batches[state.pendingWithdrawalExpiry];
+		uint32 expiry = state.pendingWithdrawalExpiry;
+		WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
-		// Get the liquidity which is not already reserved for prior withdrawal batches
-		// or owed to protocol fees.
-		uint256 availableLiquidity = batch.availableLiquidityForBatch(state, totalAssets());
-
-		uint104 scaledTotalAmount = batch.scaledTotalAmount;
-
-		uint128 normalizedOwedAmount = state.normalizeAmount(scaledTotalAmount).toUint128();
-
-		(uint104 scaledAmountBurned, uint128 normalizedAmountPaid) = (availableLiquidity >=
-			normalizedOwedAmount)
-			? (scaledTotalAmount, normalizedOwedAmount)
-			: (state.scaleAmount(availableLiquidity).toUint104(), availableLiquidity.toUint128());
-
-		batch.scaledAmountBurned = scaledAmountBurned;
-		batch.normalizedAmountPaid = normalizedAmountPaid;
+		// Burn as much of the withdrawal batch as possible with available liquidity.
+		uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
+		if (availableLiquidity > 0) {
+			_applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
+		}
 
 		emit WithdrawalBatchExpired(
 			state.pendingWithdrawalExpiry,
-			scaledTotalAmount,
-			scaledAmountBurned,
-			normalizedAmountPaid
+			batch.scaledTotalAmount,
+			batch.scaledAmountBurned,
+			batch.normalizedAmountPaid
 		);
 
-		if (scaledAmountBurned < scaledTotalAmount) {
+		if (batch.scaledAmountBurned < batch.scaledTotalAmount) {
 			_withdrawalData.unpaidBatches.push(state.pendingWithdrawalExpiry);
 		} else {
 			emit WithdrawalBatchClosed(state.pendingWithdrawalExpiry);
 		}
 
 		state.pendingWithdrawalExpiry = 0;
+
+		_withdrawalData.batches[state.pendingWithdrawalExpiry] = batch;
+	}
+
+	/**
+	 * @dev Process withdrawal payment, burning vault tokens and reserving
+	 *      underlying assets so they are only available for withdrawals.
+	 */
+	function _applyWithdrawalBatchPayment(
+		WithdrawalBatch memory batch,
+		VaultState memory state,
+		uint32 expiry,
+		uint256 availableLiquidity
+	) internal {
+		uint104 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity).toUint104();
+		uint104 scaledAmountOwed = batch.scaledTotalAmount - batch.scaledAmountBurned;
+		// Do nothing if batch is already paid
+		if (scaledAmountOwed == 0) {
+			return;
+		}
+		uint104 scaledAmountBurned = uint104(MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed));
+		uint128 normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
+
+		batch.scaledAmountBurned += scaledAmountBurned;
+		batch.normalizedAmountPaid += normalizedAmountPaid;
+		state.scaledPendingWithdrawals -= scaledAmountBurned;
+
+		// Update reservedAssets so the tokens are only accessible for withdrawals.
 		state.reservedAssets += normalizedAmountPaid;
 
-		if (scaledAmountBurned > 0) {
-			// Emit transfer for external trackers to indicate burn
-			emit Transfer(address(this), address(0), normalizedAmountPaid);
-			state.scaledPendingWithdrawals -= scaledAmountBurned;
-			state.scaledTotalSupply -= scaledAmountBurned;
+		// Burn vault tokens to stop interest accrual upon withdrawal payment.
+		state.scaledTotalSupply -= scaledAmountBurned;
+
+		// Emit transfer for external trackers to indicate burn.
+		emit Transfer(address(this), address(0), normalizedAmountPaid);
+		emit WithdrawalBatchPayment(expiry, scaledAmountBurned, normalizedAmountPaid);
+	}
+
+	function _applyWithdrawalBatchPaymentView(
+		WithdrawalBatch memory batch,
+		VaultState memory state,
+		uint256 availableLiquidity
+	) internal pure {
+		uint104 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity).toUint104();
+		uint104 scaledAmountOwed = batch.scaledTotalAmount - batch.scaledAmountBurned;
+		// Do nothing if batch is already paid
+		if (scaledAmountOwed == 0) {
+			return;
 		}
+		uint104 scaledAmountBurned = uint104(MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed));
+		uint128 normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
+
+		batch.scaledAmountBurned += scaledAmountBurned;
+		batch.normalizedAmountPaid += normalizedAmountPaid;
+		state.scaledPendingWithdrawals -= scaledAmountBurned;
+
+		// Update reservedAssets so the tokens are only accessible for withdrawals.
+		state.reservedAssets += normalizedAmountPaid;
+
+		// Burn vault tokens to stop interest accrual upon withdrawal payment.
+		state.scaledTotalSupply -= scaledAmountBurned;
 	}
 }
