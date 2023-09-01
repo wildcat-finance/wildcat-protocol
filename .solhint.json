@@ -21,7 +21,7 @@
     "func-name-mixedcase": "off",
     "max-line-length": [
       "warn",
-      80
+      100
     ],
     "function-max-lines": "off",
     "code-complexity": [
