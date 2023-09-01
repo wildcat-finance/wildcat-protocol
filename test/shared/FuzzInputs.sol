@@ -4,6 +4,7 @@ pragma solidity >=0.8.20;
 import 'src/libraries/MathUtils.sol';
 import { VaultState } from 'src/libraries/VaultState.sol';
 import './TestConstants.sol';
+import { bound } from '../helpers/VmUtils.sol';
 
 using MathUtils for uint256;
 
@@ -114,37 +115,5 @@ library FuzzInputsLib {
 		state.liquidityCoverageRatio = inputs.liquidityCoverageRatio;
 		state.scaleFactor = inputs.scaleFactor;
 		state.lastInterestAccruedTimestamp = inputs.lastInterestAccruedTimestamp;
-	}
-}
-
-/// @custom:author Taken from ProjectOpenSea/seaport/test/foundry/new/helpers/FuzzTestContextLib.sol
-/// @dev Implementation cribbed from forge-std bound
-function bound(uint256 x, uint256 min, uint256 max) pure returns (uint256 result) {
-	require(min <= max, 'Max is less than min.');
-	// If x is between min and max, return x directly. This is to ensure that
-	// dictionary values do not get shifted if the min is nonzero.
-	if (x >= min && x <= max) return x;
-
-	uint256 size = max - min + 1;
-
-	// If the value is 0, 1, 2, 3, warp that to min, min+1, min+2, min+3.
-	// Similarly for the UINT256_MAX side. This helps ensure coverage of the
-	// min/max values.
-	if (x <= 3 && size > x) return min + x;
-	if (x >= type(uint256).max - 3 && size > type(uint256).max - x) {
-		return max - (type(uint256).max - x);
-	}
-
-	// Otherwise, wrap x into the range [min, max], i.e. the range is inclusive.
-	if (x > max) {
-		uint256 diff = x - max;
-		uint256 rem = diff % size;
-		if (rem == 0) return max;
-		result = min + rem - 1;
-	} else if (x < min) {
-		uint256 diff = min - x;
-		uint256 rem = diff % size;
-		if (rem == 0) return min;
-		result = max - rem + 1;
 	}
 }
