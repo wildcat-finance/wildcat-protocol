@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { EnumerableSet } from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
+import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
-import { EnumerableMap } from '@openzeppelin/contracts/utils/structs/EnumerableMap.sol';
+import { EnumerableMap } from 'openzeppelin/contracts/utils/structs/EnumerableMap.sol';
 
-import { IERC20 } from '@openzeppelin/contracts/interfaces/IERC20.sol';
+import { IERC20 } from 'openzeppelin/contracts/interfaces/IERC20.sol';
 
-import { IERC721 } from '@openzeppelin/contracts/interfaces/IERC721.sol';
+import { IERC721 } from 'openzeppelin/contracts/interfaces/IERC721.sol';
 
-import { IERC1155 } from '@openzeppelin/contracts/interfaces/IERC1155.sol';
+import { IERC1155 } from 'openzeppelin/contracts/interfaces/IERC1155.sol';
 
 import { LibString } from 'solady/utils/LibString.sol';
 
