@@ -14,11 +14,28 @@ contract Assertions is StdAssertions {
 	) internal {
 		assertEq(actual.maxTotalSupply, expected.maxTotalSupply, string.concat(key, '.maxTotalSupply'));
 		assertEq(
+			actual.accruedProtocolFees,
+			expected.accruedProtocolFees,
+			string.concat(key, '.accruedProtocolFees')
+		);
+		assertEq(actual.reservedAssets, expected.reservedAssets, string.concat(key, '.reservedAssets'));
+		assertEq(
 			actual.scaledTotalSupply,
 			expected.scaledTotalSupply,
 			string.concat(key, '.scaledTotalSupply')
 		);
+		assertEq(
+			actual.scaledPendingWithdrawals,
+			expected.scaledPendingWithdrawals,
+			string.concat(key, '.scaledPendingWithdrawals')
+		);
+		assertEq(
+			actual.pendingWithdrawalExpiry,
+			expected.pendingWithdrawalExpiry,
+			string.concat(key, '.pendingWithdrawalExpiry')
+		);
 		assertEq(actual.isDelinquent, expected.isDelinquent, string.concat(key, '.isDelinquent'));
+		assertEq(actual.timeDelinquent, expected.timeDelinquent, string.concat(key, '.timeDelinquent'));
 		assertEq(
 			actual.annualInterestBips,
 			expected.annualInterestBips,
@@ -29,7 +46,6 @@ contract Assertions is StdAssertions {
 			expected.liquidityCoverageRatio,
 			string.concat(key, '.liquidityCoverageRatio')
 		);
-		assertEq(actual.timeDelinquent, expected.timeDelinquent, string.concat(key, '.timeDelinquent'));
 		assertEq(actual.scaleFactor, expected.scaleFactor, string.concat(key, '.scaleFactor'));
 		assertEq(
 			actual.lastInterestAccruedTimestamp,
