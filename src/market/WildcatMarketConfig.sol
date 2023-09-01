@@ -17,7 +17,8 @@ contract WildcatMarketConfig is WildcatMarketBase {
 	 *      currently be deposited to the market.
 	 */
 	function maximumDeposit() external view returns (uint256) {
-		return _calculateCurrentState().maximumDeposit();
+    (VaultState memory state,,) = _calculateCurrentState();
+		return state.maximumDeposit();
 	}
 
 	/**
@@ -94,7 +95,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
 	function nukeFromOrbit(address _account) external onlySentinel {
 		VaultState memory state = _getUpdatedState();
 		Account memory account = _getAccount(_account);
-		uint256 scaledBalance = account.scaledBalance;
+		uint104 scaledBalance = account.scaledBalance;
 		uint256 amount = state.normalizeAmount(scaledBalance);
 
 		account.approval = AuthRole.Blocked;
@@ -102,7 +103,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
 		_accounts[_account] = account;
 
 		if (scaledBalance > 0) {
-			state.decreaseScaledTotalSupply(scaledBalance);
+			state.scaledTotalSupply -= scaledBalance;
 		}
 		if (amount > 0) {
 			emit Transfer(_account, address(0), amount);
@@ -123,7 +124,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
 		VaultState memory state = _getUpdatedState();
 
 		if (_maxTotalSupply < state.totalSupply()) {
-			revert IVaultEventsAndErrors.NewMaxSupplyTooLow();
+			revert NewMaxSupplyTooLow();
 		}
 
 		state.maxTotalSupply = _maxTotalSupply.toUint128();
