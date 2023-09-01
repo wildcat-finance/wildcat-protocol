@@ -39,7 +39,13 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 		if (expiry > block.timestamp) {
 			revert WithdrawalBatchNotExpired();
 		}
-		WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
+		(, uint32 expiredBatchExpiry, WithdrawalBatch memory expiredBatch) = _calculateCurrentState();
+		WithdrawalBatch memory batch;
+		if (expiry == expiredBatchExpiry) {
+			batch = expiredBatch;
+		} else {
+			batch = _withdrawalData.batches[expiry];
+		}
 		AccountWithdrawalStatus memory status = _withdrawalData.accountStatuses[expiry][accountAddress];
 		// Rounding errors will lead to some dust accumulating in the batch, but the cost of
 		// executing a withdrawal will be lower for users.
@@ -114,9 +120,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 			accountAddress
 		];
 
-		uint128 newTotalWithdrawn = uint256(batch.normalizedAmountPaid)
-			.mulDiv(status.scaledAmount, batch.scaledTotalAmount)
-			.toUint128();
+		uint128 newTotalWithdrawn = uint128(
+			MathUtils.mulDiv(batch.normalizedAmountPaid, status.scaledAmount, batch.scaledTotalAmount)
+		);
 
 		uint128 normalizedAmountWithdrawn = newTotalWithdrawn - status.normalizedAmountWithdrawn;
 
