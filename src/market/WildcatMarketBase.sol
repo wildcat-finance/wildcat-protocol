@@ -215,7 +215,11 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	}
 
 	function scaledBalanceOf(address account) external view nonReentrantView returns (uint256) {
-		return _getAccount(account).scaledBalance;
+		return _accounts[account].scaledBalance;
+	}
+
+	function getAccountRole(address account) external view nonReentrantView returns (AuthRole) {
+		return _accounts[account].approval;
 	}
 
 	/**
