@@ -64,15 +64,17 @@ contract WildcatMarket is
 
 	function collectFees() external nonReentrant {
 		VaultState memory state = _getUpdatedState();
-		// Coverage for deposits takes precedence over fee revenue.
-		uint256 assetsRequiredForDeposits = state.liquidityRequired();
-		if (totalAssets() < assetsRequiredForDeposits) {
-			revert InsufficientCoverageForFeeWithdrawal();
-		}
-		uint256 fees = state.accruedProtocolFees;
+    if (state.accruedProtocolFees == 0) {
+      revert NullFeeAmount();
+    }
+    uint128 withdrawableFees = state.withdrawableProtocolFees(totalAssets());
+    if (withdrawableFees == 0) {
+        revert InsufficientCoverageForFeeWithdrawal();
+    }
+    state.accruedProtocolFees -= withdrawableFees;
 		_writeState(state);
-		asset.safeTransfer(feeRecipient, fees);
-		emit FeesCollected(fees);
+		asset.safeTransfer(feeRecipient, withdrawableFees);
+		emit FeesCollected(withdrawableFees);
 	}
 
 	function borrow(uint256 amount) external onlyBorrower nonReentrant {
