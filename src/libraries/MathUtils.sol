@@ -91,8 +91,8 @@ library MathUtils {
 	 * @return c = a*b, in bip
 	 */
 	function bipMul(uint256 a, uint256 b) internal pure returns (uint256 c) {
-		// to avoid overflow, a <= (type(uint256).max - HALF_WAD) / b
 		assembly {
+			// equivalent to `require(b == 0 || a <= (type(uint256).max - HALF_BIP) / b)`
 			if iszero(or(iszero(b), iszero(gt(a, div(sub(not(0), HALF_BIP), b))))) {
 				// Store the Panic error signature.
 				mstore(0, Panic_ErrorSelector)
@@ -114,8 +114,8 @@ library MathUtils {
 	 * @return c = a bipdiv b
 	 */
 	function bipDiv(uint256 a, uint256 b) internal pure returns (uint256 c) {
-		// to avoid overflow, a <= (type(uint256).max - halfB) / BIP
 		assembly {
+			// equivalent to `require(b != 0 && a <= (type(uint256).max - b/2) / BIP)`
 			if or(iszero(b), iszero(iszero(gt(a, div(sub(not(0), div(b, 2)), BIP))))) {
 				mstore(0, Panic_ErrorSelector)
 				mstore(Panic_ErrorCodePointer, Panic_Arithmetic)
@@ -136,7 +136,7 @@ library MathUtils {
 		// to avoid overflow, b/BIP_RAY_RATIO == a
 		assembly {
 			b := mul(a, BIP_RAY_RATIO)
-
+      // equivalent to `require((b = a * BIP_RAY_RATIO) / BIP_RAY_RATIO == a )
 			if iszero(eq(div(b, BIP_RAY_RATIO), a)) {
 				mstore(0, Panic_ErrorSelector)
 				mstore(Panic_ErrorCodePointer, Panic_Arithmetic)
@@ -153,7 +153,6 @@ library MathUtils {
 	 * @return c = a raymul b
 	 */
 	function rayMul(uint256 a, uint256 b) internal pure returns (uint256 c) {
-		// to avoid overflow, a <= (type(uint256).max - HALF_RAY) / b
 		assembly {
 			// equivalent to `require(b == 0 || a <= (type(uint256).max - HALF_RAY) / b)`
 			if iszero(or(iszero(b), iszero(gt(a, div(sub(not(0), HALF_RAY), b))))) {
@@ -184,7 +183,6 @@ library MathUtils {
 	/// Reverts if `x * y` overflows, or `d` is zero.
 	/// @custom:author solady/src/utils/FixedPointMathLib.sol
 	function mulDiv(uint256 x, uint256 y, uint256 d) internal pure returns (uint256 z) {
-		/// @solidity memory-safe-assembly
 		assembly {
 			// Equivalent to require(d != 0 && (y == 0 || x <= type(uint256).max / y))
 			if iszero(mul(d, iszero(mul(y, gt(x, div(not(0), y)))))) {
