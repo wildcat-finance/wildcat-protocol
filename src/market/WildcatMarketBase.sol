@@ -227,13 +227,15 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	 * @dev Calculate effective interest rate currently paid by borrower.
 	 *      Borrower pays base APR, protocol fee (on base APR) and delinquency
 	 *      fee (if delinquent beyond grace period).
+   *
+   * @return apr paid by borrower in ray
 	 */
 	function effectiveBorrowerAPR() external view returns (uint256) {
 		(VaultState memory state, , ) = _calculateCurrentState();
 		// apr + (apr * protocolFee)
-		uint256 apr = MathUtils.bipMul(state.annualInterestBips, BIP + protocolFeeBips);
-		if (state.isDelinquent && state.timeDelinquent > delinquencyGracePeriod) {
-			apr += delinquencyFeeBips;
+		uint256 apr = MathUtils.bipToRay(state.annualInterestBips).bipMul(BIP + protocolFeeBips);
+		if (state.timeDelinquent > delinquencyGracePeriod) {
+			apr += MathUtils.bipToRay(delinquencyFeeBips);
 		}
 		return apr;
 	}
@@ -241,14 +243,16 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	/**
 	 * @dev Calculate effective interest rate currently earned by lenders.
 	 *     Lenders earn base APR and delinquency fee (if delinquent beyond grace period)
+   *
+   * @return apr earned by lender in ray
 	 */
 	function effectiveLenderAPR() external view returns (uint256) {
 		(VaultState memory state, , ) = _calculateCurrentState();
 		uint256 apr = state.annualInterestBips;
-		if (state.isDelinquent && state.timeDelinquent > delinquencyGracePeriod) {
+		if (state.timeDelinquent > delinquencyGracePeriod) {
 			apr += delinquencyFeeBips;
 		}
-		return apr;
+		return MathUtils.bipToRay(apr);
 	}
 
 	// /*//////////////////////////////////////////////////////////////
