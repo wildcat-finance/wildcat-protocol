@@ -285,7 +285,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 			_processExpiredWithdrawalBatch(state);
 		}
 		// Accrue interest between last update (time of expiry or last transaction) and current timestamp
-		if (block.timestamp == state.lastInterestAccruedTimestamp) {
+		if (block.timestamp != state.lastInterestAccruedTimestamp) {
 			(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
 				.updateScaleFactorAndFees(
 					protocolFeeBips,
@@ -335,21 +335,19 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 				totalAssets()
 			);
 			if (availableLiquidity > 0) {
-				_applyWithdrawalBatchPaymentView(
-					expiredBatch,
-					state,
-					availableLiquidity
-				);
+				_applyWithdrawalBatchPaymentView(expiredBatch, state, availableLiquidity);
 			}
 			state.pendingWithdrawalExpiry = 0;
 		}
 
-		state.updateScaleFactorAndFees(
-			protocolFeeBips,
-			delinquencyFeeBips,
-			delinquencyGracePeriod,
-			block.timestamp
-		);
+		if (state.lastInterestAccruedTimestamp != block.timestamp) {
+			state.updateScaleFactorAndFees(
+				protocolFeeBips,
+				delinquencyFeeBips,
+				delinquencyGracePeriod,
+				block.timestamp
+			);
+		}
 	}
 
 	/**
