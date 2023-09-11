@@ -222,6 +222,10 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 		return _accounts[account].approval;
 	}
 
+	function withdrawableProtocolFees() external view returns (uint128) {
+		return currentState().withdrawableProtocolFees(totalAssets());
+	}
+
 	/**
 	 * @dev Calculate effective interest rate currently paid by borrower.
 	 *      Borrower pays base APR, protocol fee (on base APR) and delinquency
