@@ -102,11 +102,11 @@ library VaultStateLib {
 			state.reservedAssets;
 	}
 
-  /**
-   * @dev Returns the amount of underlying assets that can be withdrawn
-   *      for protocol fees. The only debts with higher priority are
-   *      processed withdrawals that have not been executed.
-   */
+	/**
+	 * @dev Returns the amount of underlying assets that can be withdrawn
+	 *      for protocol fees. The only debts with higher priority are
+	 *      processed withdrawals that have not been executed.
+	 */
 	function withdrawableProtocolFees(
 		VaultState memory state,
 		uint256 totalAssets
@@ -115,16 +115,16 @@ library VaultStateLib {
 		return uint128(MathUtils.min(liquidAssets, state.accruedProtocolFees));
 	}
 
-  /**
-   * @dev Returns the amount of underlying assets that can be borrowed.
-   *
-   *      The borrower must maintain sufficient assets in the vault to
-   *      cover 100% of pending withdrawals, 100% of previously processed
-   *      withdrawals (before they are executed), and the liquidity coverage
-   *      ratio times the outstanding debt (deposits not pending withdrawal).
-   *
-   *      Any underlying assets in the market above this amount can be borrowed.
-   */
+	/**
+	 * @dev Returns the amount of underlying assets that can be borrowed.
+	 *
+	 *      The borrower must maintain sufficient assets in the vault to
+	 *      cover 100% of pending withdrawals, 100% of previously processed
+	 *      withdrawals (before they are executed), and the liquidity coverage
+	 *      ratio times the outstanding debt (deposits not pending withdrawal).
+	 *
+	 *      Any underlying assets in the market above this amount can be borrowed.
+	 */
 	function borrowableAssets(
 		VaultState memory state,
 		uint256 totalAssets
