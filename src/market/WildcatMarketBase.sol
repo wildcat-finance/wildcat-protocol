@@ -180,13 +180,11 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	// ===================================================================== //
 
 	function coverageLiquidity() external view nonReentrantView returns (uint256) {
-		(VaultState memory state, , ) = _calculateCurrentState();
-		return state.liquidityRequired();
+		return currentState().liquidityRequired();
 	}
 
 	function scaleFactor() external view nonReentrantView returns (uint256) {
-		(VaultState memory state, , ) = _calculateCurrentState();
-		return state.scaleFactor;
+		return currentState().scaleFactor;
 	}
 
 	/// @dev Total balance in underlying asset
@@ -197,26 +195,23 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	/// @dev  Balance in underlying asset which is not owed in fees.
 	///       Returns current value after calculating new protocol fees.
 	function borrowableAssets() external view nonReentrantView returns (uint256) {
-		(VaultState memory state, , ) = _calculateCurrentState();
-		return state.borrowableAssets(totalAssets());
+		return currentState().borrowableAssets(totalAssets());
 	}
 
 	function accruedProtocolFees() external view nonReentrantView returns (uint256) {
-		(VaultState memory state, , ) = _calculateCurrentState();
-		return state.accruedProtocolFees;
+		return currentState().accruedProtocolFees;
 	}
 
 	function previousState() external view returns (VaultState memory) {
 		return _state;
 	}
 
-	function currentState() external view nonReentrantView returns (VaultState memory state) {
+	function currentState() public view nonReentrantView returns (VaultState memory state) {
 		(state, , ) = _calculateCurrentState();
 	}
 
 	function scaledTotalSupply() external view nonReentrantView returns (uint256) {
-    (VaultState memory state, , ) = _calculateCurrentState();
-		return state.scaledTotalSupply;
+		return currentState().scaledTotalSupply;
 	}
 
 	function scaledBalanceOf(address account) external view nonReentrantView returns (uint256) {
@@ -227,11 +222,11 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	 * @dev Calculate effective interest rate currently paid by borrower.
 	 *      Borrower pays base APR, protocol fee (on base APR) and delinquency
 	 *      fee (if delinquent beyond grace period).
-   *
-   * @return apr paid by borrower in ray
+	 *
+	 * @return apr paid by borrower in ray
 	 */
 	function effectiveBorrowerAPR() external view returns (uint256) {
-		(VaultState memory state, , ) = _calculateCurrentState();
+		VaultState memory state = currentState();
 		// apr + (apr * protocolFee)
 		uint256 apr = MathUtils.bipToRay(state.annualInterestBips).bipMul(BIP + protocolFeeBips);
 		if (state.timeDelinquent > delinquencyGracePeriod) {
@@ -243,11 +238,11 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	/**
 	 * @dev Calculate effective interest rate currently earned by lenders.
 	 *     Lenders earn base APR and delinquency fee (if delinquent beyond grace period)
-   *
-   * @return apr earned by lender in ray
+	 *
+	 * @return apr earned by lender in ray
 	 */
 	function effectiveLenderAPR() external view returns (uint256) {
-		(VaultState memory state, , ) = _calculateCurrentState();
+		VaultState memory state = currentState();
 		uint256 apr = state.annualInterestBips;
 		if (state.timeDelinquent > delinquencyGracePeriod) {
 			apr += delinquencyFeeBips;
