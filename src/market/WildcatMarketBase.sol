@@ -275,23 +275,24 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	 */
 	function _getUpdatedState() internal returns (VaultState memory state) {
 		state = _state;
-		if (block.timestamp == state.lastInterestAccruedTimestamp) {
-			return state;
-		}
 		// Handle expired withdrawal batch
 		if (state.hasPendingExpiredBatch()) {
 			uint256 expiry = state.pendingWithdrawalExpiry;
-			(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
-				.updateScaleFactorAndFees(
-					protocolFeeBips,
-					delinquencyFeeBips,
-					delinquencyGracePeriod,
-					expiry
-				);
-			emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
+			// Only accrue interest if time has passed since last update.
+			// This will only be false if withdrawalBatchDuration is 0.
+			if (expiry != state.lastInterestAccruedTimestamp) {
+				(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
+					.updateScaleFactorAndFees(
+						protocolFeeBips,
+						delinquencyFeeBips,
+						delinquencyGracePeriod,
+						expiry
+					);
+				emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
+			}
 			_processExpiredWithdrawalBatch(state);
 		}
-		// Accrue interest between last update (time of expiry or last transaction) and current timestamp
+		// Apply interest and fees accrued since last update (expiry or previous tx)
 		if (block.timestamp != state.lastInterestAccruedTimestamp) {
 			(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
 				.updateScaleFactorAndFees(
@@ -323,18 +324,19 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 		)
 	{
 		state = _state;
-		if (block.timestamp == state.lastInterestAccruedTimestamp) {
-			return (state, 0, expiredBatch);
-		}
 		// Handle expired withdrawal batch
 		if (state.hasPendingExpiredBatch()) {
 			expiredBatchExpiry = state.pendingWithdrawalExpiry;
-			state.updateScaleFactorAndFees(
-				protocolFeeBips,
-				delinquencyFeeBips,
-				delinquencyGracePeriod,
-				expiredBatchExpiry
-			);
+      // Only accrue interest if time has passed since last update.
+      // This will only be false if withdrawalBatchDuration is 0.
+      if (expiredBatchExpiry != state.lastInterestAccruedTimestamp) {
+        state.updateScaleFactorAndFees(
+          protocolFeeBips,
+          delinquencyFeeBips,
+          delinquencyGracePeriod,
+          expiredBatchExpiry
+        );
+      }
 
 			expiredBatch = _withdrawalData.batches[expiredBatchExpiry];
 			uint256 availableLiquidity = expiredBatch.availableLiquidityForPendingBatch(
