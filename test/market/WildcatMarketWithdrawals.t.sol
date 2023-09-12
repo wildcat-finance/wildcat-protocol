@@ -16,6 +16,23 @@ contract WithdrawalsTest is BaseVaultTest {
 		vault.queueWithdrawal(1e18);
 	}
 
+	function test_queueWithdrawal_AuthorizedWithdrawOnly() public asAccount(bob) {
+    _deposit(bob, 1e18);
+    startPrank(address(controller));
+    vault.revokeAccountAuthorization(bob);
+    stopPrank();
+		_requestWithdrawal(bob, 1e18);
+	}
+
+	function test_queueWithdrawal_AuthorizedOnController() public {
+		_deposit(alice, 1e18);
+		vm.prank(alice);
+		vault.transfer(bob, 1e18);
+		controller.authorizeLender(bob);
+    vm.startPrank(bob);
+		vault.queueWithdrawal(1e18);
+	}
+
 	function test_queueWithdrawal_NullBurnAmount() external asAccount(alice) {
 		vm.expectRevert(IVaultEventsAndErrors.NullBurnAmount.selector);
 		vault.queueWithdrawal(0);
@@ -131,8 +148,6 @@ contract WithdrawalsTest is BaseVaultTest {
 		assertEq(asset.balanceOf(alice), previousBalance + withdrawalAmount);
 	}
 
-  
-
 	function test_processUnpaidWithdrawalBatch_NoUnpaidBatches() external {
 		vm.expectRevert(FIFOQueueLib.FIFOQueueOutOfBounds.selector);
 		vault.processUnpaidWithdrawalBatch();
@@ -151,11 +166,8 @@ contract WithdrawalsTest is BaseVaultTest {
 	}
 
 	function test_processUnpaidWithdrawalBatch() external {
-		_deposit(alice, 1e18);
-		// Borrow 80% of vault assets
-		_borrow(8e17);
-		// Withdraw 100% of deposits
-		_requestWithdrawal(alice, 1e18);
+		// Borrow 80% of deposits then request withdrawal of 100% of deposits
+		_depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
 		assertEq(vault.previousState().isDelinquent, true);
 		fastForward(parameters.withdrawalBatchDuration);
 		uint32 expiry = uint32(block.timestamp);
@@ -187,5 +199,87 @@ contract WithdrawalsTest is BaseVaultTest {
 		vault.processUnpaidWithdrawalBatch();
 		_checkBatch(expiry, 1e18, 1e18, 1e18 + feesAccruedOnWithdrawal);
 		assertEq(vault.getUnpaidBatchExpiries().length, 0);
+	}
+
+	function test_getWithdrawalBatch_DoesNotExist() external {
+		WithdrawalBatch memory batch = vault.getWithdrawalBatch(0);
+		assertEq(batch.scaledTotalAmount, 0);
+		assertEq(batch.scaledAmountBurned, 0);
+		assertEq(batch.normalizedAmountPaid, 0);
+	}
+
+	function test_getWithdrawalBatch_Expired() external {
+		// Borrow 80% of deposits then request withdrawal of 100% of deposits
+		_depositBorrowWithdraw(alice, 1e18, 8e17, 3e17);
+		assertEq(vault.previousState().isDelinquent, true);
+		fastForward(parameters.withdrawalBatchDuration);
+		uint32 expiry = uint32(block.timestamp);
+		_checkBatch(expiry, 3e17, 2e17, 2e17);
+		assertEq(vault.previousState().pendingWithdrawalExpiry, expiry);
+    updateState(pendingState());
+    _requestWithdrawal(alice, 7e17);
+    fastForward(parameters.withdrawalBatchDuration);
+    updateState(pendingState());
+	}
+
+	function test_getWithdrawalBatch_Paid() external {
+		// Borrow 80% of deposits then request withdrawal of 100% of deposits
+    _deposit(alice, 2e18);
+    _requestWithdrawal(alice, 1e18);
+		fastForward(parameters.withdrawalBatchDuration);
+		uint32 expiry = uint32(block.timestamp);
+		_checkBatch(expiry, 1e18, 1e18, 1e18);
+    updateState(pendingState());
+	}
+
+	function test_getAccountWithdrawalStatus() external {
+		// Borrow 80% of deposits then request withdrawal of 100% of deposits
+		_depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+		uint32 expiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
+		AccountWithdrawalStatus memory status = vault.getAccountWithdrawalStatus(alice, expiry);
+		assertEq(status.scaledAmount, 1e18);
+		assertEq(status.normalizedAmountWithdrawn, 0);
+		fastForward(parameters.withdrawalBatchDuration);
+		vault.updateState();
+		vault.executeWithdrawal(alice, expiry);
+		status = vault.getAccountWithdrawalStatus(alice, expiry);
+		assertEq(status.scaledAmount, 1e18);
+		assertEq(status.normalizedAmountWithdrawn, 2e17);
+	}
+
+	function test_getAvailableWithdrawalAmount() external {
+		// Borrow 80% of deposits then request withdrawal of 100% of deposits
+		_depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+		uint32 expiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
+		fastForward(parameters.withdrawalBatchDuration);
+		AccountWithdrawalStatus memory status = vault.getAccountWithdrawalStatus(alice, expiry);
+		uint256 withdrawableAmount = vault.getAvailableWithdrawalAmount(alice, expiry);
+		assertEq(withdrawableAmount, 2e17);
+	}
+
+	function test_getAvailableWithdrawalAmount_UnpaidBatch() external {
+		// Borrow 80% of deposits then request withdrawal of 100% of deposits
+		_depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+		uint32 expiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
+		fastForward(parameters.withdrawalBatchDuration);
+		vault.updateState();
+		AccountWithdrawalStatus memory status = vault.getAccountWithdrawalStatus(alice, expiry);
+		uint256 withdrawableAmount = vault.getAvailableWithdrawalAmount(alice, expiry);
+		assertEq(withdrawableAmount, 2e17);
+	}
+
+	function test_getAvailableWithdrawalAmount_NotExpired() external {
+		vm.expectRevert(IVaultEventsAndErrors.WithdrawalBatchNotExpired.selector);
+		vault.getAvailableWithdrawalAmount(alice, uint32(block.timestamp + 1));
+	}
+
+	function test_getAvailableWithdrawalAmount_AtExpiry() external {
+		// Borrow 80% of deposits then request withdrawal of 100% of deposits
+		_depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+		uint32 expiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
+		fastForward(parameters.withdrawalBatchDuration);
+		AccountWithdrawalStatus memory status = vault.getAccountWithdrawalStatus(alice, expiry);
+		uint256 withdrawableAmount = vault.getAvailableWithdrawalAmount(alice, expiry);
+		assertEq(withdrawableAmount, 2e17);
 	}
 }
