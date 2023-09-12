@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
+import { Prankster } from 'sol-utils/test/Prankster.sol';
 import 'src/market/WildcatMarket.sol';
 import '../shared/TestConstants.sol';
 import './Assertions.sol';
-import './Prankster.sol';
 
 contract ExpectedStateTracker is Prankster, Assertions, IVaultEventsAndErrors {
 	using FeeMath for VaultState;
