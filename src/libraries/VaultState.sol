@@ -1,28 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import './BoolUtils.sol';
+import { AuthRole } from '../interfaces/WildcatStructsAndEnums.sol';
 import './MathUtils.sol';
 import './SafeCastLib.sol';
-import '../interfaces/IVaultEventsAndErrors.sol';
-import { AuthRole } from '../interfaces/WildcatStructsAndEnums.sol';
+import './FeeMath.sol';
 
 using VaultStateLib for VaultState global;
 using VaultStateLib for Account global;
-using BoolUtils for bool;
-
-// scaleFactor = 112 bits
-// RAY = 89 bits
-// normalize(x) = (x * scaleFactor) / RAY
-// which can grow x by 23 bits
-// for 128 bit scaled amounts, normalized amounts can't exceed 105 bits (104 since that's a valid type)
-
-/*
-rayDiv of normalized amount `x` can reduce result by 23 bits
-rayMul of scaled amount `x` can increase result by 23 bits
-scaled amount always
-
-*/
+using FeeMath for VaultState global;
 
 struct VaultState {
 	uint128 maxTotalSupply;

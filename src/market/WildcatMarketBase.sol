@@ -4,7 +4,6 @@ pragma solidity >=0.8.20;
 import '../interfaces/IERC20.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/Withdrawal.sol';
-import 'solady/utils/SafeTransferLib.sol';
 import { queryName, querySymbol } from '../libraries/StringQuery.sol';
 import '../interfaces/IVaultEventsAndErrors.sol';
 import '../interfaces/IWildcatVaultController.sol';
@@ -15,7 +14,6 @@ import '../libraries/BoolUtils.sol';
 
 contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 	using WithdrawalLib for VaultState;
-	using FeeMath for VaultState;
 	using SafeCastLib for uint256;
 	using MathUtils for uint256;
 	using BoolUtils for bool;
