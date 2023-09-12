@@ -3,8 +3,13 @@ pragma solidity >=0.8.20;
 
 import { console, console2, StdAssertions, StdChains, StdCheats, stdError, StdInvariant, stdJson, stdMath, StdStorage, stdStorage, StdUtils, Vm, StdStyle, DSTest, Test as ForgeTest } from 'forge-std/Test.sol';
 import '../helpers/VmUtils.sol' as VmUtils;
+import { deployMockChainalysis } from '../helpers/MockChainalysis.sol';
 
 contract Test is ForgeTest {
+	constructor() {
+		deployMockChainalysis();
+	}
+
 	function bound(
 		uint256 value,
 		uint256 min,
