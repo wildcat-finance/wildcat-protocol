@@ -53,4 +53,8 @@ contract Assertions is StdAssertions {
 			string.concat(key, '.lastInterestAccruedTimestamp')
 		);
 	}
+
+	function assertEq(VaultState memory actual, VaultState memory expected) internal {
+		assertEq(actual, expected, 'VaultState');
+	}
 }
