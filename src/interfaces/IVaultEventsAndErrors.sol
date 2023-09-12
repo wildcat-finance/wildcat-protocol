@@ -48,7 +48,7 @@ interface IVaultEventsAndErrors {
 
 	error InsufficientCoverageForFeeWithdrawal();
 
-  error WithdrawalBatchNotExpired();
+	error WithdrawalBatchNotExpired();
 
 	/// @notice Error thrown when liquidity coverage ratio set to value
 	///         the vault currently would not meet.
@@ -56,6 +56,8 @@ interface IVaultEventsAndErrors {
 	error NullMintAmount();
 
 	error NullBurnAmount();
+
+	error NullFeeAmount();
 
 	error InsufficientCoverageForNewLiquidityRatio();
 
