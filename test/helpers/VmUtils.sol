@@ -22,8 +22,17 @@ function assume(bool condition, string memory name) {
 	vm.assume(condition);
 }
 
+contract FastForward {
+  constructor(uint256 time) {
+    vm.warp(block.timestamp + time);
+    assembly { selfdestruct(caller()) }
+  }
+}
+
+// Utility to get around stack optimizations by ir pipeline
+// causing timestamp after warp to match timestamp before
 function fastForward(uint256 time) {
-	vm.warp(block.timestamp + time);
+  new FastForward(time);
 }
 
 // dependent bound - bound value1 to the range [min, max]

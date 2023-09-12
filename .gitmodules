@@ -14,3 +14,6 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "lib/sol-utils"]
+	path = lib/sol-utils
+	url = https://github.com/d1ll0n/sol-utils
