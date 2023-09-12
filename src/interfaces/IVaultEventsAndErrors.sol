@@ -48,7 +48,7 @@ interface IVaultEventsAndErrors {
 
 	error InsufficientCoverageForFeeWithdrawal();
 
-	error WithdrawalBatchNotExpired();
+  error WithdrawalBatchNotExpired();
 
 	/// @notice Error thrown when liquidity coverage ratio set to value
 	///         the vault currently would not meet.
@@ -57,7 +57,7 @@ interface IVaultEventsAndErrors {
 
 	error NullBurnAmount();
 
-	error NullFeeAmount();
+  error NullFeeAmount();
 
 	error InsufficientCoverageForNewLiquidityRatio();
 
@@ -70,6 +70,10 @@ interface IVaultEventsAndErrors {
 	event AnnualInterestBipsUpdated(uint256 annualInterestBipsUpdated);
 
 	event LiquidityCoverageRatioUpdated(uint256 liquidityCoverageRatioUpdated);
+
+  event SanctionedAccountBlocked(address account, address escrow, uint256 amount);
+
+  event SanctionedStatusLifted(address account);
 
 	event Deposit(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
@@ -122,4 +126,6 @@ interface IVaultEventsAndErrors {
 	event WithdrawalExecuted(uint256 expiry, address account, uint256 normalizedAmount);
 
 	event Withdrawal(address indexed account, uint256 assetAmount, uint256 scaledAmount);
+
+  event SanctionedAccountWithdrawalSentToEscrow(address account, address escrow, uint32 expiry);
 }
