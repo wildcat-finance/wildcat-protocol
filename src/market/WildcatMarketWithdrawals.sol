@@ -5,6 +5,7 @@ import './WildcatMarketBase.sol';
 import '../libraries/VaultState.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/FIFOQueue.sol';
+import 'solady/utils/SafeTransferLib.sol';
 
 contract WildcatMarketWithdrawals is WildcatMarketBase {
 	using SafeTransferLib for address;
