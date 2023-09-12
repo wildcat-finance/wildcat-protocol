@@ -6,3 +6,4 @@ vaultabi.json
 typechain-types
 hh-cache
 artifacts
+coverage/
