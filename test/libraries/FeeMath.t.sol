@@ -74,7 +74,7 @@ contract FeeMathTest is BaseTest {
 		uint256 delinquencyFeeRay;
 		uint256 protocolFee;
 		// @todo fix
-		(state, baseInterestRay, delinquencyFeeRay, protocolFee) = state.updateScaleFactorAndFees(
+		(state, baseInterestRay, delinquencyFeeRay, protocolFee) = state.$updateScaleFactorAndFees(
 			1000,
 			1000,
 			delinquencyGracePeriod,
@@ -119,7 +119,7 @@ contract FeeMathTest is BaseTest {
 		uint256 delinquencyFeeRay;
 		uint256 protocolFee;
 		(state, baseInterestRay,  delinquencyFeeRay,  protocolFee) = state
-			.updateScaleFactorAndFees(
+			.$updateScaleFactorAndFees(
 				parameters.protocolFeeBips,
 				parameters.delinquencyFeeBips,
 				parameters.delinquencyGracePeriod,
@@ -143,7 +143,7 @@ contract FeeMathTest is BaseTest {
 		state.timeDelinquent = previousTimeDelinquent;
 
 		uint256 timeWithPenalty;
-    (state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(
+    (state, timeWithPenalty) = state.$updateTimeDelinquentAndGetPenaltyTime(
 			delinquencyGracePeriod,
 			timeDelta
 		);
@@ -208,55 +208,55 @@ contract FeeMathTest is BaseTest {
 		// Within grace period, no penalty
 		state.timeDelinquent = 50;
 		state.isDelinquent = true;
-		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 25);
+		(state, timeWithPenalty) = state.$updateTimeDelinquentAndGetPenaltyTime(100, 25);
     assertEq(timeWithPenalty, 0);
 		assertEq(state.timeDelinquent, 75);
 
 		// Reach grace period cutoff, no penalty
 		state.timeDelinquent = 50;
 		state.isDelinquent = true;
-		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 50);
+		(state, timeWithPenalty) = state.$updateTimeDelinquentAndGetPenaltyTime(100, 50);
     assertEq(timeWithPenalty, 0);
 		assertEq(state.timeDelinquent, 100);
 
 		// Cross over grace period, penalty on delta after crossing
 		state.timeDelinquent = 99;
 		state.isDelinquent = true;
-		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 100);
+		(state, timeWithPenalty) = state.$updateTimeDelinquentAndGetPenaltyTime(100, 100);
     assertEq(timeWithPenalty, 99);
 		assertEq(state.timeDelinquent, 199);
 
 		// At grace period cutoff, penalty on full delta
 		state.timeDelinquent = 100;
 		state.isDelinquent = true;
-		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 100);
+		(state, timeWithPenalty) = state.$updateTimeDelinquentAndGetPenaltyTime(100, 100);
     assertEq(timeWithPenalty, 100);
 		assertEq(state.timeDelinquent, 200);
 
 		// Past grace period cutoff, penalty on full delta
 		state.timeDelinquent = 101;
 		state.isDelinquent = true;
-		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 100);
+		(state, timeWithPenalty) = state.$updateTimeDelinquentAndGetPenaltyTime(100, 100);
     assertEq(timeWithPenalty, 100);
 		assertEq(state.timeDelinquent, 201);
 
 		// Cross under grace period, penalty on delta before crossing
 		state.timeDelinquent = 100;
 		state.isDelinquent = false;
-		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(99, 100);
+		(state, timeWithPenalty) = state.$updateTimeDelinquentAndGetPenaltyTime(99, 100);
     assertEq(timeWithPenalty, 1);
 		assertEq(state.timeDelinquent, 0);
 
 		// Reach grace period cutoff, no penalty
 		state.timeDelinquent = 50;
 		state.isDelinquent = false;
-		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 50);
+		(state, timeWithPenalty) = state.$updateTimeDelinquentAndGetPenaltyTime(100, 50);
     assertEq(timeWithPenalty, 0);
 		assertEq(state.timeDelinquent, 0);
 
 		state.timeDelinquent = 50;
 		state.isDelinquent = false;
-		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 100);
+		(state, timeWithPenalty) = state.$updateTimeDelinquentAndGetPenaltyTime(100, 100);
     assertEq(timeWithPenalty, 0);
 		assertEq(state.timeDelinquent, 0);
 	}

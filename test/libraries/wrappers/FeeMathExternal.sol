@@ -4,21 +4,21 @@ import { FeeMath } from 'src/libraries/FeeMath.sol';
 import { VaultState } from 'src/libraries/VaultState.sol';
 
 library FeeMathExternal {
-	function calculateLinearInterestFromBips(
+	function $calculateLinearInterestFromBips(
 		uint256 rateBip,
 		uint256 timeDelta
 	) external pure returns (uint256 result) {
 		return FeeMath.calculateLinearInterestFromBips(rateBip, timeDelta);
 	}
 
-	function calculateBaseInterest(
+	function $calculateBaseInterest(
 		VaultState memory state,
 		uint256 timestamp
 	) external pure returns (uint256 baseInterestRay) {
 		return FeeMath.calculateBaseInterest(state, timestamp);
 	}
 
-	function applyProtocolFee(
+	function $applyProtocolFee(
 		VaultState memory state,
 		uint256 baseInterestRay,
 		uint256 protocolFeeBips
@@ -27,7 +27,7 @@ library FeeMathExternal {
 		newState = state;
 	}
 
-	function updateDelinquency(
+	function $updateDelinquency(
 		VaultState memory state,
 		uint256 timestamp,
 		uint256 delinquencyFeeBips,
@@ -42,7 +42,7 @@ library FeeMathExternal {
 		);
 	}
 
-	function updateTimeDelinquentAndGetPenaltyTime(
+	function $updateTimeDelinquentAndGetPenaltyTime(
 		VaultState memory state,
 		uint256 delinquencyGracePeriod,
 		uint256 timeDelta
@@ -55,7 +55,7 @@ library FeeMathExternal {
 		);
 	}
 
-	function updateScaleFactorAndFees(
+	function $updateScaleFactorAndFees(
 		VaultState memory state,
 		uint256 protocolFeeBips,
 		uint256 delinquencyFeeBips,
