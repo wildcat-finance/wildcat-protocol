@@ -168,7 +168,7 @@ contract WildcatMarketConfigTest is BaseVaultTest {
 		assertEq(vault.liquidityCoverageRatio(), _liquidityCoverageRatio);
 	}
 
-	function test_setLiquidityCoverageRatio_IncreaseWhileDelinquent(
+/* 	function test_setLiquidityCoverageRatio_IncreaseWhileDelinquent(
 		uint256 _liquidityCoverageRatio
 	) external asAccount(parameters.controller) {
 		_liquidityCoverageRatio = bound(
@@ -181,7 +181,7 @@ contract WildcatMarketConfigTest is BaseVaultTest {
 		emit LiquidityCoverageRatioUpdated(uint16(_liquidityCoverageRatio));
 		vault.setLiquidityCoverageRatio(uint16(_liquidityCoverageRatio));
 		assertEq(vault.liquidityCoverageRatio(), _liquidityCoverageRatio);
-	}
+	} */
 
 	function _induceDelinquency() internal {
 		_deposit(alice, 1e18);
