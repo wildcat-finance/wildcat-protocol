@@ -7,6 +7,10 @@ import './wrappers/SafeCastLibExternal.sol';
 bytes4 constant Panic_ErrorSelector = 0x4e487b71;
 uint256 constant Panic_Arithmetic = 0x11;
 
+// Uses an external wrapper library to make forge coverage work for SafeCastLib.
+// Forge is currently incapable of mapping MemberAccess function calls with
+// expressions other than library identifiers (e.g. value.x() vs XLib.x(value))
+// to the correct FunctionDefinition nodes.
 contract SafeCastLibTest is Test {
 	SafeCastLibExternal internal wrapper = new SafeCastLibExternal();
 	bytes internal ArithmeticError = abi.encodePacked(Panic_ErrorSelector, Panic_Arithmetic);

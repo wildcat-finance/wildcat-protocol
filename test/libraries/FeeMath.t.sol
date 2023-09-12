@@ -3,22 +3,21 @@ pragma solidity ^0.8.20;
 
 import { FeeMath, MathUtils, SafeCastLib, VaultState } from 'src/libraries/FeeMath.sol';
 import '../shared/BaseTest.sol';
+import './wrappers/FeeMathExternal.sol';
 
 function maxRayMulRhs(uint256 left) pure returns (uint256 maxRight) {
 	if (left == 0) return type(uint256).max;
 	maxRight = (type(uint256).max - HALF_RAY) / left;
 }
 
+// Uses an external wrapper library to make forge coverage work for FeeMath.
+// Forge is currently incapable of mapping MemberAccess function calls with
+// expressions other than library identifiers (e.g. value.x() vs XLib.x(value))
+// to the correct FunctionDefinition nodes.
 contract FeeMathTest is BaseTest {
 	using MathUtils for uint256;
 	using SafeCastLib for uint256;
-	using FeeMath for VaultState;
-
-	function testValidState(FuzzInput calldata inputs) external {
-		VaultState memory state = getFuzzContext(inputs).state;
-		uint256 vaultSupply = state.totalSupply();
-		require(vaultSupply > 0);
-	}
+	using FeeMathExternal for VaultState;
 
 	function test_updateScaleFactorAndFees_WithFees() external {
 		VaultState memory state;
@@ -71,9 +70,16 @@ contract FeeMathTest is BaseTest {
 		state.scaledTotalSupply = uint104(uint256(1e18).rayDiv(RAY));
 		vm.warp(365 days);
 		state.scaleFactor = uint112(RAY);
+		uint256 baseInterestRay;
+		uint256 delinquencyFeeRay;
+		uint256 protocolFee;
 		// @todo fix
-		(uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
-			.updateScaleFactorAndFees(1000, 1000, delinquencyGracePeriod, block.timestamp);
+		(state, baseInterestRay, delinquencyFeeRay, protocolFee) = state.updateScaleFactorAndFees(
+			1000,
+			1000,
+			delinquencyGracePeriod,
+			block.timestamp
+		);
 		assertEq(state.lastInterestAccruedTimestamp, block.timestamp);
 
 		assertEq(protocolFee, 1e16, 'incorrect feesAccrued');
@@ -102,6 +108,29 @@ contract FeeMathTest is BaseTest {
 		// assertEq(state.scaleFactor, 1.1e27, 'incorrect scaleFactor');
 	}
 
+	function test_updateScaleFactorAndFees_NoTimeDelta(
+		ConfigFuzzInputs calldata configInputs,
+		StateFuzzInputs calldata stateInputs
+	) external {
+		VaultParameters memory parameters = getVaultParameters(configInputs);
+		VaultState memory state = getVaultState(stateInputs);
+		bytes32 stateHash = keccak256(abi.encode(state));
+		uint256 baseInterestRay;
+		uint256 delinquencyFeeRay;
+		uint256 protocolFee;
+		(state, baseInterestRay,  delinquencyFeeRay,  protocolFee) = state
+			.updateScaleFactorAndFees(
+				parameters.protocolFeeBips,
+				parameters.delinquencyFeeBips,
+				parameters.delinquencyGracePeriod,
+				state.lastInterestAccruedTimestamp
+			);
+		assertEq(baseInterestRay, 0, 'incorrect baseInterestRay');
+		assertEq(delinquencyFeeRay, 0, 'incorrect delinquencyFeeRay');
+		assertEq(protocolFee, 0, 'incorrect protocolFee');
+		assertEq(keccak256(abi.encode(state)), stateHash, 'state should not change');
+	}
+
 	function test_updateTimeDelinquentAndGetPenaltyTime(
 		bool isCurrentlyDelinquent,
 		uint32 previousTimeDelinquent,
@@ -113,7 +142,8 @@ contract FeeMathTest is BaseTest {
 		previousTimeDelinquent = uint32(bound(previousTimeDelinquent, 0, type(uint32).max - timeDelta));
 		state.timeDelinquent = previousTimeDelinquent;
 
-		uint256 timeWithPenalty = state.updateTimeDelinquentAndGetPenaltyTime(
+		uint256 timeWithPenalty;
+    (state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(
 			delinquencyGracePeriod,
 			timeDelta
 		);
@@ -174,52 +204,60 @@ contract FeeMathTest is BaseTest {
 
 	function testUpdateTimeDelinquentAndGetPenaltyTime() external {
 		VaultState memory state;
-
+    uint256 timeWithPenalty;
 		// Within grace period, no penalty
 		state.timeDelinquent = 50;
 		state.isDelinquent = true;
-		assertEq(state.updateTimeDelinquentAndGetPenaltyTime(100, 25), 0);
+		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 25);
+    assertEq(timeWithPenalty, 0);
 		assertEq(state.timeDelinquent, 75);
 
 		// Reach grace period cutoff, no penalty
 		state.timeDelinquent = 50;
 		state.isDelinquent = true;
-		assertEq(state.updateTimeDelinquentAndGetPenaltyTime(100, 50), 0);
+		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 50);
+    assertEq(timeWithPenalty, 0);
 		assertEq(state.timeDelinquent, 100);
 
 		// Cross over grace period, penalty on delta after crossing
 		state.timeDelinquent = 99;
 		state.isDelinquent = true;
-		assertEq(state.updateTimeDelinquentAndGetPenaltyTime(100, 100), 99);
+		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 100);
+    assertEq(timeWithPenalty, 99);
 		assertEq(state.timeDelinquent, 199);
 
 		// At grace period cutoff, penalty on full delta
 		state.timeDelinquent = 100;
 		state.isDelinquent = true;
-		assertEq(state.updateTimeDelinquentAndGetPenaltyTime(100, 100), 100);
+		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 100);
+    assertEq(timeWithPenalty, 100);
 		assertEq(state.timeDelinquent, 200);
 
 		// Past grace period cutoff, penalty on full delta
 		state.timeDelinquent = 101;
 		state.isDelinquent = true;
-		assertEq(state.updateTimeDelinquentAndGetPenaltyTime(100, 100), 100);
+		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 100);
+    assertEq(timeWithPenalty, 100);
 		assertEq(state.timeDelinquent, 201);
 
 		// Cross under grace period, penalty on delta before crossing
 		state.timeDelinquent = 100;
 		state.isDelinquent = false;
-		assertEq(state.updateTimeDelinquentAndGetPenaltyTime(99, 100), 1);
+		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(99, 100);
+    assertEq(timeWithPenalty, 1);
 		assertEq(state.timeDelinquent, 0);
 
 		// Reach grace period cutoff, no penalty
 		state.timeDelinquent = 50;
 		state.isDelinquent = false;
-		assertEq(state.updateTimeDelinquentAndGetPenaltyTime(100, 50), 0);
+		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 50);
+    assertEq(timeWithPenalty, 0);
 		assertEq(state.timeDelinquent, 0);
 
 		state.timeDelinquent = 50;
 		state.isDelinquent = false;
-		assertEq(state.updateTimeDelinquentAndGetPenaltyTime(100, 100), 0);
+		(state, timeWithPenalty) = state.updateTimeDelinquentAndGetPenaltyTime(100, 100);
+    assertEq(timeWithPenalty, 0);
 		assertEq(state.timeDelinquent, 0);
 	}
 }

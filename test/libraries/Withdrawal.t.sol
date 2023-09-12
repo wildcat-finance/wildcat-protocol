@@ -3,9 +3,16 @@ pragma solidity >=0.8.20;
 
 import 'forge-std/Test.sol';
 import 'src/libraries/Withdrawal.sol';
+import './wrappers/WithdrawalLibExternal.sol';
 
+// Uses an external wrapper library to make forge coverage work for WithdrawalLib.
+// Forge is currently incapable of mapping MemberAccess function calls with
+// expressions other than library identifiers (e.g. value.x() vs XLib.x(value))
+// to the correct FunctionDefinition nodes.
 contract WithdrawalTest is Test {
 	WithdrawalData internal _withdrawalData;
+
+	using WithdrawalLibExternal for WithdrawalBatch;
 
 	event WithdrawalBatchCreated(uint256 expiry);
 	event WithdrawalQueued(uint256 expiry, address account, uint256 scaledAmount);
@@ -33,6 +40,6 @@ contract WithdrawalTest is Test {
 			uint256(accruedProtocolFees) +
 			state.normalizeAmount(scaledTotalPendingWithdrawals - scaledBatchAmount);
 		uint256 expected = totalAssets > totalReserved ? totalAssets - totalReserved : 0;
-		assertEq(WithdrawalLib.availableLiquidityForPendingBatch(batch, state, totalAssets), expected);
+		assertEq(batch.$availableLiquidityForPendingBatch(state, totalAssets), expected);
 	}
 }
