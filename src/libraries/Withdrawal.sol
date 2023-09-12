@@ -2,12 +2,9 @@
 pragma solidity >=0.8.20;
 
 import './VaultState.sol';
-import './FeeMath.sol';
 import './FIFOQueue.sol';
-import '../interfaces/IVaultEventsAndErrors.sol';
 
 using MathUtils for uint256;
-using FeeMath for VaultState;
 using SafeCastLib for uint256;
 using WithdrawalLib for WithdrawalBatch global;
 using WithdrawalLib for WithdrawalData global;
