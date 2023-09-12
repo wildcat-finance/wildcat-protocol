@@ -5,10 +5,8 @@ import './MathUtils.sol';
 import './SafeCastLib.sol';
 import './VaultState.sol';
 
-// using Math for uint256;
 using SafeCastLib for uint256;
 using MathUtils for uint256;
-using FeeMath for VaultState;
 
 library FeeMath {
 	/**
