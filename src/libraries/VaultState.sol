@@ -111,8 +111,8 @@ library VaultStateLib {
 		VaultState memory state,
 		uint256 totalAssets
 	) internal pure returns (uint128) {
-		uint256 liquidAssets = totalAssets.satSub(state.reservedAssets);
-		return uint128(MathUtils.min(liquidAssets, state.accruedProtocolFees));
+		uint256 totalAvailableAssets = totalAssets - state.reservedAssets;
+		return uint128(MathUtils.min(totalAvailableAssets, state.accruedProtocolFees));
 	}
 
 	/**
