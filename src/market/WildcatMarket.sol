@@ -17,7 +17,7 @@ contract WildcatMarket is
 	using SafeCastLib for uint256;
 	using SafeTransferLib for address;
 
-	function updateState() external {
+	function updateState() external nonReentrant {
 		VaultState memory state = _getUpdatedState();
 		_writeState(state);
 	}
