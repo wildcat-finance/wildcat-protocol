@@ -10,6 +10,11 @@ contract MockController is WildcatVaultController {
 	) WildcatVaultController(_feeRecipient, _factory) {}
 
 	bool public AUTH_ALL;
+	bool public DISABLE_PARAMETER_CHECKS;
+
+	function toggleParameterChecks() external {
+		DISABLE_PARAMETER_CHECKS = true;
+	}
 
 	function authorizeAll() external {
 		AUTH_ALL = true;
@@ -20,5 +25,15 @@ contract MockController is WildcatVaultController {
 			return true;
 		}
 		return _authorizedLenders[lender];
+	}
+
+	function getFinalVaultParameters(
+		address deployer,
+		VaultParameters memory vaultParameters
+	) public view virtual override returns (VaultParameters memory) {
+		if (DISABLE_PARAMETER_CHECKS) {
+			return vaultParameters;
+		}
+		return super.getFinalVaultParameters(deployer, vaultParameters);
 	}
 }

@@ -11,13 +11,30 @@ import './helpers/Assertions.sol';
 import './helpers/VmUtils.sol';
 import './helpers/MockController.sol';
 import './shared/TestConstants.sol';
+import './helpers/Prankster.sol';
 
-contract ExpectedStateTracker is Assertions, IVaultEventsAndErrors {
+contract ExpectedStateTracker is Prankster, Assertions, IVaultEventsAndErrors {
 	using FeeMath for VaultState;
 	using SafeCastLib for uint256;
 	using MathUtils for uint256;
 
-	VaultParameters internal parameters;
+	VaultParameters internal parameters =
+		VaultParameters({
+			asset: address(0),
+			namePrefix: 'Wildcat ',
+			symbolPrefix: 'WC',
+			borrower: borrower,
+			controller: address(0),
+			feeRecipient: feeRecipient,
+			sentinel: sentinel,
+			maxTotalSupply: uint128(DefaultMaximumSupply),
+			protocolFeeBips: DefaultProtocolFeeBips,
+			annualInterestBips: DefaultInterest,
+			delinquencyFeeBips: DefaultDelinquencyFee,
+			withdrawalBatchDuration: DefaultWithdrawalBatchDuration,
+			liquidityCoverageRatio: DefaultLiquidityCoverage,
+			delinquencyGracePeriod: DefaultGracePeriod
+		});
 	WildcatMarket internal vault;
 	VaultState internal previousState;
 	WithdrawalData internal _withdrawalData;
@@ -51,8 +68,8 @@ contract ExpectedStateTracker is Assertions, IVaultEventsAndErrors {
 	}
 
 	function _checkState() internal {
-		VaultState memory state = vault.currentState();
-		assertEq(previousState, state, 'state');
+		assertEq(vault.previousState(), previousState, 'previousState');
+		assertEq(vault.currentState(), pendingState(), 'currentState');
 
 		// assertEq(lastProtocolFees, vault.lastAccruedProtocolFees(), 'protocol fees');
 	}
@@ -151,40 +168,43 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
 	address internal wlUser = address(0x42);
 	address internal nonwlUser = address(0x43);
 
-	address internal _pranking;
-
 	function setUp() public {
+		setUpContracts(false);
+	}
+
+	function setUpContracts(bool disableControllerChecks) internal {
 		factory = new WildcatVaultFactory();
-		controller = new MockController(feeRecipient, address(factory));
-		controller.authorizeLender(alice);
+		MockController _controller = new MockController(feeRecipient, address(factory));
+		if (disableControllerChecks) {
+			_controller.toggleParameterChecks();
+		}
+		controller = _controller;
+		_authorizeLender(alice);
 		asset = new MockERC20('Token', 'TKN', 18);
-		parameters = VaultParameters({
-			asset: address(asset),
-			namePrefix: 'Wildcat ',
-			symbolPrefix: 'WC',
-			borrower: borrower,
-			controller: address(controller),
-			feeRecipient: feeRecipient,
-			sentinel: sentinel,
-			maxTotalSupply: uint128(DefaultMaximumSupply),
-			protocolFeeBips: DefaultProtocolFeeBips,
-			annualInterestBips: DefaultInterest,
-			delinquencyFeeBips: DefaultDelinquencyFee,
-			withdrawalBatchDuration: DefaultWithdrawalBatchDuration,
-			liquidityCoverageRatio: DefaultLiquidityCoverage,
-			delinquencyGracePeriod: DefaultGracePeriod
-		});
+		parameters.asset = address(asset);
+		parameters.controller = address(controller);
 		setupVault();
 	}
 
+	function _authorizeLender(address account) internal asAccount(address(this)) {
+		controller.authorizeLender(account);
+	}
+
+	function _depositBorrowWithdraw(
+		address from,
+		uint256 depositAmount,
+		uint256 borrowAmount,
+		uint256 withdrawalAmount
+	) internal asAccount(from) {
+		_deposit(from, depositAmount);
+		// Borrow 80% of vault assets
+		_borrow(borrowAmount);
+		// Withdraw 100% of deposits
+		_requestWithdrawal(from, withdrawalAmount);
+	}
+
 	function _deposit(address from, uint256 amount) internal asAccount(from) returns (uint256) {
-		if (_pranking != address(0)) {
-			vm.stopPrank();
-		}
-		controller.authorizeLender(from);
-		if (_pranking != address(0)) {
-			vm.startPrank(_pranking);
-		}
+		_authorizeLender(from);
 		uint256 currentBalance = vault.balanceOf(from);
 		uint256 currentScaledBalance = vault.scaledBalanceOf(from);
 		asset.mint(from, amount);
@@ -260,21 +280,6 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
 		lastTotalAssets -= amount;
 		updateState(state);
 		_checkState();
-	}
-
-	modifier asAccount(address account) {
-		address previousPrank = _pranking;
-		if (account != previousPrank) {
-			if (previousPrank != address(0)) vm.stopPrank();
-			vm.startPrank(account);
-			_pranking = account;
-			_;
-			vm.stopPrank();
-			if (previousPrank != address(0)) vm.startPrank(previousPrank);
-			_pranking = previousPrank;
-		} else {
-			_;
-		}
 	}
 
 	function _approve(address from, address to, uint256 amount) internal asAccount(from) {
