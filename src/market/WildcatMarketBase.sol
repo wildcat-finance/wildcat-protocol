@@ -8,6 +8,7 @@ import { queryName, querySymbol } from '../libraries/StringQuery.sol';
 import '../interfaces/IVaultEventsAndErrors.sol';
 import '../interfaces/IWildcatVaultController.sol';
 import '../interfaces/IWildcatVaultFactory.sol';
+import '../interfaces/ISanctionsSentinel.sol';
 import { IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
 import '../libraries/BoolUtils.sol';
@@ -136,11 +137,6 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 		_;
 	}
 
-	modifier onlySentinel() {
-		if (msg.sender != sentinel) revert BadLaunchCode();
-		_;
-	}
-
 	// ===================================================================== //
 	//                       Internal State Getters                          //
 	// ===================================================================== //
@@ -154,6 +150,28 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 		account = _accounts[accountAddress];
 		if (account.approval == AuthRole.Blocked) {
 			revert AccountBlacklisted();
+		}
+	}
+
+	function _blockAccount(VaultState memory state, address accountAddress) internal {
+		Account memory account = _accounts[accountAddress];
+		if (account.approval != AuthRole.Blocked) {
+			uint104 scaledBalance = account.scaledBalance;
+			account.approval = AuthRole.Blocked;
+			emit AuthorizationStatusUpdated(accountAddress, AuthRole.Blocked);
+
+			if (scaledBalance > 0) {
+				account.scaledBalance = 0;
+				address escrow = ISanctionsSentinel(sentinel).createEscrow(
+					accountAddress,
+					borrower,
+					address(this)
+				);
+				emit Transfer(accountAddress, escrow, state.normalizeAmount(scaledBalance));
+				_accounts[escrow].scaledBalance += scaledBalance;
+        emit SanctionedAccountAssetsSentToEscrow(accountAddress, escrow, state.normalizeAmount(scaledBalance));
+			}
+			_accounts[accountAddress] = account;
 		}
 	}
 
@@ -325,16 +343,16 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 		// Handle expired withdrawal batch
 		if (state.hasPendingExpiredBatch()) {
 			expiredBatchExpiry = state.pendingWithdrawalExpiry;
-      // Only accrue interest if time has passed since last update.
-      // This will only be false if withdrawalBatchDuration is 0.
-      if (expiredBatchExpiry != state.lastInterestAccruedTimestamp) {
-        state.updateScaleFactorAndFees(
-          protocolFeeBips,
-          delinquencyFeeBips,
-          delinquencyGracePeriod,
-          expiredBatchExpiry
-        );
-      }
+			// Only accrue interest if time has passed since last update.
+			// This will only be false if withdrawalBatchDuration is 0.
+			if (expiredBatchExpiry != state.lastInterestAccruedTimestamp) {
+				state.updateScaleFactorAndFees(
+					protocolFeeBips,
+					delinquencyFeeBips,
+					delinquencyGracePeriod,
+					expiredBatchExpiry
+				);
+			}
 
 			expiredBatch = _withdrawalData.batches[expiredBatchExpiry];
 			uint256 availableLiquidity = expiredBatch.availableLiquidityForPendingBatch(
