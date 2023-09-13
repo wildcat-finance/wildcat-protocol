@@ -72,9 +72,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
 		emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
 	}
 
-  /// @dev Block an account from interacting with the market and
-  ///      transfer its balance to an escrow contract.
-  // ******************************************************************
+	/// @dev Block a sanctioned account from interacting with the market
+	///      and transfer its balance to an escrow contract.
+	// ******************************************************************
 	//          *  |\**/|  *          *                                *
 	//          *  \ == /  *          *                                *
 	//          *   | b|   *          *                                *
@@ -95,23 +95,14 @@ contract WildcatMarketConfig is WildcatMarketBase {
 	//  💰🤑💰 *   😅    *    😐    *    💸    `-=#$%&%$#=-'         *
 	//   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪       *
 	//   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
-  // ******************************************************************
-	function nukeFromOrbit(address _account) external onlySentinel {
+	// ******************************************************************
+	function nukeFromOrbit(address accountAddress) external {
+    if (!ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+      revert BadLaunchCode();
+    }
 		VaultState memory state = _getUpdatedState();
-		Account memory account = _getAccount(_account);
-		uint104 scaledBalance = account.scaledBalance;
-
-		account.approval = AuthRole.Blocked;
-		if (scaledBalance > 0) {
-			account.scaledBalance = 0;
-			address escrow = ISanctionsSentinel(sentinel).createEscrow(_account, borrower, address(this));
-			emit Transfer(_account, escrow, state.normalizeAmount(scaledBalance));
-			_accounts[escrow].scaledBalance += scaledBalance;
-		}
-		_accounts[_account] = account;
-
+    _blockAccount(state, accountAddress);
 		_writeState(state);
-		emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
 	}
 
 	// /*//////////////////////////////////////////////////////////////
