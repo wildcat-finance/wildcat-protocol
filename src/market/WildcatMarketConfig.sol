@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
+import '../interfaces/ISanctionsSentinel.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/SafeCastLib.sol';
 import './WildcatMarketBase.sol';
 
 contract WildcatMarketConfig is WildcatMarketBase {
 	using SafeCastLib for uint256;
+	using BoolUtils for bool;
 
 	// ===================================================================== //
 	//                      External Config Getters                          //
@@ -17,7 +19,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
 	 *      currently be deposited to the market.
 	 */
 	function maximumDeposit() external view returns (uint256) {
-    (VaultState memory state,,) = _calculateCurrentState();
+		VaultState memory state = currentState();
 		return state.maximumDeposit();
 	}
 
@@ -70,8 +72,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
 		emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
 	}
 
-	/// @dev Block an account from interacting with the market and
-	///      delete its balance.
+	/// @dev Block a sanctioned account from interacting with the market
+	///      and transfer its balance to an escrow contract.
+	// ******************************************************************
 	//          *  |\**/|  *          *                                *
 	//          *  \ == /  *          *                                *
 	//          *   | b|   *          *                                *
@@ -89,27 +92,17 @@ contract WildcatMarketConfig is WildcatMarketBase {
 	//          *          *          *       ```--. . , ; .--'''      *
 	//          *          *          *   💸        | |   |            *
 	//          *          *          *          .-=||  | |=-.    💸   *
-	//  💰🤑💰  *    😅    *    😐    *    💸    `-=#$%&%$#=-'         *
-	//   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪      *
-	//   /\     * 💰/\ 💰  * 💰/\ 💰  *    _____.,-#%&$@%#&#~,._____   *
-	function nukeFromOrbit(address _account) external onlySentinel {
+	//  💰🤑💰 *   😅    *    😐    *    💸    `-=#$%&%$#=-'         *
+	//   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪       *
+	//   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
+	// ******************************************************************
+	function nukeFromOrbit(address accountAddress) external {
+    if (!ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+      revert BadLaunchCode();
+    }
 		VaultState memory state = _getUpdatedState();
-		Account memory account = _getAccount(_account);
-		uint104 scaledBalance = account.scaledBalance;
-		uint256 amount = state.normalizeAmount(scaledBalance);
-
-		account.approval = AuthRole.Blocked;
-		account.scaledBalance = 0;
-		_accounts[_account] = account;
-
-		if (scaledBalance > 0) {
-			state.scaledTotalSupply -= scaledBalance;
-		}
-		if (amount > 0) {
-			emit Transfer(_account, address(0), amount);
-		}
+    _blockAccount(state, accountAddress);
 		_writeState(state);
-		emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
 	}
 
 	// /*//////////////////////////////////////////////////////////////

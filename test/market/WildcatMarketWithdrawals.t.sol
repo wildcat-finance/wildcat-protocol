@@ -148,6 +148,17 @@ contract WithdrawalsTest is BaseVaultTest {
 		assertEq(asset.balanceOf(alice), previousBalance + withdrawalAmount);
 	}
 
+  function test_executeWithdrawal_Sanctioned() external {
+    _deposit(alice, 1e18);
+    _requestWithdrawal(alice, 1e18);
+    fastForward(parameters.withdrawalBatchDuration);
+    MockSanctionsSentinel(sentinel).sanction(alice);
+    vm.expectEmit(address(vault));
+    address escrow = MockSanctionsSentinel(sentinel).getEscrowAddress(alice, borrower, address(vault));
+    emit SanctionedAccountWithdrawalSentToEscrow(alice, escrow, uint32(block.timestamp), 1e18);
+    vault.executeWithdrawal(alice, uint32(block.timestamp));
+  }
+
 	function test_processUnpaidWithdrawalBatch_NoUnpaidBatches() external {
 		vm.expectRevert(FIFOQueueLib.FIFOQueueOutOfBounds.selector);
 		vault.processUnpaidWithdrawalBatch();
