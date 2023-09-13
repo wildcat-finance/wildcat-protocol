@@ -4,10 +4,16 @@ pragma solidity >=0.8.20;
 import { console, console2, StdAssertions, StdChains, StdCheats, stdError, StdInvariant, stdJson, stdMath, StdStorage, stdStorage, StdUtils, Vm, StdStyle, DSTest, Test as ForgeTest } from 'forge-std/Test.sol';
 import '../helpers/VmUtils.sol' as VmUtils;
 import { deployMockChainalysis } from '../helpers/MockChainalysis.sol';
+import { sentinel } from './TestConstants.sol';
+import '../helpers/MockSanctionsSentinel.sol';
 
 contract Test is ForgeTest {
 	constructor() {
 		deployMockChainalysis();
+    vm.etch(
+      sentinel,
+      type(MockSanctionsSentinel).runtimeCode
+    );
 	}
 
 	function bound(
