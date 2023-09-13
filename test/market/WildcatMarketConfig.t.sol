@@ -54,7 +54,7 @@ contract WildcatMarketConfigTest is BaseVaultTest {
 	}
 
 	function test_revokeAccountAuthorization_AccountBlacklisted(address _account) external {
-		vm.prank(sentinel);
+    MockSanctionsSentinel(sentinel).sanction(_account);
 		vault.nukeFromOrbit(_account);
 		vm.startPrank(parameters.controller);
 		vm.expectRevert(IVaultEventsAndErrors.AccountBlacklisted.selector);
@@ -80,14 +80,16 @@ contract WildcatMarketConfigTest is BaseVaultTest {
 	}
 
 	function test_grantAccountAuthorization_AccountBlacklisted(address _account) external {
-		vm.prank(sentinel);
+		MockSanctionsSentinel(sentinel).sanction(_account);
 		vault.nukeFromOrbit(_account);
 		vm.startPrank(parameters.controller);
 		vm.expectRevert(IVaultEventsAndErrors.AccountBlacklisted.selector);
 		vault.grantAccountAuthorization(_account);
 	}
 
-	function test_nukeFromOrbit(address _account) external asAccount(sentinel) {
+	function test_nukeFromOrbit(address _account) external{
+    MockSanctionsSentinel(sentinel).sanction(_account);
+
 		vm.expectEmit(address(vault));
 		emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
 		vault.nukeFromOrbit(_account);
@@ -98,15 +100,27 @@ contract WildcatMarketConfigTest is BaseVaultTest {
 		);
 	}
 
-	function test_nukeFromOrbit_BadLaunchCode(address _account) external {
-		vm.expectRevert(IVaultEventsAndErrors.BadLaunchCode.selector);
-		vault.nukeFromOrbit(_account);
+	function test_nukeFromOrbit_WithBalance() external{
+    _deposit(alice, 1e18);
+    address escrow = MockSanctionsSentinel(sentinel).getEscrowAddress(alice, borrower, address(vault));
+    MockSanctionsSentinel(sentinel).sanction(alice);
+
+		vm.expectEmit(address(vault));
+		emit AuthorizationStatusUpdated(alice, AuthRole.Blocked);
+    vm.expectEmit(address(vault));
+    emit Transfer(alice, escrow, 1e18);
+    vm.expectEmit(address(vault));
+    emit SanctionedAccountAssetsSentToEscrow(alice, escrow, 1e18);
+		vault.nukeFromOrbit(alice);
+		assertEq(
+			uint(vault.getAccountRole(alice)),
+			uint(AuthRole.Blocked),
+			'account role should be Blocked'
+		);
 	}
 
-	function test_nukeFromOrbit_AccountBlacklisted(address _account) external {
-		vm.startPrank(sentinel);
-		vault.nukeFromOrbit(_account);
-		vm.expectRevert(IVaultEventsAndErrors.AccountBlacklisted.selector);
+	function test_nukeFromOrbit_BadLaunchCode(address _account) external {
+		vm.expectRevert(IVaultEventsAndErrors.BadLaunchCode.selector);
 		vault.nukeFromOrbit(_account);
 	}
 
