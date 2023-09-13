@@ -71,7 +71,7 @@ interface IVaultEventsAndErrors {
 
 	event LiquidityCoverageRatioUpdated(uint256 liquidityCoverageRatioUpdated);
 
-  event SanctionedAccountBlocked(address account, address escrow, uint256 amount);
+  event SanctionedAccountAssetsSentToEscrow(address account, address escrow, uint256 amount);
 
   event SanctionedStatusLifted(address account);
 
@@ -127,5 +127,5 @@ interface IVaultEventsAndErrors {
 
 	event Withdrawal(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
-  event SanctionedAccountWithdrawalSentToEscrow(address account, address escrow, uint32 expiry);
+  event SanctionedAccountWithdrawalSentToEscrow(address account, address escrow, uint32 expiry, uint256 amount);
 }
