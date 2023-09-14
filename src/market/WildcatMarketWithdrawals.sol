@@ -131,15 +131,24 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 		status.normalizedAmountWithdrawn = newTotalWithdrawn;
 		state.reservedAssets -= normalizedAmountWithdrawn;
 
-    if (ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
-      _blockAccount(state, accountAddress);
-      address escrow = ISanctionsSentinel(sentinel).createEscrow(accountAddress, borrower, address(asset));  
-      asset.safeTransfer(accountAddress, normalizedAmountWithdrawn);
-      emit SanctionedAccountWithdrawalSentToEscrow(accountAddress, escrow, expiry, normalizedAmountWithdrawn);
-    } else {
-      asset.safeTransfer(accountAddress, normalizedAmountWithdrawn);
-    }
-		
+		if (ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+			_blockAccount(state, accountAddress);
+			address escrow = ISanctionsSentinel(sentinel).createEscrow(
+				accountAddress,
+				borrower,
+				address(asset)
+			);
+			asset.safeTransfer(accountAddress, normalizedAmountWithdrawn);
+			emit SanctionedAccountWithdrawalSentToEscrow(
+				accountAddress,
+				escrow,
+				expiry,
+				normalizedAmountWithdrawn
+			);
+		} else {
+			asset.safeTransfer(accountAddress, normalizedAmountWithdrawn);
+		}
+
 		emit WithdrawalExecuted(expiry, accountAddress, normalizedAmountWithdrawn);
 
 		// Update stored state

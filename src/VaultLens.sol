@@ -32,7 +32,8 @@ import './market/WildcatMarket.sol';
 // }
 
 // contract VaultLensOld {
-//   function getVaultMetadata(WildcatMarket vault) external view returns (VaultMetaData memory metadata) {
+//   function getVaultMetadata(WildcatMarket vault)
+//  external view returns (VaultMetaData memory metadata) {
 //     metadata.asset = vault.asset();
 //     metadata.name = vault.name();
 //     metadata.symbol = vault.symbol();
@@ -47,7 +48,8 @@ import './market/WildcatMarket.sol';
 //     metadata.liquidityCoverageRatio = vault.liquidityCoverageRatio();
 //   }
 
-//   function getVaultStatus(WildcatMarket vault) external view returns (VaultStatus memory status) {
+//   function getVaultStatus(WildcatMarket vault)
+// external view returns (VaultStatus memory status) {
 //     (VaultState memory state, uint256 _accruedProtocolFees) = vault.currentState();
 //     status.maxTotalSupply = vault.maxTotalSupply();
 //     status.totalSupply = vault.totalSupply();

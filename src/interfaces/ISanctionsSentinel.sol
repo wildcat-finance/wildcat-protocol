@@ -11,7 +11,7 @@ interface ISanctionsSentinel {
 		address token
 	) external returns (address escrowContract);
 
-  function isSanctioned(address account) external view returns (bool);
+	function isSanctioned(address account) external view returns (bool);
 }
 
 interface ISanctionsEscrow {

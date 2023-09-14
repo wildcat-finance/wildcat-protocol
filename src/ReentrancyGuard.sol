@@ -3,7 +3,8 @@ pragma solidity >=0.8.20;
 
 /**
  * @title ReentrancyGuard
- * @author 0age (https://github.com/ProjectOpenSea/seaport/blob/main/contracts/lib/ReentrancyGuard.sol)
+ * @author 0age
+ *         https://github.com/ProjectOpenSea/seaport/blob/main/contracts/lib/ReentrancyGuard.sol
  * Changes: add modifier, bring constants & error definition into contract
  * @notice ReentrancyGuard contains a storage variable and related functionality
  *         for protecting against reentrancy.

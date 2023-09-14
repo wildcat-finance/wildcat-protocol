@@ -5,7 +5,9 @@ import { LibBit } from 'solady/utils/LibBit.sol';
 
 using LibBit for uint256;
 
-uint256 constant InvalidReturnDataString_selector = 0x4cb9c00000000000000000000000000000000000000000000000000000000000;
+uint256 constant InvalidReturnDataString_selector = (
+	0x4cb9c00000000000000000000000000000000000000000000000000000000000
+);
 
 uint256 constant SixtyThreeBytes = 0x3f;
 uint256 constant ThirtyOneBytes = 0x1f;

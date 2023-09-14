@@ -97,11 +97,11 @@ contract WildcatMarketConfig is WildcatMarketBase {
 	//   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
 	// ******************************************************************
 	function nukeFromOrbit(address accountAddress) external {
-    if (!ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
-      revert BadLaunchCode();
-    }
+		if (!ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+			revert BadLaunchCode();
+		}
 		VaultState memory state = _getUpdatedState();
-    _blockAccount(state, accountAddress);
+		_blockAccount(state, accountAddress);
 		_writeState(state);
 	}
 

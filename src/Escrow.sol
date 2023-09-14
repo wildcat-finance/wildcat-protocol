@@ -4,13 +4,13 @@ pragma solidity >=0.8.20;
 import './interfaces/IERC20.sol';
 
 contract SanctionsEscrow {
-  address public immutable sanctionsEscrowFactory;
+	address public immutable sanctionsEscrowFactory;
 	address public immutable account;
 	address public immutable borrower;
 	address[] internal _escrowedAssets;
 
 	constructor() {
-    sanctionsEscrowFactory = msg.sender;
+		sanctionsEscrowFactory = msg.sender;
 		(account, borrower) = SanctionsEscrowFactory(msg.sender).getEscrowParameters();
 	}
 
@@ -26,9 +26,7 @@ contract SanctionsEscrow {
 		}
 	}
 
-  function releaseAssets() external {
-    
-  }
+	function releaseAssets() external {}
 }
 
 address constant PlaceHolderAddress = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
@@ -85,11 +83,11 @@ contract SanctionsEscrowFactory {
 		bytes32 salt = _deriveSalt(account, borrower);
 		escrowContract = _computeEscrowAddress(salt);
 		if (escrowContract.code.length == 0) {
-      sanctionsEscrowAccount = account;
-      sanctionsEscrowBorrower = borrower;
+			sanctionsEscrowAccount = account;
+			sanctionsEscrowBorrower = borrower;
 			new SanctionsEscrow{ salt: salt }();
-      sanctionsEscrowAccount = PlaceHolderAddress;
-      sanctionsEscrowBorrower = PlaceHolderAddress;
+			sanctionsEscrowAccount = PlaceHolderAddress;
+			sanctionsEscrowBorrower = PlaceHolderAddress;
 		}
 	}
 }

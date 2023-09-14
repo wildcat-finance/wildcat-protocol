@@ -53,8 +53,8 @@ contract WildcatVaultController is Ownable {
 		return _authorizedLenders[lender];
 	}
 
-  function revokeAccountAuthorization(address vault, address lender) external virtual {
-    if (!isControlledVault[vault]) {
+	function revokeAccountAuthorization(address vault, address lender) external virtual {
+		if (!isControlledVault[vault]) {
 			revertWithSelector(NotControlledVault.selector);
 		}
 
@@ -62,8 +62,8 @@ contract WildcatVaultController is Ownable {
 			revertWithSelector(CallerNotBorrower.selector);
 		}
 
-    WildcatMarket(vault).revokeAccountAuthorization(lender);
-  }
+		WildcatMarket(vault).revokeAccountAuthorization(lender);
+	}
 
 	function getFinalVaultParameters(
 		address /* deployer */,

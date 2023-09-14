@@ -85,7 +85,8 @@ library MathUtils {
 
 	/**
 	 * @dev Multiplies two bip, rounding half up to the nearest bip
-	 * @dev assembly optimized for improved gas savings, see https://twitter.com/transmissions11/status/1451131036377571328
+	 * @dev assembly optimized for improved gas savings,
+	 *      see https://twitter.com/transmissions11/status/1451131036377571328
 	 * @param a Bip
 	 * @param b Bip
 	 * @return c = a*b, in bip
@@ -108,7 +109,8 @@ library MathUtils {
 
 	/**
 	 * @notice Divides two bip, rounding half up to the nearest bip
-	 * @dev assembly optimized for improved gas savings, see https://twitter.com/transmissions11/status/1451131036377571328
+	 * @dev assembly optimized for improved gas savings,
+	 *      see https://twitter.com/transmissions11/status/1451131036377571328
 	 * @param a Bip
 	 * @param b Bip
 	 * @return c = a bipdiv b
@@ -128,7 +130,8 @@ library MathUtils {
 
 	/**
 	 * @dev Converts bip up to ray
-	 * @dev assembly optimized for improved gas savings, see https://twitter.com/transmissions11/status/1451131036377571328
+	 * @dev assembly optimized for improved gas savings,
+	 *      see https://twitter.com/transmissions11/status/1451131036377571328
 	 * @param a bip
 	 * @return b = a converted in ray
 	 */
@@ -136,7 +139,7 @@ library MathUtils {
 		// to avoid overflow, b/BIP_RAY_RATIO == a
 		assembly {
 			b := mul(a, BIP_RAY_RATIO)
-      // equivalent to `require((b = a * BIP_RAY_RATIO) / BIP_RAY_RATIO == a )
+			// equivalent to `require((b = a * BIP_RAY_RATIO) / BIP_RAY_RATIO == a )
 			if iszero(eq(div(b, BIP_RAY_RATIO), a)) {
 				mstore(0, Panic_ErrorSelector)
 				mstore(Panic_ErrorCodePointer, Panic_Arithmetic)
@@ -147,7 +150,8 @@ library MathUtils {
 
 	/**
 	 * @notice Multiplies two ray, rounding half up to the nearest ray
-	 * @dev assembly optimized for improved gas savings, see https://twitter.com/transmissions11/status/1451131036377571328
+	 * @dev assembly optimized for improved gas savings,
+	 *      see https://twitter.com/transmissions11/status/1451131036377571328
 	 * @param a Ray
 	 * @param b Ray
 	 * @return c = a raymul b

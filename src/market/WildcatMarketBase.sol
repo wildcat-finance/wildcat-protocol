@@ -169,7 +169,11 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 				);
 				emit Transfer(accountAddress, escrow, state.normalizeAmount(scaledBalance));
 				_accounts[escrow].scaledBalance += scaledBalance;
-        emit SanctionedAccountAssetsSentToEscrow(accountAddress, escrow, state.normalizeAmount(scaledBalance));
+				emit SanctionedAccountAssetsSentToEscrow(
+					accountAddress,
+					escrow,
+					state.normalizeAmount(scaledBalance)
+				);
 			}
 			_accounts[accountAddress] = account;
 		}
