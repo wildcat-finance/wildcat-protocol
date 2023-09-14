@@ -4,80 +4,80 @@ pragma solidity >=0.8.20;
 import './WildcatMarketBase.sol';
 
 contract WildcatMarketToken is WildcatMarketBase {
-	using SafeCastLib for uint256;
+  using SafeCastLib for uint256;
 
-	// =====================================================================//
-	//                            ERC20 Queries                             //
-	// =====================================================================//
+  // =====================================================================//
+  //                            ERC20 Queries                             //
+  // =====================================================================//
 
-	mapping(address => mapping(address => uint256)) public allowance;
+  mapping(address => mapping(address => uint256)) public allowance;
 
-	/// @notice Returns the normalized balance of `account` with interest.
-	function balanceOf(address account) public view virtual nonReentrantView returns (uint256) {
-		(VaultState memory state, , ) = _calculateCurrentState();
-		return state.normalizeAmount(_accounts[account].scaledBalance);
-	}
+  /// @notice Returns the normalized balance of `account` with interest.
+  function balanceOf(address account) public view virtual nonReentrantView returns (uint256) {
+    (VaultState memory state, , ) = _calculateCurrentState();
+    return state.normalizeAmount(_accounts[account].scaledBalance);
+  }
 
-	/// @notice Returns the normalized total supply with interest.
-	function totalSupply() external view virtual nonReentrantView returns (uint256) {
-		(VaultState memory state, , ) = _calculateCurrentState();
-		return state.totalSupply();
-	}
+  /// @notice Returns the normalized total supply with interest.
+  function totalSupply() external view virtual nonReentrantView returns (uint256) {
+    (VaultState memory state, , ) = _calculateCurrentState();
+    return state.totalSupply();
+  }
 
-	// =====================================================================//
-	//                            ERC20 Actions                             //
-	// =====================================================================//
+  // =====================================================================//
+  //                            ERC20 Actions                             //
+  // =====================================================================//
 
-	function approve(address spender, uint256 amount) external virtual nonReentrant returns (bool) {
-		_approve(msg.sender, spender, amount);
-		return true;
-	}
+  function approve(address spender, uint256 amount) external virtual nonReentrant returns (bool) {
+    _approve(msg.sender, spender, amount);
+    return true;
+  }
 
-	function transfer(address to, uint256 amount) external virtual nonReentrant returns (bool) {
-		_transfer(msg.sender, to, amount);
-		return true;
-	}
+  function transfer(address to, uint256 amount) external virtual nonReentrant returns (bool) {
+    _transfer(msg.sender, to, amount);
+    return true;
+  }
 
-	function transferFrom(
-		address from,
-		address to,
-		uint256 amount
-	) external virtual nonReentrant returns (bool) {
-		uint256 allowed = allowance[from][msg.sender];
+  function transferFrom(
+    address from,
+    address to,
+    uint256 amount
+  ) external virtual nonReentrant returns (bool) {
+    uint256 allowed = allowance[from][msg.sender];
 
-		// Saves gas for unlimited approvals.
-		if (allowed != type(uint256).max) {
-			uint256 newAllowance = allowed - amount;
-			_approve(from, msg.sender, newAllowance);
-		}
+    // Saves gas for unlimited approvals.
+    if (allowed != type(uint256).max) {
+      uint256 newAllowance = allowed - amount;
+      _approve(from, msg.sender, newAllowance);
+    }
 
-		_transfer(from, to, amount);
+    _transfer(from, to, amount);
 
-		return true;
-	}
+    return true;
+  }
 
-	// =====================================================================//
-	//                            INTERNAL LOGIC                            //
-	// =====================================================================//
+  // =====================================================================//
+  //                            INTERNAL LOGIC                            //
+  // =====================================================================//
 
-	function _approve(address approver, address spender, uint256 amount) internal virtual {
-		allowance[approver][spender] = amount;
-		emit Approval(approver, spender, amount);
-	}
+  function _approve(address approver, address spender, uint256 amount) internal virtual {
+    allowance[approver][spender] = amount;
+    emit Approval(approver, spender, amount);
+  }
 
-	function _transfer(address from, address to, uint256 amount) internal virtual {
-		VaultState memory state = _getUpdatedState();
-		uint104 scaledAmount = state.scaleAmount(amount).toUint104();
+  function _transfer(address from, address to, uint256 amount) internal virtual {
+    VaultState memory state = _getUpdatedState();
+    uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 
-		Account memory fromAccount = _getAccount(from);
-		fromAccount.scaledBalance -= scaledAmount;
-		_accounts[from] = fromAccount;
+    Account memory fromAccount = _getAccount(from);
+    fromAccount.scaledBalance -= scaledAmount;
+    _accounts[from] = fromAccount;
 
-		Account memory toAccount = _getAccount(to);
-		toAccount.scaledBalance += scaledAmount;
-		_accounts[to] = toAccount;
+    Account memory toAccount = _getAccount(to);
+    toAccount.scaledBalance += scaledAmount;
+    _accounts[to] = toAccount;
 
-		_writeState(state);
-		emit Transfer(from, to, amount);
-	}
+    _writeState(state);
+    emit Transfer(from, to, amount);
+  }
 }
