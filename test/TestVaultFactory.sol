@@ -7,18 +7,18 @@ import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
 import './BaseVaultTest.sol';
 
 contract FactoryTest is BaseVaultTest {
-	function testDeployVault() public {
-		assertEq(vault.name(), 'Wildcat Token', 'name');
-		assertEq(vault.symbol(), 'WCTKN', 'symbol');
-		require(vault.maxTotalSupply() == DefaultMaximumSupply);
-		require(vault.annualInterestBips() == DefaultInterest);
-		require(vault.delinquencyFeeBips() == DefaultDelinquencyFee);
-		require(vault.delinquencyGracePeriod() == DefaultGracePeriod);
-		require(vault.liquidityCoverageRatio() == DefaultLiquidityCoverage);
-		require(vault.protocolFeeBips() == DefaultProtocolFeeBips);
-		require(vault.feeRecipient() == feeRecipient);
-		require(vault.borrower() == borrower);
-		require(vault.asset() == address(asset));
-		require(vault.controller() == address(controller));
-	}
+  function testDeployVault() public {
+    assertEq(vault.name(), 'Wildcat Token', 'name');
+    assertEq(vault.symbol(), 'WCTKN', 'symbol');
+    require(vault.maxTotalSupply() == DefaultMaximumSupply);
+    require(vault.annualInterestBips() == DefaultInterest);
+    require(vault.delinquencyFeeBips() == DefaultDelinquencyFee);
+    require(vault.delinquencyGracePeriod() == DefaultGracePeriod);
+    require(vault.liquidityCoverageRatio() == DefaultLiquidityCoverage);
+    require(vault.protocolFeeBips() == DefaultProtocolFeeBips);
+    require(vault.feeRecipient() == feeRecipient);
+    require(vault.borrower() == borrower);
+    require(vault.asset() == address(asset));
+    require(vault.controller() == address(controller));
+  }
 }

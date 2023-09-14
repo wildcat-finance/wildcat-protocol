@@ -8,28 +8,25 @@ import { sentinel } from './TestConstants.sol';
 import '../helpers/MockSanctionsSentinel.sol';
 
 contract Test is ForgeTest {
-	constructor() {
-		deployMockChainalysis();
-    vm.etch(
-      sentinel,
-      type(MockSanctionsSentinel).runtimeCode
-    );
-	}
+  constructor() {
+    deployMockChainalysis();
+    vm.etch(sentinel, type(MockSanctionsSentinel).runtimeCode);
+  }
 
-	function bound(
-		uint256 value,
-		uint256 min,
-		uint256 max
-	) internal view virtual override returns (uint256 result) {
-		return VmUtils.bound(value, min, max);
-	}
+  function bound(
+    uint256 value,
+    uint256 min,
+    uint256 max
+  ) internal view virtual override returns (uint256 result) {
+    return VmUtils.bound(value, min, max);
+  }
 
-	function dbound(
-		uint256 value1,
-		uint256 value2,
-		uint256 min,
-		uint256 max
-	) internal view virtual returns (uint256, uint256) {
-		return VmUtils.dbound(value1, value2, min, max);
-	}
+  function dbound(
+    uint256 value1,
+    uint256 value2,
+    uint256 min,
+    uint256 max
+  ) internal view virtual returns (uint256, uint256) {
+    return VmUtils.dbound(value1, value2, min, max);
+  }
 }
