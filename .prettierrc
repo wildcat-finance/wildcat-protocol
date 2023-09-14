@@ -1,4 +1,7 @@
 {
+  "plugins": [
+    "./node_modules/prettier-plugin-solidity"
+  ],
   "overrides": [
     {
       "files": "*.sol",
