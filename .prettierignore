@@ -2,9 +2,4 @@ node_modules
 out
 cache
 coverage
-lib/ds-test
-lib/forge-std
-lib/openzeppelin-contracts
-lib/solmate
-lib/solady
-lib/sol-utils
+lib
