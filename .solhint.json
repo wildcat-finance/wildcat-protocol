@@ -27,6 +27,7 @@
     "code-complexity": [
       "warn",
       15
-    ]
+    ],
+    "private-vars-leading-underscore": "off"
   }
 }
