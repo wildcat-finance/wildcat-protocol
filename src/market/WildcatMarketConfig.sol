@@ -96,7 +96,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
   //   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪       *
   //   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
   // ******************************************************************
-  function nukeFromOrbit(address accountAddress) external {
+  function nukeFromOrbit(address accountAddress) external nonReentrant {
     if (!ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
       revert BadLaunchCode();
     }
