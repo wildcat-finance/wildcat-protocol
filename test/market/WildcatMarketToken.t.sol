@@ -100,4 +100,9 @@ contract WildcatMarketTokenTest is BaseERC20Test {
     vm.expectRevert(IVaultEventsAndErrors.NullTransferAmount.selector);
     token.transfer(address(1), 0);
   }
+
+  function testTransferFromNullAmount() external {
+    vm.expectRevert(IVaultEventsAndErrors.NullTransferAmount.selector);
+    token.transferFrom(address(0), address(1), 0);
+  }
 }
