@@ -118,7 +118,7 @@ library MathUtils {
   function bipDiv(uint256 a, uint256 b) internal pure returns (uint256 c) {
     assembly {
       // equivalent to `require(b != 0 && a <= (type(uint256).max - b/2) / BIP)`
-      if or(iszero(b), iszero(iszero(gt(a, div(sub(not(0), div(b, 2)), BIP))))) {
+      if or(iszero(b), gt(a, div(sub(not(0), div(b, 2)), BIP))) {
         mstore(0, Panic_ErrorSelector)
         mstore(Panic_ErrorCodePointer, Panic_Arithmetic)
         revert(Error_SelectorPointer, Panic_ErrorLength)
@@ -173,7 +173,7 @@ library MathUtils {
   function rayDiv(uint256 a, uint256 b) internal pure returns (uint256 c) {
     assembly {
       // equivalent to `require(b != 0 && a <= (type(uint256).max - halfB) / RAY)`
-      if or(iszero(b), iszero(iszero(gt(a, div(sub(not(0), div(b, 2)), RAY))))) {
+      if or(iszero(b), gt(a, div(sub(not(0), div(b, 2)), RAY))) {
         mstore(0, Panic_ErrorSelector)
         mstore(Panic_ErrorCodePointer, Panic_Arithmetic)
         revert(Error_SelectorPointer, Panic_ErrorLength)
