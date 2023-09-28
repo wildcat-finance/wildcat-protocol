@@ -6,9 +6,9 @@
     "@typechain/hardhat": "^6.1.6",
     "hardhat": "^2.13.0",
     "open-cli": "^7.2.0",
-    "prettier": "^2.8.4",
-    "prettier-plugin-solidity": "^1.1.2",
-    "solhint": "^3.3.8",
+    "prettier": "^2.8.8",
+    "prettier-plugin-solidity": "^1.1.3",
+    "solhint": "^3.6.2",
     "solhint-plugin-prettier": "^0.0.5",
     "stack-packer": "^1.1.8",
     "ts-node": "^10.9.1",
@@ -17,8 +17,8 @@
   },
   "scripts": {
     "codegen": "stack-packer ./type-defs ./src/types -t ./contracts/test -h ./contracts/test",
-    "lint:check": "prettier --check 'src/**/*.sol' && solhint --config ./.solhint.json 'src/**/*.sol'",
-    "lint:fix": "prettier --write 'src/**/*.sol'",
+    "lint:check": "prettier --check 'src/**/*.sol' 'test/**/*.sol' && solhint --config ./.solhint.json --ignore-path ./.solhintignore 'src/**/*.sol' 'test/**/*.sol'",
+    "lint:fix": "prettier --write 'src/**/*.sol' 'test/**/*.sol' && solhint --config ./.solhint.json --ignore-path ./.solhintignore 'src/**/*.sol' 'test/**/*.sol'",
     "clean:coverage": "rm -rf coverage lcov.info",
     "coverage": "yarn clean:coverage && forge coverage --report summary --report lcov && lcov -o lcov.info --remove lcov.info --rc lcov_branch_coverage=1 --rc lcov_function_coverage=1 --rc lcov_line_coverage=1 'test/*' 'scripts/*' && genhtml lcov.info -o coverage --branch-coverage --function-coverage  && echo \"Coverage report written to ./coverage/index.html\" && open-cli ./coverage/index.html && rm lcov.info",
     "test": "forge test --block-timestamp $(date +%s)"

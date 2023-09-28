@@ -32,7 +32,8 @@ import './market/WildcatMarket.sol';
 // }
 
 // contract VaultLensOld {
-//   function getVaultMetadata(WildcatMarket vault) external view returns (VaultMetaData memory metadata) {
+//   function getVaultMetadata(WildcatMarket vault)
+//  external view returns (VaultMetaData memory metadata) {
 //     metadata.asset = vault.asset();
 //     metadata.name = vault.name();
 //     metadata.symbol = vault.symbol();
@@ -47,7 +48,8 @@ import './market/WildcatMarket.sol';
 //     metadata.liquidityCoverageRatio = vault.liquidityCoverageRatio();
 //   }
 
-//   function getVaultStatus(WildcatMarket vault) external view returns (VaultStatus memory status) {
+//   function getVaultStatus(WildcatMarket vault)
+// external view returns (VaultStatus memory status) {
 //     (VaultState memory state, uint256 _accruedProtocolFees) = vault.currentState();
 //     status.maxTotalSupply = vault.maxTotalSupply();
 //     status.totalSupply = vault.totalSupply();
@@ -61,67 +63,67 @@ import './market/WildcatMarket.sol';
 // }
 
 struct AccountVaultInfo {
-	uint256 scaledBalance;
-	uint256 normalizedBalance;
-	uint256 underlyingBalance;
-	uint256 underlyingApproval;
+  uint256 scaledBalance;
+  uint256 normalizedBalance;
+  uint256 underlyingBalance;
+  uint256 underlyingApproval;
 }
 
 struct ControlStatus {
-	bool temporaryLiquidityCoverage;
-	uint256 originalLiquidityCoverageRatio;
-	uint256 temporaryLiquidityCoverageExpiry;
+  bool temporaryLiquidityCoverage;
+  uint256 originalLiquidityCoverageRatio;
+  uint256 temporaryLiquidityCoverageExpiry;
 }
 
 struct TokenMetadata {
-	address token;
-	string name;
-	string symbol;
-	uint256 decimals;
+  address token;
+  string name;
+  string symbol;
+  uint256 decimals;
 }
 
 struct VaultData {
-	TokenMetadata vaultToken;
-	TokenMetadata underlyingToken;
-	address borrower;
-	address controller;
-	address feeRecipient;
-	uint256 interestFeeBips;
-	uint256 penaltyFeeBips;
-	uint256 gracePeriod;
-	uint256 annualInterestBips;
-	uint256 liquidityCoverageRatio;
-	bool temporaryLiquidityCoverage;
-	uint256 originalLiquidityCoverageRatio;
-	uint256 temporaryLiquidityCoverageExpiry;
-	uint256 borrowableAssets;
-	uint256 maxTotalSupply;
-	uint256 scaledTotalSupply;
-	uint256 totalSupply;
-	uint256 totalAssets;
-	uint256 coverageLiquidity;
-	uint256 scaleFactor;
-	uint256 lastAccruedProtocolFees;
-	bool isDelinquent;
-	uint256 timeDelinquent;
-	uint256 lastInterestAccruedTimestamp;
+  TokenMetadata vaultToken;
+  TokenMetadata underlyingToken;
+  address borrower;
+  address controller;
+  address feeRecipient;
+  uint256 interestFeeBips;
+  uint256 penaltyFeeBips;
+  uint256 gracePeriod;
+  uint256 annualInterestBips;
+  uint256 liquidityCoverageRatio;
+  bool temporaryLiquidityCoverage;
+  uint256 originalLiquidityCoverageRatio;
+  uint256 temporaryLiquidityCoverageExpiry;
+  uint256 borrowableAssets;
+  uint256 maxTotalSupply;
+  uint256 scaledTotalSupply;
+  uint256 totalSupply;
+  uint256 totalAssets;
+  uint256 coverageLiquidity;
+  uint256 scaleFactor;
+  uint256 lastAccruedProtocolFees;
+  bool isDelinquent;
+  uint256 timeDelinquent;
+  uint256 lastInterestAccruedTimestamp;
 }
 
 contract VaultLens {
-	function getAccountVaultInfo(
-		WildcatMarket vault,
-		address account
-	) external view returns (AccountVaultInfo memory info) {}
+  function getAccountVaultInfo(
+    WildcatMarket vault,
+    address account
+  ) external view returns (AccountVaultInfo memory info) {}
 
-	function getControlStatus(
-		WildcatMarket vault
-	) external view returns (ControlStatus memory status) {}
+  function getControlStatus(
+    WildcatMarket vault
+  ) external view returns (ControlStatus memory status) {}
 
-	function getTokenInfo(WildcatMarket token) external view returns (TokenMetadata memory info) {}
+  function getTokenInfo(WildcatMarket token) external view returns (TokenMetadata memory info) {}
 
-	function getVaultData(WildcatMarket vault) external view returns (VaultData memory data) {}
+  function getVaultData(WildcatMarket vault) external view returns (VaultData memory data) {}
 
-	function getVaultsMetadata(
-		address[] calldata vaults
-	) external view returns (VaultData[] memory data) {}
+  function getVaultsMetadata(
+    address[] calldata vaults
+  ) external view returns (VaultData[] memory data) {}
 }

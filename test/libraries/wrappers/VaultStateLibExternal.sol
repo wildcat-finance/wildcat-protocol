@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import { VaultState, VaultStateLib } from "src/libraries/VaultState.sol";
+import { VaultState, VaultStateLib } from 'src/libraries/VaultState.sol';
 
 library VaultStateLibExternal {
   /// @dev Returns the normalized total supply of the vault.
@@ -16,7 +16,10 @@ library VaultStateLibExternal {
   }
 
   /// @dev Normalize an amount of scaled tokens using the current scale factor.
-  function $normalizeAmount(VaultState memory state, uint256 amount) external pure returns (uint256) {
+  function $normalizeAmount(
+    VaultState memory state,
+    uint256 amount
+  ) external pure returns (uint256) {
     return VaultStateLib.normalizeAmount(state, amount);
   }
 
@@ -27,11 +30,16 @@ library VaultStateLibExternal {
 
   /// Collateralization requires all pending withdrawals be covered
   /// and coverage ratio for remaining liquidity.
-  function $liquidityRequired(VaultState memory state) external pure returns (uint256 _liquidityRequired) {
+  function $liquidityRequired(
+    VaultState memory state
+  ) external pure returns (uint256 _liquidityRequired) {
     return VaultStateLib.liquidityRequired(state);
   }
 
-  function $borrowableAssets(VaultState memory state, uint256 totalAssets) external pure returns (uint256) {
+  function $borrowableAssets(
+    VaultState memory state,
+    uint256 totalAssets
+  ) external pure returns (uint256) {
     return VaultStateLib.borrowableAssets(state, totalAssets);
   }
 
@@ -39,7 +47,10 @@ library VaultStateLibExternal {
     return VaultStateLib.hasPendingExpiredBatch(state);
   }
 
-  function $withdrawableProtocolFees(VaultState memory state, uint256 totalAssets) external view returns (uint256) {
+  function $withdrawableProtocolFees(
+    VaultState memory state,
+    uint256 totalAssets
+  ) external view returns (uint256) {
     return VaultStateLib.withdrawableProtocolFees(state, totalAssets);
   }
 }

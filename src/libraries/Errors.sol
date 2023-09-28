@@ -22,10 +22,10 @@ uint256 constant Error_SelectorPointer = 0x1c;
  * @param errorSelector The left-aligned error selector.
  */
 function revertWithSelector(bytes4 errorSelector) pure {
-	assembly {
-		mstore(0, errorSelector)
-		revert(0, 4)
-	}
+  assembly {
+    mstore(0, errorSelector)
+    revert(0, 4)
+  }
 }
 
 /**
@@ -33,10 +33,10 @@ function revertWithSelector(bytes4 errorSelector) pure {
  * @param errorSelector The left-padded error selector.
  */
 function revertWithSelector(uint256 errorSelector) pure {
-	assembly {
-		mstore(0, errorSelector)
-		revert(Error_SelectorPointer, 4)
-	}
+  assembly {
+    mstore(0, errorSelector)
+    revert(Error_SelectorPointer, 4)
+  }
 }
 
 /**
@@ -45,11 +45,11 @@ function revertWithSelector(uint256 errorSelector) pure {
  * @param argument The argument to the error.
  */
 function revertWithSelectorAndArgument(bytes4 errorSelector, uint256 argument) pure {
-	assembly {
-		mstore(0, errorSelector)
-		mstore(4, argument)
-		revert(0, 0x24)
-	}
+  assembly {
+    mstore(0, errorSelector)
+    mstore(4, argument)
+    revert(0, 0x24)
+  }
 }
 
 /**
@@ -58,9 +58,9 @@ function revertWithSelectorAndArgument(bytes4 errorSelector, uint256 argument) p
  * @param argument The argument to the error.
  */
 function revertWithSelectorAndArgument(uint256 errorSelector, uint256 argument) pure {
-	assembly {
-		mstore(0, errorSelector)
-		mstore(0x20, argument)
-		revert(Error_SelectorPointer, 0x24)
-	}
+  assembly {
+    mstore(0, errorSelector)
+    mstore(0x20, argument)
+    revert(Error_SelectorPointer, 0x24)
+  }
 }
