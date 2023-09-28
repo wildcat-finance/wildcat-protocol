@@ -138,7 +138,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
         borrower,
         address(asset)
       );
-      asset.safeTransfer(accountAddress, normalizedAmountWithdrawn);
+      asset.safeTransfer(escrow, normalizedAmountWithdrawn);
       emit SanctionedAccountWithdrawalSentToEscrow(
         accountAddress,
         escrow,
