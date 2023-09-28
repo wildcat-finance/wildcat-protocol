@@ -94,4 +94,9 @@ contract WildcatMarketTokenTest is BaseERC20Test {
     WildcatMarket(address(token)).queueWithdrawal(amount);
     WildcatMarket(address(token)).executeWithdrawal(from, uint32(block.timestamp));
   }
+
+  function testTransferNullAmount() external {
+    vm.expectRevert(IVaultEventsAndErrors.NullTransferAmount.selector);
+    token.transfer(address(1), 0);
+  }
 }

@@ -59,6 +59,8 @@ interface IVaultEventsAndErrors {
 
   error NullFeeAmount();
 
+  error NullTransferAmount();
+
   error InsufficientCoverageForNewLiquidityRatio();
 
   event Transfer(address indexed from, address indexed to, uint256 value);
