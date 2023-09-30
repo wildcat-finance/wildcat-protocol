@@ -59,6 +59,12 @@ interface IVaultEventsAndErrors {
 
   error NullFeeAmount();
 
+  error DepositToClosedVault();
+
+  error BorrowFromClosedVault();
+
+  error CloseVaultWithUnpaidWithdrawals();
+
   error InsufficientCoverageForNewLiquidityRatio();
 
   event Transfer(address indexed from, address indexed to, uint256 value);

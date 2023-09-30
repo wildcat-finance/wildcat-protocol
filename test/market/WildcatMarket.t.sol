@@ -199,12 +199,48 @@ contract WildcatMarketTest is BaseVaultTest {
   //                             closeVault()                              //
   // ===================================================================== //
 
-  function test_closeVault() external asAccount(address(controller)) {
+  function test_closeVault_TransferRemainingDebt() external asAccount(address(controller)) {
+    // Borrow 80% of deposits then request withdrawal of 100% of deposits
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+    startPrank(borrower);
+    asset.approve(address(vault), 8e17);
+    stopPrank();
+    vm.expectEmit(address(asset));
+    emit Transfer(borrower, address(vault), 8e17);
+    vault.closeVault();
+  }
+
+  function test_closeVault_TransferExcessAssets() external asAccount(address(controller)) {
+    // Borrow 80% of deposits then request withdrawal of 100% of deposits
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+    asset.mint(address(vault), 1e18);
+    vm.expectEmit(address(asset));
+    emit Transfer(address(vault), borrower, 2e17);
+    vault.closeVault();
+  }
+
+  function test_closeVault_FailTransferRemainingDebt() external asAccount(address(controller)) {
+    // Borrow 80% of deposits then request withdrawal of 100% of deposits
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+    vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
     vault.closeVault();
   }
 
   function test_closeVault_NotController() external {
     vm.expectRevert(IVaultEventsAndErrors.NotController.selector);
+    vault.closeVault();
+  }
+
+  function test_closeVault_CloseVaultWithUnpaidWithdrawals()
+    external
+    asAccount(address(controller))
+  {
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+    fastForward(parameters.withdrawalBatchDuration);
+    vault.updateState();
+    uint32[] memory unpaidBatches = vault.getUnpaidBatchExpiries();
+    assertEq(unpaidBatches.length, 1);
+    vm.expectRevert(IVaultEventsAndErrors.CloseVaultWithUnpaidWithdrawals.selector);
     vault.closeVault();
   }
 }
