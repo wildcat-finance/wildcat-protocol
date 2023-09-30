@@ -207,13 +207,32 @@ contract WildcatMarketConfigTest is BaseVaultTest {
     _requestWithdrawal(alice, 9e17);
   }
 
-  // Vault already deliquent, LCR set to lower value
   function test_setLiquidityCoverageRatio_LiquidityCoverageRatioTooHigh()
     external
     asAccount(parameters.controller)
   {
     vm.expectRevert(IVaultEventsAndErrors.LiquidityCoverageRatioTooHigh.selector);
     vault.setLiquidityCoverageRatio(10001);
+  }
+
+  // Vault already deliquent, LCR set to lower value
+  function test_setLiquidityCoverageRatio_InsufficientCoverageForOldLiquidityRatio()
+    external
+    asAccount(parameters.controller)
+  {
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+    vm.expectRevert(IVaultEventsAndErrors.InsufficientCoverageForOldLiquidityRatio.selector);
+    vault.setLiquidityCoverageRatio(1000);
+  }
+
+  function test_setLiquidityCoverageRatio_InsufficientCoverageForNewLiquidityRatio()
+    external
+    asAccount(parameters.controller)
+  {
+    _deposit(alice, 1e18);
+    _borrow(7e17);
+    vm.expectRevert(IVaultEventsAndErrors.InsufficientCoverageForNewLiquidityRatio.selector);
+    vault.setLiquidityCoverageRatio(3001);
   }
 
   function test_setLiquidityCoverageRatio_NotController(uint16 _liquidityCoverageRatio) external {

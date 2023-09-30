@@ -140,16 +140,25 @@ contract WildcatMarketConfig is WildcatMarketBase {
   function setLiquidityCoverageRatio(
     uint16 _liquidityCoverageRatio
   ) public onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
-
     if (_liquidityCoverageRatio > BIP) {
       revert LiquidityCoverageRatioTooHigh();
     }
-    if (state.liquidityRequired() > totalAssets()) {
-      revert InsufficientCoverageForNewLiquidityRatio();
-    }
 
+    VaultState memory state = _getUpdatedState();
+
+    uint256 initialLiquidityCoverageRatio = state.liquidityCoverageRatio;
+
+    if (_liquidityCoverageRatio < initialLiquidityCoverageRatio) {
+      if (state.liquidityRequired() > totalAssets()) {
+        revert InsufficientCoverageForOldLiquidityRatio();
+      }
+    }
     state.liquidityCoverageRatio = _liquidityCoverageRatio;
+    if (_liquidityCoverageRatio > initialLiquidityCoverageRatio) {
+      if (state.liquidityRequired() > totalAssets()) {
+        revert InsufficientCoverageForNewLiquidityRatio();
+      }
+    }
     _writeState(state);
     emit LiquidityCoverageRatioUpdated(_liquidityCoverageRatio);
   }
