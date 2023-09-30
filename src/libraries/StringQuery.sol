@@ -37,7 +37,6 @@ function queryStringOrBytes32AsString(
 ) view returns (string memory str) {
   bool isBytes32;
   assembly {
-    // Cache the free memory pointer to restore it after it is overwritten
     mstore(0, rightPaddedFunctionSelector)
     let status := staticcall(gas(), target, 0, 0x04, 0, 0)
     isBytes32 := eq(returndatasize(), 0x20)
