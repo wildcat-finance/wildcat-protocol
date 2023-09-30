@@ -11,6 +11,7 @@ using VaultStateLib for Account global;
 using FeeMath for VaultState global;
 
 struct VaultState {
+  bool isClosed;
   uint128 maxTotalSupply;
   uint128 accruedProtocolFees;
   // Underlying assets reserved for protocol fees and withdrawals
@@ -124,5 +125,12 @@ library VaultStateLib {
       // Equivalent to expiry > 0 && expiry <= block.timestamp
       result := gt(timestamp(), sub(expiry, 1))
     }
+  }
+
+  function totalDebts(VaultState memory state) internal pure returns (uint256) {
+    return
+      state.normalizeAmount(state.scaledTotalSupply) +
+      state.reservedAssets +
+      state.accruedProtocolFees;
   }
 }

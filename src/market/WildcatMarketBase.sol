@@ -99,6 +99,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     decimals = IERC20Metadata(parameters.asset).decimals();
 
     _state = VaultState({
+      isClosed: false,
       maxTotalSupply: parameters.maxTotalSupply,
       accruedProtocolFees: 0,
       reservedAssets: 0,
