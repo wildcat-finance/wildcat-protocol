@@ -153,12 +153,14 @@ contract WithdrawalsTest is BaseVaultTest {
     _requestWithdrawal(alice, 1e18);
     fastForward(parameters.withdrawalBatchDuration);
     MockSanctionsSentinel(sentinel).sanction(alice);
-    vm.expectEmit(address(vault));
     address escrow = MockSanctionsSentinel(sentinel).getEscrowAddress(
       alice,
       borrower,
-      address(vault)
+      address(asset)
     );
+    vm.expectEmit(address(asset));
+    emit Transfer(address(vault), escrow, 1e18);
+    vm.expectEmit(address(vault));
     emit SanctionedAccountWithdrawalSentToEscrow(alice, escrow, uint32(block.timestamp), 1e18);
     vault.executeWithdrawal(alice, uint32(block.timestamp));
   }
