@@ -59,6 +59,8 @@ interface IVaultEventsAndErrors {
 
   error NullFeeAmount();
 
+  error NullTransferAmount();
+
   error InsufficientCoverageForNewLiquidityRatio();
 
   error InsufficientCoverageForOldLiquidityRatio();

@@ -69,6 +69,10 @@ contract WildcatMarketToken is WildcatMarketBase {
     VaultState memory state = _getUpdatedState();
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 
+    if (scaledAmount == 0) {
+      revert NullTransferAmount();
+    }
+
     Account memory fromAccount = _getAccount(from);
     fromAccount.scaledBalance -= scaledAmount;
     _accounts[from] = fromAccount;
