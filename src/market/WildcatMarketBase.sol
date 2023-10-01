@@ -413,21 +413,21 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     }
 
     emit WithdrawalBatchExpired(
-      state.pendingWithdrawalExpiry,
+      expiry,
       batch.scaledTotalAmount,
       batch.scaledAmountBurned,
       batch.normalizedAmountPaid
     );
 
     if (batch.scaledAmountBurned < batch.scaledTotalAmount) {
-      _withdrawalData.unpaidBatches.push(state.pendingWithdrawalExpiry);
+      _withdrawalData.unpaidBatches.push(expiry);
     } else {
-      emit WithdrawalBatchClosed(state.pendingWithdrawalExpiry);
+      emit WithdrawalBatchClosed(expiry);
     }
 
     state.pendingWithdrawalExpiry = 0;
 
-    _withdrawalData.batches[state.pendingWithdrawalExpiry] = batch;
+    _withdrawalData.batches[expiry] = batch;
   }
 
   /**

@@ -235,6 +235,7 @@ contract WithdrawalsTest is BaseVaultTest {
     _requestWithdrawal(alice, 7e17);
     fastForward(parameters.withdrawalBatchDuration);
     updateState(pendingState());
+    _checkBatch(0, 0, 0, 0);
   }
 
   function test_getWithdrawalBatch_Paid() external {
