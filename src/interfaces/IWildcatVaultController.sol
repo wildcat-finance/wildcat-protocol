@@ -1,61 +1,170 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { VaultParameters } from './WildcatStructsAndEnums.sol';
+import './WildcatStructsAndEnums.sol';
 
 interface IWildcatVaultController {
-  error NewOwnerIsZeroAddress();
+  error DelinquencyGracePeriodOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
+  error LiquidityCoverageRatioOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
+  error DelinquencyFeeBipsOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
+  error WithdrawalBatchDurationOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
+  error AnnualInterestBipsOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
 
-  error NoHandoverRequest();
+  // Error thrown when a borrower-only method is called by another account.
+  error CallerNotBorrower();
 
-  error Unauthorized();
+  // Error thrown when `deployVault` called by an account other than `borrower` or
+  // `controllerFactory`.
+  error CallerNotBorrowerOrControllerFactory();
 
-  event OwnershipHandoverCanceled(address);
+  // Error thrown if borrower calls `deployVault` and is no longer
+  // registered with the arch-controller.
+  error NotRegisteredBorrower();
 
-  event OwnershipHandoverRequested(address);
+  // Returns immutable controller factory
+  function controllerFactory() external view returns (address);
 
-  event OwnershipTransferred(address, address);
+  // Returns immutable vault factory
+  function vaultFactory() external view returns (address);
 
-  function cancelOwnershipHandover() external payable;
+  // Returns immutable arch-controller
+  function archController() external view returns (address);
 
-  function completeOwnershipHandover(address pendingOwner) external payable;
+  // Returns immutable borrower address
+  function borrower() external view returns (address);
 
-  function factory() external view returns (address);
+  /**
+   * @dev Returns immutable protocol fee configuration for new vaults.
+   *      Queried from the controller factory.
+   *
+   * @return feeRecipient         feeRecipient to use in new vaults
+   * @return protocolFeeBips      protocolFeeBips to use in new vaults
+   * @return originationFeeAsset  Asset used to pay fees for new vault
+   *                              deployments
+   * @return originationFeeAmount Amount of originationFeeAsset paid
+   *                              for new vault deployments
+   */
+  function getProtocolFeeConfiguration()
+    external
+    view
+    returns (
+      address feeRecipient,
+      uint16 protocolFeeBips,
+      address originationFeeAsset,
+      uint256 originationFeeAmount
+    );
 
-  function feeRecipient() external view returns (address);
+  /**
+   * @dev Returns immutable constraints on vault parameters that
+   *      the controller will enforce.
+   */
+  function getParameterConstraints()
+    external
+    view
+    returns (
+      uint32 minimumDelinquencyGracePeriod,
+      uint32 maximumDelinquencyGracePeriod,
+      uint16 minimumLiquidityCoverageRatio,
+      uint16 maximumLiquidityCoverageRatio,
+      uint16 minimumDelinquencyFeeBips,
+      uint16 maximumDelinquencyFeeBips,
+      uint32 minimumWithdrawalBatchDuration,
+      uint32 maximumWithdrawalBatchDuration,
+      uint16 minimumAnnualInterestBips,
+      uint16 maximumAnnualInterestBips
+    );
 
-  function getFinalVaultParameters(
-    address,
-    VaultParameters calldata vaultParameters
-  ) external view returns (VaultParameters memory);
+  /* -------------------------------------------------------------------------- */
+  /*                               Lender Registry                              */
+  /* -------------------------------------------------------------------------- */
 
-  function beforeDeployVault(
-    address vault,
-    address deployer,
-    VaultParameters calldata vaultParameters
-  ) external returns (VaultParameters memory);
+  event LenderAuthorized(address);
 
-  function isAuthorizedLender(address) external view returns (bool);
+  event LenderDeauthorized(address);
 
-  function owner() external view returns (address result);
+  function getAuthorizedLenders() external view returns (address[] memory);
 
-  function ownershipHandoverExpiresAt(address pendingOwner) external view returns (uint256 result);
+  function getAuthorizedLenders(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory);
 
-  function ownershipHandoverValidFor() external view returns (uint64);
+  function getAuthorizedLendersCount() external view returns (uint256);
 
-  function reduceInterestRate(address vault, uint256 amount) external;
+  function isAuthorizedLender(address lender) external view returns (bool);
 
-  function renounceOwnership() external payable;
+  /**
+   * @dev Grant authorization for a set of lenders.
+   *
+   *      Note: Only updates the internal set of approved lenders.
+   *      Must call `updateLenderAuthorization` to apply changes
+   *      to existing vault accounts
+   */
+  function authorizeLenders(address[] memory lenders) external;
 
-  function requestOwnershipHandover() external payable;
+  /**
+   * @dev Revoke authorization for a set of lenders.
+   *
+   *      Note: Only updates the internal set of approved lenders.
+   *      Must call `updateLenderAuthorization` to apply changes
+   *      to existing vault accounts
+   */
+  function deauthorizeLenders(address[] memory lenders) external;
 
+  /**
+   * @dev Update lender authorization for a set of vaults to the current
+   *      status.
+   */
+  function updateLenderAuthorization(address lender, address[] memory vaults) external;
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Vault Controls                               */
+  /* -------------------------------------------------------------------------- */
+
+  /**
+   * @dev Modify the interest rate for a vault.
+   * If the new interest rate is lower than the current interest rate,
+   * the liquidity coverage ratio is set to 90% for the next two weeks.
+   */
+  function setAnnualInterestBips(address vault, uint16 annualInterestBips) external;
+
+  /**
+   * @dev Reset the liquidity coverage ratio to the value it had prior to
+   *      a call to `setAnnualInterestBips`.
+   */
   function resetLiquidityCoverage(address vault) external;
 
   function temporaryExcessLiquidityCoverage(
     address
   ) external view returns (uint128 liquidityCoverageRatio, uint128 expiry);
 
-  function transferOwnership(address newOwner) external payable;
+  /**
+   * @dev Deploys a new instance of the vault through the vault factory
+   *      and registers it with the arch-controller.
+   *
+   *      If `msg.sender` is not `borrower` or `controllerFactory`,
+   *      reverts with `CallerNotBorrowerOrControllerFactory`.
+   *
+   *	    If `msg.sender == borrower && !archController.isRegisteredBorrower(msg.sender)`,
+   *		  reverts with `NotRegisteredBorrower`.
+   *
+   *      If called by `controllerFactory`, skips borrower check.
+   *
+   *      If `originationFeeAmount` returned by controller factory is not zero,
+   *      transfers `originationFeeAmount` of `originationFeeAsset` from
+   *      `msg.sender` to `feeRecipient`.
+   */
+  function deployVault(
+    address asset,
+    string memory namePrefix,
+    string memory symbolPrefix,
+    uint128 maxTotalSupply,
+    uint16 annualInterestBips,
+    uint16 delinquencyFeeBips,
+    uint32 withdrawalBatchDuration,
+    uint16 liquidityCoverageRatio,
+    uint32 delinquencyGracePeriod
+  ) external returns (address);
 
-  function vaults(address) external view returns (bool);
+  function getVaultParameters() external view returns (VaultParameters memory);
 }
