@@ -1,120 +1,375 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
+import { AddressSet } from 'sol-utils/types/EnumerableSet.sol';
+import 'solady/utils/SafeTransferLib.sol';
 import './market/WildcatMarket.sol';
 import './interfaces/IWildcatVaultFactory.sol';
-import 'solady/auth/Ownable.sol';
+import './interfaces/IWildcatArchController.sol';
+import './interfaces/IWildcatVaultControllerFactory.sol';
 
 struct TemporaryLiquidityCoverage {
   uint128 liquidityCoverageRatio;
   uint128 expiry;
 }
 
-contract WildcatVaultController is Ownable {
+contract WildcatVaultController {
   using SafeCastLib for uint256;
+  using SafeTransferLib for address;
 
-  address public immutable factory;
-  address public immutable feeRecipient;
+  /* -------------------------------------------------------------------------- */
+  /*                                   Errors                                   */
+  /* -------------------------------------------------------------------------- */
 
-  uint256 public constant MaximumDelinquencyGracePeriod = 1 days;
-  uint256 public constant MinimumLiquidityCoverageRatio = 1000;
-  uint256 public constant MinimumDelinquencyFee = 1000;
+  error DelinquencyGracePeriodOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
+  error LiquidityCoverageRatioOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
+  error DelinquencyFeeBipsOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
+  error WithdrawalBatchDurationOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
+  error AnnualInterestBipsOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
+
+  // Error thrown when a borrower-only method is called by another account.
+  error CallerNotBorrower();
+
+  // Error thrown when `deployVault` called by an account other than `borrower` or
+  // `controllerFactory`.
+  error CallerNotBorrowerOrControllerFactory();
+
+  // Error thrown if borrower calls `deployVault` and is no longer
+  // registered with the arch-controller.
+  error NotRegisteredBorrower();
+
+  error EmptyString();
+
+  /* -------------------------------------------------------------------------- */
+  /*                                   Events                                   */
+  /* -------------------------------------------------------------------------- */
+
+  event LenderAuthorized(address);
+
+  event LenderDeauthorized(address);
+
+  event VaultDeployed(address indexed vault, address indexed underlying);
+
+  /* -------------------------------------------------------------------------- */
+  /*                                 Immutables                                 */
+  /* -------------------------------------------------------------------------- */
+
+  IWildcatArchController public immutable archController;
+
+  IWildcatVaultControllerFactory public immutable controllerFactory;
+
+  address public immutable borrower;
+
+  address public immutable sentinel;
+
+  uint32 public immutable MinimumDelinquencyGracePeriod;
+  uint32 public immutable MaximumDelinquencyGracePeriod;
+
+  uint16 public immutable MinimumLiquidityCoverageRatio;
+  uint16 public immutable MaximumLiquidityCoverageRatio;
+
+  uint16 public immutable MinimumDelinquencyFeeBips;
+  uint16 public immutable MaximumDelinquencyFeeBips;
+
+  uint32 public immutable MinimumWithdrawalBatchDuration;
+  uint32 public immutable MaximumWithdrawalBatchDuration;
+
+  uint16 public immutable MinimumAnnualInterestBips;
+  uint16 public immutable MaximumAnnualInterestBips;
 
   error InvalidControllerParameter();
   error DelinquencyFeeTooLow();
   error DelinquencyGracePeriodTooHigh();
   error LiquidityCoverageRatioTooLow();
   error NotControlledVault();
-  error CallerNotBorrower();
   error CallerNotFactory();
   error ExcessLiquidityCoverageStillActive();
 
-  mapping(address => bool) public isControlledVault;
+  AddressSet internal _authorizedLenders;
+  AddressSet internal _controlledVaults;
+
+  /// @dev temporary storage for vault parameters, used during vault deployment
+  VaultParameters internal _tmpVaultParameters;
 
   mapping(address => TemporaryLiquidityCoverage) public temporaryExcessLiquidityCoverage;
 
-  mapping(address => bool) internal _authorizedLenders;
-
-  constructor(address _feeRecipient, address _factory) {
-    _initializeOwner(msg.sender);
-    feeRecipient = _feeRecipient;
-    factory = _factory;
+  modifier onlyBorrower() {
+    if (msg.sender != borrower) {
+      revert CallerNotBorrower();
+    }
+    _;
   }
 
-  function authorizeLender(address lender) external virtual onlyOwner {
-    _authorizedLenders[lender] = true;
+  modifier onlyControlledVault(address vault) {
+    if (!_controlledVaults.contains(vault)) {
+      revert NotControlledVault();
+    }
+    _;
   }
 
-  function deauthorizeLender(address lender) external virtual onlyOwner {
-    _authorizedLenders[lender] = false;
+  constructor() {
+    controllerFactory = IWildcatVaultControllerFactory(msg.sender);
+    VaultControllerParameters memory parameters = controllerFactory.getVaultControllerParameters();
+    archController = IWildcatArchController(parameters.archController);
+    borrower = parameters.borrower;
+    sentinel = parameters.sentinel;
+    MinimumDelinquencyGracePeriod = parameters.minimumDelinquencyGracePeriod;
+    MaximumDelinquencyGracePeriod = parameters.maximumDelinquencyGracePeriod;
+    MinimumLiquidityCoverageRatio = parameters.minimumLiquidityCoverageRatio;
+    MaximumLiquidityCoverageRatio = parameters.maximumLiquidityCoverageRatio;
+    MinimumDelinquencyFeeBips = parameters.minimumDelinquencyFeeBips;
+    MaximumDelinquencyFeeBips = parameters.maximumDelinquencyFeeBips;
+    MinimumWithdrawalBatchDuration = parameters.minimumWithdrawalBatchDuration;
+    MaximumWithdrawalBatchDuration = parameters.maximumWithdrawalBatchDuration;
+    MinimumAnnualInterestBips = parameters.minimumAnnualInterestBips;
+    MaximumAnnualInterestBips = parameters.maximumAnnualInterestBips;
   }
 
-  function isAuthorizedLender(address lender) external view virtual returns (bool) {
-    return _authorizedLenders[lender];
+  /* -------------------------------------------------------------------------- */
+  /*                               Lender Registry                              */
+  /* -------------------------------------------------------------------------- */
+
+  /**
+   * @dev Returns the set of authorized lenders.
+   */
+  function getAuthorizedLenders() external view returns (address[] memory) {
+    return _authorizedLenders.values();
   }
 
-  function revokeAccountAuthorization(address vault, address lender) external virtual {
-    if (!isControlledVault[vault]) {
-      revertWithSelector(NotControlledVault.selector);
+  function getAuthorizedLenders(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory) {
+    return _authorizedLenders.slice(start, end);
+  }
+
+  function getAuthorizedLendersCount() external view returns (uint256) {
+    return _authorizedLenders.length();
+  }
+
+  function isAuthorizedLender(address lender) external view returns (bool) {
+    return _authorizedLenders.contains(lender);
+  }
+
+  /**
+   * @dev Grant authorization for a set of lenders.
+   *
+   *      Note: Only updates the internal set of approved lenders.
+   *      Must call `updateLenderAuthorization` to apply changes
+   *      to existing vault accounts
+   */
+  function authorizeLenders(address[] memory lenders) external onlyBorrower {
+    for (uint256 i = 0; i < lenders.length; i++) {
+      address lender = lenders[i];
+      if (_authorizedLenders.add(lender)) {
+        emit LenderAuthorized(lender);
+      }
+    }
+  }
+
+  /**
+   * @dev Revoke authorization for a set of lenders.
+   *
+   *      Note: Only updates the internal set of approved lenders.
+   *      Must call `updateLenderAuthorization` to apply changes
+   *      to existing vault accounts
+   */
+  function deauthorizeLenders(address[] memory lenders) external onlyBorrower {
+    for (uint256 i = 0; i < lenders.length; i++) {
+      address lender = lenders[i];
+      if (_authorizedLenders.remove(lender)) {
+        emit LenderDeauthorized(lender);
+      }
+    }
+  }
+
+  /**
+   * @dev Update lender authorization for a set of vaults to the current
+   *      status.
+   */
+  function updateLenderAuthorization(address lender, address[] memory vaults) external {}
+
+  /* -------------------------------------------------------------------------- */
+  /*                                Vault Queries                               */
+  /* -------------------------------------------------------------------------- */
+
+  function isControlledVault(address vault) external view returns (bool) {
+    return _controlledVaults.contains(vault);
+  }
+
+  function getControlledVaults() external view returns (address[] memory) {
+    return _controlledVaults.values();
+  }
+
+  function getControlledVaults(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory) {
+    return _controlledVaults.slice(start, end);
+  }
+
+  function getControlledVaultsCount() external view returns (uint256) {
+    return _controlledVaults.length();
+  }
+
+  /**
+   * @dev Deploys a new instance of the vault through the vault factory
+   *      and registers it with the arch-controller.
+   *
+   *      If `msg.sender` is not `borrower` or `controllerFactory`,
+   *      reverts with `CallerNotBorrowerOrControllerFactory`.
+   *
+   *	    If `msg.sender == borrower && !archController.isRegisteredBorrower(msg.sender)`,
+   *		  reverts with `NotRegisteredBorrower`.
+   *
+   *      If called by `controllerFactory`, skips borrower check.
+   *
+   *      If either string is empty, reverts with `EmptyString`.
+   *
+   *      If `originationFeeAmount` returned by controller factory is not zero,
+   *      transfers `originationFeeAmount` of `originationFeeAsset` from
+   *      `msg.sender` to `feeRecipient`.
+   */
+  function deployVault(
+    address asset,
+    string calldata namePrefix,
+    string calldata symbolPrefix,
+    uint128 maxTotalSupply,
+    uint16 annualInterestBips,
+    uint16 delinquencyFeeBips,
+    uint32 withdrawalBatchDuration,
+    uint16 liquidityCoverageRatio,
+    uint32 delinquencyGracePeriod
+  ) external returns (address vault) {
+    if (msg.sender == borrower) {
+      if (!archController.isRegisteredBorrower(msg.sender)) {
+        revert NotRegisteredBorrower();
+      }
+    } else if (msg.sender != address(controllerFactory)) {
+      revert CallerNotBorrowerOrControllerFactory();
     }
 
-    if (msg.sender != WildcatMarket(vault).borrower()) {
-      revertWithSelector(CallerNotBorrower.selector);
-    }
-
-    WildcatMarket(vault).revokeAccountAuthorization(lender);
-  }
-
-  function getFinalVaultParameters(
-    address /* deployer */,
-    VaultParameters memory vaultParameters
-  ) public view virtual returns (VaultParameters memory) {
-    // Doesn't do anything when called by the factory
-    if (vaultParameters.controller != address(this)) {
-      revert InvalidControllerParameter();
-    }
-
-    vaultParameters.feeRecipient = feeRecipient;
-
-    vaultParameters.delinquencyGracePeriod = uint32(
-      checkLte(
-        vaultParameters.delinquencyGracePeriod,
-        MaximumDelinquencyGracePeriod,
-        DelinquencyGracePeriodTooHigh.selector
-      )
+    enforceParameterConstraints(
+      namePrefix,
+      symbolPrefix,
+      annualInterestBips,
+      delinquencyFeeBips,
+      withdrawalBatchDuration,
+      liquidityCoverageRatio,
+      delinquencyGracePeriod
     );
 
-    vaultParameters.liquidityCoverageRatio = uint16(
-      checkGte(
-        vaultParameters.liquidityCoverageRatio,
-        MinimumLiquidityCoverageRatio,
-        LiquidityCoverageRatioTooLow.selector
-      )
-    );
+    VaultParameters memory parameters = VaultParameters({
+      asset: asset,
+      namePrefix: namePrefix,
+      symbolPrefix: symbolPrefix,
+      borrower: borrower,
+      controller: address(this),
+      feeRecipient: address(0),
+      sentinel: sentinel,
+      maxTotalSupply: maxTotalSupply,
+      protocolFeeBips: 0,
+      annualInterestBips: annualInterestBips,
+      delinquencyFeeBips: delinquencyFeeBips,
+      withdrawalBatchDuration: withdrawalBatchDuration,
+      liquidityCoverageRatio: liquidityCoverageRatio,
+      delinquencyGracePeriod: delinquencyGracePeriod
+    });
 
-    vaultParameters.delinquencyFeeBips = uint16(
-      checkGte(
-        vaultParameters.delinquencyFeeBips,
-        MinimumDelinquencyFee,
-        DelinquencyFeeTooLow.selector
-      )
-    );
+    address originationFeeAsset;
+    uint80 originationFeeAmount;
+    (
+      parameters.feeRecipient,
+      originationFeeAsset,
+      originationFeeAmount,
+      parameters.protocolFeeBips
+    ) = controllerFactory.getProtocolFeeConfiguration();
 
-    return vaultParameters;
-  }
-
-  function beforeDeployVault(
-    address vault,
-    address deployer,
-    VaultParameters memory vaultParameters
-  ) external virtual returns (VaultParameters memory) {
-    if (msg.sender != factory) {
-      revertWithSelector(CallerNotFactory.selector);
+    if (originationFeeAsset != address(0)) {
+      originationFeeAsset.safeTransferFrom(borrower, parameters.feeRecipient, originationFeeAmount);
     }
 
-    isControlledVault[vault] = true;
 
-    return getFinalVaultParameters(deployer, vaultParameters);
+  }
+
+  function enforceParameterConstraints(
+    string calldata namePrefix,
+    string calldata symbolPrefix,
+    uint16 annualInterestBips,
+    uint16 delinquencyFeeBips,
+    uint32 withdrawalBatchDuration,
+    uint16 liquidityCoverageRatio,
+    uint32 delinquencyGracePeriod
+  ) internal view {
+    assembly {
+      if or(iszero(namePrefix.length), iszero(symbolPrefix.length)) {
+        // revert EmptyString();
+        mstore(0x00, 0xecd7b0d1)
+        revert(0x1c, 0x04)
+      }
+    }
+    assertValueInRange(
+      annualInterestBips,
+      MinimumAnnualInterestBips,
+      MaximumAnnualInterestBips,
+      AnnualInterestBipsOutOfBounds.selector
+    );
+    assertValueInRange(
+      delinquencyFeeBips,
+      MinimumDelinquencyFeeBips,
+      MaximumDelinquencyFeeBips,
+      DelinquencyFeeBipsOutOfBounds.selector
+    );
+    assertValueInRange(
+      withdrawalBatchDuration,
+      MinimumWithdrawalBatchDuration,
+      MaximumWithdrawalBatchDuration,
+      WithdrawalBatchDurationOutOfBounds.selector
+    );
+    assertValueInRange(
+      liquidityCoverageRatio,
+      MinimumLiquidityCoverageRatio,
+      MaximumLiquidityCoverageRatio,
+      LiquidityCoverageRatioOutOfBounds.selector
+    );
+    assertValueInRange(
+      delinquencyGracePeriod,
+      MinimumDelinquencyGracePeriod,
+      MaximumDelinquencyGracePeriod,
+      DelinquencyGracePeriodOutOfBounds.selector
+    );
+  }
+
+  /**
+   * @dev Returns immutable constraints on vault parameters that
+   *      the controller variant will enforce.
+   */
+  function getParameterConstraints()
+    external
+    view
+    returns (
+      uint32 minimumDelinquencyGracePeriod,
+      uint32 maximumDelinquencyGracePeriod,
+      uint16 minimumLiquidityCoverageRatio,
+      uint16 maximumLiquidityCoverageRatio,
+      uint16 minimumDelinquencyFeeBips,
+      uint16 maximumDelinquencyFeeBips,
+      uint32 minimumWithdrawalBatchDuration,
+      uint32 maximumWithdrawalBatchDuration,
+      uint16 minimumAnnualInterestBips,
+      uint16 maximumAnnualInterestBips
+    )
+  {
+    minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
+    maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
+    minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
+    maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
+    minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
+    maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
+    minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
+    maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
+    minimumAnnualInterestBips = MinimumAnnualInterestBips;
+    maximumAnnualInterestBips = MaximumAnnualInterestBips;
   }
 
   /**
@@ -122,15 +377,10 @@ contract WildcatVaultController is Ownable {
    * If the new interest rate is lower than the current interest rate,
    * the liquidity coverage ratio is set to 90% for the next two weeks.
    */
-  function setAnnualInterestBips(address vault, uint256 annualInterestBips) external virtual {
-    if (!isControlledVault[vault]) {
-      revertWithSelector(NotControlledVault.selector);
-    }
-
-    if (msg.sender != WildcatMarket(vault).borrower()) {
-      revertWithSelector(CallerNotBorrower.selector);
-    }
-
+  function setAnnualInterestBips(
+    address vault,
+    uint16 annualInterestBips
+  ) external virtual onlyBorrower onlyControlledVault(vault) {
     // If borrower is reducing the interest rate, increase the liquidity
     // coverage ratio for the next two weeks.
     if (annualInterestBips < WildcatMarket(vault).annualInterestBips()) {
@@ -146,7 +396,7 @@ contract WildcatVaultController is Ownable {
       tmp.expiry = uint128(block.timestamp + 2 weeks);
     }
 
-    WildcatMarket(vault).setAnnualInterestBips(uint256(annualInterestBips).toUint16());
+    WildcatMarket(vault).setAnnualInterestBips(annualInterestBips);
   }
 
   function resetLiquidityCoverage(address vault) external virtual {
@@ -158,23 +408,20 @@ contract WildcatVaultController is Ownable {
     delete temporaryExcessLiquidityCoverage[vault];
   }
 
-  function checkGte(
+  function assertValueInRange(
     uint256 value,
-    uint256 defaultValue,
+    uint256 min,
+    uint256 max,
     bytes4 errorSelector
-  ) internal pure returns (uint256) {
-    if (value == 0) return defaultValue;
-    if (value < defaultValue) revertWithSelector(errorSelector);
-    return value;
-  }
-
-  function checkLte(
-    uint256 value,
-    uint256 defaultValue,
-    bytes4 errorSelector
-  ) internal pure returns (uint256) {
-    if (value == 0) return defaultValue;
-    if (value > defaultValue) revertWithSelector(errorSelector);
-    return value;
+  ) internal pure {
+    assembly {
+      if or(lt(value, min), gt(value, max)) {
+        mstore(0, errorSelector)
+        mstore(4, value)
+        mstore(36, min)
+        mstore(68, max)
+        revert(0, 100)
+      }
+    }
   }
 }
