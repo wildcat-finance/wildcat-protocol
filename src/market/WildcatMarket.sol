@@ -28,6 +28,10 @@ contract WildcatMarket is
     // Get current state
     VaultState memory state = _getUpdatedState();
 
+    if (state.isClosed) {
+      revert DepositToClosedVault();
+    }
+
     // Reduce amount if it would exceed totalSupply
     amount = MathUtils.min(amount, state.maximumDeposit());
 
@@ -79,6 +83,9 @@ contract WildcatMarket is
 
   function borrow(uint256 amount) external onlyBorrower nonReentrant {
     VaultState memory state = _getUpdatedState();
+    if (state.isClosed) {
+      revert BorrowFromClosedVault();
+    }
     uint256 borrowable = state.borrowableAssets(totalAssets());
     if (amount > borrowable) {
       revert BorrowAmountTooHigh();
@@ -89,15 +96,29 @@ contract WildcatMarket is
   }
 
   /**
-   * @dev Sets the vault APR to 0% and transfers the outstanding balance for full redemption
+   * @dev Sets the vault APR to 0% and marks vault as closed.
+   *      Transfers remaining debts from borrower if vault is not fully
+   *      collateralized; otherwise, transfers any assets in excess of
+   *      debts to the borrower.
    */
   function closeVault() external onlyController nonReentrant {
     VaultState memory state = _getUpdatedState();
     state.annualInterestBips = 0;
+    state.isClosed = true;
+    state.liquidityCoverageRatio = 0;
+    if (_withdrawalData.unpaidBatches.length() > 0) {
+      revert CloseVaultWithUnpaidWithdrawals();
+    }
     uint256 currentlyHeld = totalAssets();
-    uint256 outstanding = state.totalSupply() - currentlyHeld;
+    uint256 totalDebts = state.totalDebts();
+    if (currentlyHeld < totalDebts) {
+      // Transfer remaining debts from borrower
+      asset.safeTransferFrom(borrower, address(this), totalDebts - currentlyHeld);
+    }  else if (totalDebts > currentlyHeld) {
+      // Transfer excess assets to borrower
+      asset.safeTransfer(borrower, currentlyHeld - totalDebts);
+    }
     _writeState(state);
-    asset.safeTransferFrom(msg.sender, address(this), outstanding);
     emit VaultClosed(block.timestamp);
   }
 }

@@ -150,6 +150,7 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
   function setupVault() internal {
     _deployVault();
     previousState = VaultState({
+      isClosed: false,
       maxTotalSupply: parameters.maxTotalSupply,
       scaledTotalSupply: 0,
       isDelinquent: false,
