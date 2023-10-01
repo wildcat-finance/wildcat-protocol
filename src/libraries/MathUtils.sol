@@ -13,11 +13,6 @@ uint256 constant BIP_RAY_RATIO = 1e23;
 
 uint256 constant SECONDS_IN_365_DAYS = 365 days;
 
-/**
- * @title MathUtils library
- * @author Aave
- * @notice Provides functions to perform linear and compounded interest calculations
- */
 library MathUtils {
   /// @dev The multiply-divide operation failed, either due to a
   /// multiplication overflow, or a division by a zero.
@@ -59,7 +54,7 @@ library MathUtils {
 
   /**
    * @dev Saturation subtraction. Subtract `b` from `a` and return the result
-   * if it is positive or zero if it underflows.
+   *      if it is positive or zero if it underflows.
    */
   function satSub(uint256 a, uint256 b) internal pure returns (uint256 c) {
     assembly {
@@ -85,11 +80,7 @@ library MathUtils {
 
   /**
    * @dev Multiplies two bip, rounding half up to the nearest bip
-   * @dev assembly optimized for improved gas savings,
    *      see https://twitter.com/transmissions11/status/1451131036377571328
-   * @param a Bip
-   * @param b Bip
-   * @return c = a*b, in bip
    */
   function bipMul(uint256 a, uint256 b) internal pure returns (uint256 c) {
     assembly {
@@ -108,12 +99,8 @@ library MathUtils {
   }
 
   /**
-   * @notice Divides two bip, rounding half up to the nearest bip
-   * @dev assembly optimized for improved gas savings,
+   * @dev Divides two bip, rounding half up to the nearest bip
    *      see https://twitter.com/transmissions11/status/1451131036377571328
-   * @param a Bip
-   * @param b Bip
-   * @return c = a bipdiv b
    */
   function bipDiv(uint256 a, uint256 b) internal pure returns (uint256 c) {
     assembly {
@@ -130,10 +117,6 @@ library MathUtils {
 
   /**
    * @dev Converts bip up to ray
-   * @dev assembly optimized for improved gas savings,
-   *      see https://twitter.com/transmissions11/status/1451131036377571328
-   * @param a bip
-   * @return b = a converted in ray
    */
   function bipToRay(uint256 a) internal pure returns (uint256 b) {
     // to avoid overflow, b/BIP_RAY_RATIO == a
@@ -149,12 +132,8 @@ library MathUtils {
   }
 
   /**
-   * @notice Multiplies two ray, rounding half up to the nearest ray
-   * @dev assembly optimized for improved gas savings,
+   * @dev Multiplies two ray, rounding half up to the nearest ray
    *      see https://twitter.com/transmissions11/status/1451131036377571328
-   * @param a Ray
-   * @param b Ray
-   * @return c = a raymul b
    */
   function rayMul(uint256 a, uint256 b) internal pure returns (uint256 c) {
     assembly {
@@ -169,7 +148,10 @@ library MathUtils {
     }
   }
 
-  /// @dev Multiply two ray, rounding half up to the nearest ray
+  /**
+   * @dev Divide two ray, rounding half up to the nearest ray
+   *      see https://twitter.com/transmissions11/status/1451131036377571328
+   */
   function rayDiv(uint256 a, uint256 b) internal pure returns (uint256 c) {
     assembly {
       // equivalent to `require(b != 0 && a <= (type(uint256).max - halfB) / RAY)`
@@ -183,9 +165,11 @@ library MathUtils {
     }
   }
 
-  /// @dev Returns `floor(x * y / d)`.
-  /// Reverts if `x * y` overflows, or `d` is zero.
-  /// @custom:author solady/src/utils/FixedPointMathLib.sol
+  /**
+   * @dev Returns `floor(x * y / d)`.
+   *      Reverts if `x * y` overflows, or `d` is zero.
+   * @custom:author solady/src/utils/FixedPointMathLib.sol
+   */
   function mulDiv(uint256 x, uint256 y, uint256 d) internal pure returns (uint256 z) {
     assembly {
       // Equivalent to require(d != 0 && (y == 0 || x <= type(uint256).max / y))
@@ -199,11 +183,12 @@ library MathUtils {
     }
   }
 
-  /// @dev Returns `ceil(x * y / d)`.
-  /// Reverts if `x * y` overflows, or `d` is zero.
-  /// @custom:author solady/src/utils/FixedPointMathLib.sol
+  /**
+   * @dev Returns `ceil(x * y / d)`.
+   *      Reverts if `x * y` overflows, or `d` is zero.
+   * @custom:author solady/src/utils/FixedPointMathLib.sol
+   */
   function mulDivUp(uint256 x, uint256 y, uint256 d) internal pure returns (uint256 z) {
-    /// @solidity memory-safe-assembly
     assembly {
       // Equivalent to require(d != 0 && (y == 0 || x <= type(uint256).max / y))
       if iszero(mul(d, iszero(mul(y, gt(x, div(not(0), y)))))) {
