@@ -26,3 +26,19 @@ struct VaultParameters {
   uint16 liquidityCoverageRatio;
   uint32 delinquencyGracePeriod;
 }
+
+struct VaultControllerParameters {
+  address archController;
+  address borrower;
+  address sentinel;
+  uint32 minimumDelinquencyGracePeriod;
+  uint32 maximumDelinquencyGracePeriod;
+  uint16 minimumLiquidityCoverageRatio;
+  uint16 maximumLiquidityCoverageRatio;
+  uint16 minimumDelinquencyFeeBips;
+  uint16 maximumDelinquencyFeeBips;
+  uint32 minimumWithdrawalBatchDuration;
+  uint32 maximumWithdrawalBatchDuration;
+  uint16 minimumAnnualInterestBips;
+  uint16 maximumAnnualInterestBips;
+}
