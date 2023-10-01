@@ -6,6 +6,7 @@ import 'src/WildcatVaultFactory.sol';
 import 'src/WildcatVaultController.sol';
 import '../helpers/BaseERC20Test.sol';
 import '../helpers/MockController.sol';
+import '../helpers/MockSanctionsSentinel.sol';
 import '../shared/TestConstants.sol';
 
 bytes32 constant DaiSalt = bytes32(uint256(1));
@@ -56,7 +57,7 @@ contract WildcatMarketTokenTest is BaseERC20Test {
       borrower: borrower,
       controller: address(controller),
       feeRecipient: feeRecipient,
-      sentinel: address(0),
+      sentinel: address(new MockSanctionsSentinel()),
       maxTotalSupply: uint128(_maxAmount()),
       protocolFeeBips: DefaultProtocolFeeBips,
       annualInterestBips: 10000,
@@ -93,5 +94,15 @@ contract WildcatMarketTokenTest is BaseERC20Test {
     vm.prank(from);
     WildcatMarket(address(token)).queueWithdrawal(amount);
     WildcatMarket(address(token)).executeWithdrawal(from, uint32(block.timestamp));
+  }
+
+  function testTransferNullAmount() external {
+    vm.expectRevert(IVaultEventsAndErrors.NullTransferAmount.selector);
+    token.transfer(address(1), 0);
+  }
+
+  function testTransferFromNullAmount() external {
+    vm.expectRevert(IVaultEventsAndErrors.NullTransferAmount.selector);
+    token.transferFrom(address(0), address(1), 0);
   }
 }

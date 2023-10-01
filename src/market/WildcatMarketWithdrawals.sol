@@ -12,6 +12,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   using SafeTransferLib for address;
   using MathUtils for uint256;
   using SafeCastLib for uint256;
+  using BoolUtils for bool;
 
   function getUnpaidBatchExpiries() external view nonReentrantView returns (uint32[] memory) {
     return _withdrawalData.unpaidBatches.values();
@@ -21,7 +22,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     uint32 expiry
   ) external view nonReentrantView returns (WithdrawalBatch memory) {
     (, uint32 expiredBatchExpiry, WithdrawalBatch memory expiredBatch) = _calculateCurrentState();
-    if (expiry == expiredBatchExpiry) {
+    if ((expiry == expiredBatchExpiry).and(expiry > 0)) {
       return expiredBatch;
     }
     return _withdrawalData.batches[expiry];
