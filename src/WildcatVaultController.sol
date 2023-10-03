@@ -6,49 +6,32 @@ import 'solady/utils/SafeTransferLib.sol';
 import './market/WildcatMarket.sol';
 import './interfaces/IWildcatVaultFactory.sol';
 import './interfaces/IWildcatArchController.sol';
+import './interfaces/IWildcatVaultControllerEventsAndErrors.sol';
 import './interfaces/IWildcatVaultControllerFactory.sol';
+import './libraries/LibStoredInitCode.sol';
 
 struct TemporaryLiquidityCoverage {
   uint128 liquidityCoverageRatio;
   uint128 expiry;
 }
 
-contract WildcatVaultController {
+struct TmpVaultParameterStorage {
+  address asset;
+  string namePrefix;
+  string symbolPrefix;
+  address feeRecipient;
+  uint16 protocolFeeBips;
+  uint128 maxTotalSupply;
+  uint16 annualInterestBips;
+  uint16 delinquencyFeeBips;
+  uint32 withdrawalBatchDuration;
+  uint16 liquidityCoverageRatio;
+  uint32 delinquencyGracePeriod;
+}
+
+contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   using SafeCastLib for uint256;
   using SafeTransferLib for address;
-
-  /* -------------------------------------------------------------------------- */
-  /*                                   Errors                                   */
-  /* -------------------------------------------------------------------------- */
-
-  error DelinquencyGracePeriodOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-  error LiquidityCoverageRatioOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-  error DelinquencyFeeBipsOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-  error WithdrawalBatchDurationOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-  error AnnualInterestBipsOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-
-  // Error thrown when a borrower-only method is called by another account.
-  error CallerNotBorrower();
-
-  // Error thrown when `deployVault` called by an account other than `borrower` or
-  // `controllerFactory`.
-  error CallerNotBorrowerOrControllerFactory();
-
-  // Error thrown if borrower calls `deployVault` and is no longer
-  // registered with the arch-controller.
-  error NotRegisteredBorrower();
-
-  error EmptyString();
-
-  /* -------------------------------------------------------------------------- */
-  /*                                   Events                                   */
-  /* -------------------------------------------------------------------------- */
-
-  event LenderAuthorized(address);
-
-  event LenderDeauthorized(address);
-
-  event VaultDeployed(address indexed vault, address indexed underlying);
 
   /* -------------------------------------------------------------------------- */
   /*                                 Immutables                                 */
@@ -62,36 +45,36 @@ contract WildcatVaultController {
 
   address public immutable sentinel;
 
-  uint32 public immutable MinimumDelinquencyGracePeriod;
-  uint32 public immutable MaximumDelinquencyGracePeriod;
+  address public immutable vaultInitCodeStorage;
 
-  uint16 public immutable MinimumLiquidityCoverageRatio;
-  uint16 public immutable MaximumLiquidityCoverageRatio;
+  uint256 public immutable vaultInitCodeHash;
 
-  uint16 public immutable MinimumDelinquencyFeeBips;
-  uint16 public immutable MaximumDelinquencyFeeBips;
+  uint256 internal immutable ownCreate2Prefix = LibStoredInitCode.getCreate2Prefix(address(this));
 
-  uint32 public immutable MinimumWithdrawalBatchDuration;
-  uint32 public immutable MaximumWithdrawalBatchDuration;
+  uint32 internal immutable MinimumDelinquencyGracePeriod;
+  uint32 internal immutable MaximumDelinquencyGracePeriod;
 
-  uint16 public immutable MinimumAnnualInterestBips;
-  uint16 public immutable MaximumAnnualInterestBips;
+  uint16 internal immutable MinimumLiquidityCoverageRatio;
+  uint16 internal immutable MaximumLiquidityCoverageRatio;
 
-  error InvalidControllerParameter();
-  error DelinquencyFeeTooLow();
-  error DelinquencyGracePeriodTooHigh();
-  error LiquidityCoverageRatioTooLow();
-  error NotControlledVault();
-  error CallerNotFactory();
-  error ExcessLiquidityCoverageStillActive();
+  uint16 internal immutable MinimumDelinquencyFeeBips;
+  uint16 internal immutable MaximumDelinquencyFeeBips;
+
+  uint32 internal immutable MinimumWithdrawalBatchDuration;
+  uint32 internal immutable MaximumWithdrawalBatchDuration;
+
+  uint16 internal immutable MinimumAnnualInterestBips;
+  uint16 internal immutable MaximumAnnualInterestBips;
 
   AddressSet internal _authorizedLenders;
   AddressSet internal _controlledVaults;
 
-  /// @dev temporary storage for vault parameters, used during vault deployment
-  VaultParameters internal _tmpVaultParameters;
+  /// @dev Temporary storage for vault parameters, used during vault deployment
+  TmpVaultParameterStorage internal _tmpVaultParameters;
 
   mapping(address => TemporaryLiquidityCoverage) public temporaryExcessLiquidityCoverage;
+
+  // VaultParameterConstraints internal immutable constraints
 
   modifier onlyBorrower() {
     if (msg.sender != borrower) {
@@ -113,6 +96,8 @@ contract WildcatVaultController {
     archController = IWildcatArchController(parameters.archController);
     borrower = parameters.borrower;
     sentinel = parameters.sentinel;
+    vaultInitCodeStorage = parameters.vaultInitCodeStorage;
+    vaultInitCodeHash = parameters.vaultInitCodeHash;
     MinimumDelinquencyGracePeriod = parameters.minimumDelinquencyGracePeriod;
     MaximumDelinquencyGracePeriod = parameters.maximumDelinquencyGracePeriod;
     MinimumLiquidityCoverageRatio = parameters.minimumLiquidityCoverageRatio;
@@ -147,7 +132,7 @@ contract WildcatVaultController {
     return _authorizedLenders.length();
   }
 
-  function isAuthorizedLender(address lender) external view returns (bool) {
+  function isAuthorizedLender(address lender) external view virtual returns (bool) {
     return _authorizedLenders.contains(lender);
   }
 
@@ -187,7 +172,15 @@ contract WildcatVaultController {
    * @dev Update lender authorization for a set of vaults to the current
    *      status.
    */
-  function updateLenderAuthorization(address lender, address[] memory vaults) external {}
+  function updateLenderAuthorization(address lender, address[] memory vaults) external {
+    for (uint256 i; i < vaults.length; i++) {
+      address vault = vaults[i];
+      if (!_controlledVaults.contains(vault)) {
+        revert NotControlledVault();
+      }
+      WildcatMarket(vault).updateAccountAuthorization(lender, _authorizedLenders.contains(lender));
+    }
+  }
 
   /* -------------------------------------------------------------------------- */
   /*                                Vault Queries                               */
@@ -212,9 +205,61 @@ contract WildcatVaultController {
     return _controlledVaults.length();
   }
 
+  function computeVaultAddress(
+    address asset,
+    string memory namePrefix,
+    string memory symbolPrefix
+  ) external view returns (address) {
+    bytes32 salt = _deriveSalt(asset, namePrefix, symbolPrefix);
+    return LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, vaultInitCodeHash);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                              Vault Deployment                              */
+  /* -------------------------------------------------------------------------- */
+
   /**
-   * @dev Deploys a new instance of the vault through the vault factory
-   *      and registers it with the arch-controller.
+   * @dev Get the temporarily stored vault parameters for a vault that is
+   *      currently being deployed.
+   */
+  function getVaultParameters() external view returns (VaultParameters memory parameters) {
+    parameters.asset = _tmpVaultParameters.asset;
+    parameters.namePrefix = _tmpVaultParameters.namePrefix;
+    parameters.symbolPrefix = _tmpVaultParameters.symbolPrefix;
+    parameters.borrower = borrower;
+    parameters.controller = address(this);
+    parameters.feeRecipient = _tmpVaultParameters.feeRecipient;
+    parameters.sentinel = sentinel;
+    parameters.maxTotalSupply = _tmpVaultParameters.maxTotalSupply;
+    parameters.protocolFeeBips = _tmpVaultParameters.protocolFeeBips;
+    parameters.annualInterestBips = _tmpVaultParameters.annualInterestBips;
+    parameters.delinquencyFeeBips = _tmpVaultParameters.delinquencyFeeBips;
+    parameters.withdrawalBatchDuration = _tmpVaultParameters.withdrawalBatchDuration;
+    parameters.liquidityCoverageRatio = _tmpVaultParameters.liquidityCoverageRatio;
+    parameters.delinquencyGracePeriod = _tmpVaultParameters.delinquencyGracePeriod;
+  }
+
+  function _resetTmpVaultParameters() internal {
+    _tmpVaultParameters.asset = address(1);
+    _tmpVaultParameters.namePrefix = '_';
+    _tmpVaultParameters.symbolPrefix = '_';
+    _tmpVaultParameters.feeRecipient = address(1);
+    _tmpVaultParameters.protocolFeeBips = 1;
+    _tmpVaultParameters.maxTotalSupply = 1;
+    _tmpVaultParameters.annualInterestBips = 1;
+    _tmpVaultParameters.delinquencyFeeBips = 1;
+    _tmpVaultParameters.withdrawalBatchDuration = 1;
+    _tmpVaultParameters.liquidityCoverageRatio = 1;
+    _tmpVaultParameters.delinquencyGracePeriod = 1;
+  }
+
+  /**
+   * @dev Deploys a create2 deployment of `WildcatMarket` unique to the
+   *      combination of `asset, namePrefix, symbolPrefix` and registers
+   *      it with the arch-controller.
+   *
+   *      If a vault has already been deployed with these parameters,
+   *      reverts with `VaultAlreadyDeployed`.
    *
    *      If `msg.sender` is not `borrower` or `controllerFactory`,
    *      reverts with `CallerNotBorrowerOrControllerFactory`.
@@ -232,8 +277,8 @@ contract WildcatVaultController {
    */
   function deployVault(
     address asset,
-    string calldata namePrefix,
-    string calldata symbolPrefix,
+    string memory namePrefix,
+    string memory symbolPrefix,
     uint128 maxTotalSupply,
     uint16 annualInterestBips,
     uint16 delinquencyFeeBips,
@@ -259,14 +304,11 @@ contract WildcatVaultController {
       delinquencyGracePeriod
     );
 
-    VaultParameters memory parameters = VaultParameters({
+    TmpVaultParameterStorage memory parameters = TmpVaultParameterStorage({
       asset: asset,
       namePrefix: namePrefix,
       symbolPrefix: symbolPrefix,
-      borrower: borrower,
-      controller: address(this),
       feeRecipient: address(0),
-      sentinel: sentinel,
       maxTotalSupply: maxTotalSupply,
       protocolFeeBips: 0,
       annualInterestBips: annualInterestBips,
@@ -285,24 +327,68 @@ contract WildcatVaultController {
       parameters.protocolFeeBips
     ) = controllerFactory.getProtocolFeeConfiguration();
 
+    _tmpVaultParameters = parameters;
+
     if (originationFeeAsset != address(0)) {
       originationFeeAsset.safeTransferFrom(borrower, parameters.feeRecipient, originationFeeAmount);
     }
 
+    bytes32 salt = _deriveSalt(asset, namePrefix, symbolPrefix);
+    vault = LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, vaultInitCodeHash);
+    if (vault.codehash != bytes32(0)) {
+      revert VaultAlreadyDeployed();
+    }
+    LibStoredInitCode.create2WithStoredInitCode(vaultInitCodeStorage, salt);
 
+    archController.registerVault(vault);
+    _controlledVaults.add(vault);
+
+    _resetTmpVaultParameters();
   }
 
+  /**
+   * @dev Derive create2 salt for a vault given the asset address,
+   *      name prefix and symbol prefix.
+   *
+   *      The salt is unique to each vault deployment in the controller,
+   *      so only one vault can be deployed for each combination of `asset`,
+   *      `namePrefix` and `symbolPrefix`
+   */
+  function _deriveSalt(
+    address asset,
+    string memory namePrefix,
+    string memory symbolPrefix
+  ) internal pure returns (bytes32 salt) {
+    assembly {
+      // Cache free memory pointer
+      let freeMemoryPointer := mload(0x40)
+      // `keccak256(abi.encode(asset, keccak256(namePrefix), keccak256(symbolPrefix)))`
+      mstore(0x00, asset)
+      mstore(0x20, keccak256(add(namePrefix, 32), mload(namePrefix)))
+      mstore(0x40, keccak256(add(symbolPrefix, 32), mload(symbolPrefix)))
+      salt := keccak256(0, 0x60)
+      // Restore free memory pointer
+      mstore(0x40, freeMemoryPointer)
+    }
+  }
+
+  /**
+   * @dev Enforce constraints on vault parameters, ensuring that
+   *      `annualInterestBips`, `delinquencyFeeBips`, `withdrawalBatchDuration`,
+   *      `liquidityCoverageRatio` and `delinquencyGracePeriod` are within the
+   *      allowed ranges and that `namePrefix` and `symbolPrefix` are not null.
+   */
   function enforceParameterConstraints(
-    string calldata namePrefix,
-    string calldata symbolPrefix,
+    string memory namePrefix,
+    string memory symbolPrefix,
     uint16 annualInterestBips,
     uint16 delinquencyFeeBips,
     uint32 withdrawalBatchDuration,
     uint16 liquidityCoverageRatio,
     uint32 delinquencyGracePeriod
-  ) internal view {
+  ) internal view virtual {
     assembly {
-      if or(iszero(namePrefix.length), iszero(symbolPrefix.length)) {
+      if or(iszero(mload(namePrefix)), iszero(mload(symbolPrefix))) {
         // revert EmptyString();
         mstore(0x00, 0xecd7b0d1)
         revert(0x1c, 0x04)
@@ -401,9 +487,13 @@ contract WildcatVaultController {
 
   function resetLiquidityCoverage(address vault) external virtual {
     TemporaryLiquidityCoverage memory tmp = temporaryExcessLiquidityCoverage[vault];
+    if (tmp.expiry == 0) {
+      revertWithSelector(AprChangeNotPending.selector);
+    }
     if (block.timestamp < tmp.expiry) {
       revertWithSelector(ExcessLiquidityCoverageStillActive.selector);
     }
+
     WildcatMarket(vault).setLiquidityCoverageRatio(uint256(tmp.liquidityCoverageRatio).toUint16());
     delete temporaryExcessLiquidityCoverage[vault];
   }
@@ -417,10 +507,7 @@ contract WildcatVaultController {
     assembly {
       if or(lt(value, min), gt(value, max)) {
         mstore(0, errorSelector)
-        mstore(4, value)
-        mstore(36, min)
-        mstore(68, max)
-        revert(0, 100)
+        revert(0, 4)
       }
     }
   }
