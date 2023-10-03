@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import 'sol-utils/types/EnumerableSet.sol';
+import { AddressSet } from 'sol-utils/types/EnumerableSet.sol';
 import 'solady/auth/Ownable.sol';
 
 contract WildcatArchController is Ownable {
