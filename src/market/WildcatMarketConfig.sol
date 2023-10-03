@@ -48,28 +48,23 @@ contract WildcatMarketConfig is WildcatMarketBase {
   // =====================================================================//
 
   /**
-   * @dev Revoke an account's authorization to deposit assets.
+   * @dev Updates an account's authorization status based on whether the controller
+   *      has it marked as approved.
    */
-  function revokeAccountAuthorization(address _account) external onlyController nonReentrant {
+  function updateAccountAuthorization(
+    address _account,
+    bool _isAuthorized
+  ) external onlyController nonReentrant {
     VaultState memory state = _getUpdatedState();
     Account memory account = _getAccount(_account);
-    account.approval = AuthRole.WithdrawOnly;
+    if (_isAuthorized) {
+      account.approval = AuthRole.DepositAndWithdraw;
+    } else {
+      account.approval = AuthRole.WithdrawOnly;
+    }
     _accounts[_account] = account;
     _writeState(state);
-    emit AuthorizationStatusUpdated(_account, AuthRole.WithdrawOnly);
-  }
-
-  /**
-   * @dev Restore an account's authorization to deposit assets.
-   * Can not be used to restore a blacklisted account's status.
-   */
-  function grantAccountAuthorization(address _account) external onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
-    Account memory account = _getAccount(_account);
-    account.approval = AuthRole.DepositAndWithdraw;
-    _accounts[_account] = account;
-    _writeState(state);
-    emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
+    emit AuthorizationStatusUpdated(_account, account.approval);
   }
 
   /// @dev Block a sanctioned account from interacting with the market
