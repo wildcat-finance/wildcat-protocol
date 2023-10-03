@@ -114,7 +114,7 @@ contract WildcatMarket is
     if (currentlyHeld < totalDebts) {
       // Transfer remaining debts from borrower
       asset.safeTransferFrom(borrower, address(this), totalDebts - currentlyHeld);
-    }  else if (totalDebts > currentlyHeld) {
+    } else if (currentlyHeld > totalDebts) {
       // Transfer excess assets to borrower
       asset.safeTransfer(borrower, currentlyHeld - totalDebts);
     }
