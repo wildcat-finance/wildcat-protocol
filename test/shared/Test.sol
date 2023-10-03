@@ -2,15 +2,102 @@
 pragma solidity >=0.8.20;
 
 import { console, console2, StdAssertions, StdChains, StdCheats, stdError, StdInvariant, stdJson, stdMath, StdStorage, stdStorage, StdUtils, Vm, StdStyle, DSTest, Test as ForgeTest } from 'forge-std/Test.sol';
-import '../helpers/VmUtils.sol' as VmUtils;
-import { deployMockChainalysis } from '../helpers/MockChainalysis.sol';
-import { sentinel } from './TestConstants.sol';
-import '../helpers/MockSanctionsSentinel.sol';
+import { Prankster } from 'sol-utils/test/Prankster.sol';
 
-contract Test is ForgeTest {
+import 'src/WildcatArchController.sol';
+
+import '../helpers/VmUtils.sol' as VmUtils;
+import '../helpers/MockControllerFactory.sol';
+import '../helpers/MockSanctionsSentinel.sol';
+import { deployMockChainalysis } from '../helpers/MockChainalysis.sol';
+
+import { sentinel } from './TestConstants.sol';
+
+contract Test is ForgeTest, Prankster {
+  WildcatArchController internal archController;
+  WildcatVaultControllerFactory internal controllerFactory;
+  WildcatVaultController internal controller;
+  WildcatMarket internal vault;
+
+  modifier asSelf() {
+    startPrank(address(this));
+    _;
+    stopPrank();
+  }
+
   constructor() {
+    archController = new WildcatArchController();
+    controllerFactory = new MockControllerFactory(address(archController));
+    archController.registerControllerFactory(address(controllerFactory));
     deployMockChainalysis();
     vm.etch(sentinel, type(MockSanctionsSentinel).runtimeCode);
+  }
+
+  function deployBaseContracts() internal asSelf {
+    archController = new WildcatArchController();
+    controllerFactory = new MockControllerFactory(address(archController));
+    archController.registerControllerFactory(address(controllerFactory));
+    deployMockChainalysis();
+    vm.etch(sentinel, type(MockSanctionsSentinel).runtimeCode);
+  }
+
+  function deployController(
+    address borrower,
+    bool authorizeAll,
+    bool disableConstraints
+  ) internal asSelf {
+
+    archController.registerBorrower(borrower);
+    startPrank(borrower);
+    MockController _controller = MockController(controllerFactory.deployController());
+    stopPrank();
+    if (disableConstraints) {
+      _controller.toggleParameterChecks();
+    }
+    if (authorizeAll) {
+      _controller.authorizeAll();
+    }
+    controller = _controller;
+  }
+
+  function updateFeeConfiguration(VaultParameters memory parameters) internal asSelf {
+    controllerFactory.setProtocolFeeConfiguration(
+      parameters.feeRecipient,
+      address(0),
+      0,
+      parameters.protocolFeeBips
+    );
+  }
+
+  function deployVault(VaultParameters memory parameters) internal asAccount(parameters.borrower) {
+    updateFeeConfiguration(parameters);
+    vault = WildcatMarket(
+      controller.deployVault(
+        parameters.asset,
+        parameters.namePrefix,
+        parameters.symbolPrefix,
+        parameters.maxTotalSupply,
+        parameters.annualInterestBips,
+        parameters.delinquencyFeeBips,
+        parameters.withdrawalBatchDuration,
+        parameters.liquidityCoverageRatio,
+        parameters.delinquencyGracePeriod
+      )
+    );
+  }
+
+  function deployControllerAndVault(
+    VaultParameters memory parameters,
+    bool authorizeAll,
+    bool disableConstraints
+  ) internal {
+    deployController(
+      parameters.borrower,
+      authorizeAll,
+      disableConstraints
+    );
+
+    deployVault(parameters);
   }
 
   function bound(

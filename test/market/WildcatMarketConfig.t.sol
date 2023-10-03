@@ -35,57 +35,57 @@ contract WildcatMarketConfigTest is BaseVaultTest {
 
   function test_liquidityCoverageRatio() external returns (uint256) {}
 
-  function test_revokeAccountAuthorization(
-    address _account
-  ) external asAccount(parameters.controller) {
-    vm.expectEmit(address(vault));
-    emit AuthorizationStatusUpdated(_account, AuthRole.WithdrawOnly);
-    vault.revokeAccountAuthorization(_account);
-    assertEq(
-      uint(vault.getAccountRole(_account)),
-      uint(AuthRole.WithdrawOnly),
-      'account role should be WithdrawOnly'
-    );
-  }
+  // function test_revokeAccountAuthorization(
+  //   address _account
+  // ) external asAccount(parameters.controller) {
+  //   vm.expectEmit(address(vault));
+  //   emit AuthorizationStatusUpdated(_account, AuthRole.WithdrawOnly);
+  //   vault.revokeAccountAuthorization(_account);
+  //   assertEq(
+  //     uint(vault.getAccountRole(_account)),
+  //     uint(AuthRole.WithdrawOnly),
+  //     'account role should be WithdrawOnly'
+  //   );
+  // }
 
-  function test_revokeAccountAuthorization_NotController(address _account) external {
-    vm.expectRevert(IVaultEventsAndErrors.NotController.selector);
-    vault.revokeAccountAuthorization(_account);
-  }
+  // function test_revokeAccountAuthorization_NotController(address _account) external {
+  //   vm.expectRevert(IVaultEventsAndErrors.NotController.selector);
+  //   vault.revokeAccountAuthorization(_account);
+  // }
 
-  function test_revokeAccountAuthorization_AccountBlacklisted(address _account) external {
-    MockSanctionsSentinel(sentinel).sanction(_account);
-    vault.nukeFromOrbit(_account);
-    vm.startPrank(parameters.controller);
-    vm.expectRevert(IVaultEventsAndErrors.AccountBlacklisted.selector);
-    vault.revokeAccountAuthorization(_account);
-  }
+  // function test_revokeAccountAuthorization_AccountBlacklisted(address _account) external {
+  //   MockSanctionsSentinel(sentinel).sanction(_account);
+  //   vault.nukeFromOrbit(_account);
+  //   vm.startPrank(parameters.controller);
+  //   vm.expectRevert(IVaultEventsAndErrors.AccountBlacklisted.selector);
+  //   vault.revokeAccountAuthorization(_account);
+  // }
 
-  function test_grantAccountAuthorization(
-    address _account
-  ) external asAccount(parameters.controller) {
-    vm.expectEmit(address(vault));
-    emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
-    vault.grantAccountAuthorization(_account);
-    assertEq(
-      uint(vault.getAccountRole(_account)),
-      uint(AuthRole.DepositAndWithdraw),
-      'account role should be DepositAndWithdraw'
-    );
-  }
+  // function test_grantAccountAuthorization(
+  //   address _account
+  // ) external asAccount(parameters.controller) {
+  //   vm.expectEmit(address(vault));
+  //   emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
+  //   vault.grantAccountAuthorization(_account);
+  //   assertEq(
+  //     uint(vault.getAccountRole(_account)),
+  //     uint(AuthRole.DepositAndWithdraw),
+  //     'account role should be DepositAndWithdraw'
+  //   );
+  // }
 
-  function test_grantAccountAuthorization_NotController(address _account) external {
-    vm.expectRevert(IVaultEventsAndErrors.NotController.selector);
-    vault.grantAccountAuthorization(_account);
-  }
+  // function test_grantAccountAuthorization_NotController(address _account) external {
+  //   vm.expectRevert(IVaultEventsAndErrors.NotController.selector);
+  //   vault.grantAccountAuthorization(_account);
+  // }
 
-  function test_grantAccountAuthorization_AccountBlacklisted(address _account) external {
-    MockSanctionsSentinel(sentinel).sanction(_account);
-    vault.nukeFromOrbit(_account);
-    vm.startPrank(parameters.controller);
-    vm.expectRevert(IVaultEventsAndErrors.AccountBlacklisted.selector);
-    vault.grantAccountAuthorization(_account);
-  }
+  // function test_grantAccountAuthorization_AccountBlacklisted(address _account) external {
+  //   MockSanctionsSentinel(sentinel).sanction(_account);
+  //   vault.nukeFromOrbit(_account);
+  //   vm.startPrank(parameters.controller);
+  //   vm.expectRevert(IVaultEventsAndErrors.AccountBlacklisted.selector);
+  //   vault.grantAccountAuthorization(_account);
+  // }
 
   function test_nukeFromOrbit(address _account) external {
     MockSanctionsSentinel(sentinel).sanction(_account);

@@ -15,17 +15,17 @@ uint32 constant DefaultGracePeriod = 2000;
 uint16 constant DefaultProtocolFeeBips = 1000;
 uint32 constant DefaultWithdrawalBatchDuration = 86400;
 
-uint16 constant MinimumAnnualInterestBips = 0;
-uint16 constant MaximumAnnualInterestBips = 10_000;
+uint32 constant MinimumDelinquencyGracePeriod = 0;
+uint32 constant MaximumDelinquencyGracePeriod = 86_400;
+
+uint16 constant MinimumLiquidityCoverageRatio = 1_000;
+uint16 constant MaximumLiquidityCoverageRatio = 10_000;
 
 uint16 constant MinimumDelinquencyFeeBips = 1_000;
 uint16 constant MaximumDelinquencyFeeBips = 10_000;
 
 uint32 constant MinimumWithdrawalBatchDuration = 0;
-uint32 constant MaximumWithdrawalBatchDuration = type(uint32).max;
+uint32 constant MaximumWithdrawalBatchDuration = 365 days;
 
-uint16 constant MinimumLiquidityCoverageRatio = 1_000;
-uint16 constant MaximumLiquidityCoverageRatio = 10_000;
-
-uint32 constant MinimumDelinquencyGracePeriod = 0;
-uint32 constant MaximumDelinquencyGracePeriod = 86_400;
+uint16 constant MinimumAnnualInterestBips = 0;
+uint16 constant MaximumAnnualInterestBips = 10_000;

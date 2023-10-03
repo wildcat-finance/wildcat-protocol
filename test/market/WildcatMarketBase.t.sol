@@ -161,10 +161,10 @@ contract WildcatMarketBaseTest is BaseVaultTest {
     assertEq(vault.withdrawableProtocolFees(), 0);
     _deposit(alice, 1e18);
     _borrow(8e17);
-    _requestWithdrawal(alice, 1e18);
     fastForward(365 days);
-    assertEq(vault.withdrawableProtocolFees(), 0);
+    _requestWithdrawal(alice, 1e18);
+    assertEq(vault.withdrawableProtocolFees(), 1e16);
     asset.mint(address(vault), 8e17 + 1);
-    assertEq(vault.withdrawableProtocolFees(), 1);
+    assertEq(vault.withdrawableProtocolFees(), 1e16);
   }
 }

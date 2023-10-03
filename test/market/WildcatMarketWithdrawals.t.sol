@@ -19,7 +19,7 @@ contract WithdrawalsTest is BaseVaultTest {
   function test_queueWithdrawal_AuthorizedWithdrawOnly() public asAccount(bob) {
     _deposit(bob, 1e18);
     startPrank(address(controller));
-    vault.revokeAccountAuthorization(bob);
+    vault.updateAccountAuthorization(bob, false);
     stopPrank();
     _requestWithdrawal(bob, 1e18);
   }
@@ -28,7 +28,7 @@ contract WithdrawalsTest is BaseVaultTest {
     _deposit(alice, 1e18);
     vm.prank(alice);
     vault.transfer(bob, 1e18);
-    controller.authorizeLender(bob);
+    _authorizeLender(bob);
     vm.startPrank(bob);
     vault.queueWithdrawal(1e18);
   }

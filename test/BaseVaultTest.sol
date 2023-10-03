@@ -4,9 +4,6 @@ pragma solidity >=0.8.20;
 import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
 
 import './shared/Test.sol';
-
-import 'src/WildcatVaultController.sol';
-import 'src/WildcatVaultFactory.sol';
 import './helpers/VmUtils.sol';
 import './helpers/MockController.sol';
 import './helpers/ExpectedStateTracker.sol';
@@ -16,8 +13,6 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
   using FeeMath for VaultState;
   using SafeCastLib for uint256;
 
-  WildcatVaultFactory internal factory;
-  WildcatVaultController internal controller;
   MockERC20 internal asset;
 
   address internal wildcatController = address(0x69);
@@ -30,21 +25,47 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
   }
 
   function setUpContracts(bool disableControllerChecks) internal {
-    factory = new WildcatVaultFactory();
-    MockController _controller = new MockController(feeRecipient, address(factory));
-    if (disableControllerChecks) {
-      _controller.toggleParameterChecks();
+    if (address(controller) == address(0)) {
+      deployController(parameters.borrower, false, disableControllerChecks);
     }
-    controller = _controller;
-    _authorizeLender(alice);
-    asset = new MockERC20('Token', 'TKN', 18);
-    parameters.asset = address(asset);
     parameters.controller = address(controller);
-    setupVault();
+    parameters.asset = address(asset = new MockERC20('Token', 'TKN', 18));
+    deployVault(parameters);
+    _authorizeLender(alice);
+    previousState = VaultState({
+      isClosed: false,
+      maxTotalSupply: parameters.maxTotalSupply,
+      scaledTotalSupply: 0,
+      isDelinquent: false,
+      timeDelinquent: 0,
+      liquidityCoverageRatio: parameters.liquidityCoverageRatio,
+      annualInterestBips: parameters.annualInterestBips,
+      scaleFactor: uint112(RAY),
+      lastInterestAccruedTimestamp: uint32(block.timestamp),
+      scaledPendingWithdrawals: 0,
+      pendingWithdrawalExpiry: 0,
+      reservedAssets: 0,
+      accruedProtocolFees: 0
+    });
+    lastTotalAssets = 0;
+
+    asset.mint(alice, type(uint128).max);
+    asset.mint(bob, type(uint128).max);
+
+    _approve(alice, address(vault), type(uint256).max);
+    _approve(bob, address(vault), type(uint256).max);
   }
 
-  function _authorizeLender(address account) internal asAccount(address(this)) {
-    controller.authorizeLender(account);
+  function _authorizeLender(address account) internal asAccount(parameters.borrower) {
+    address[] memory lenders = new address[](1);
+    lenders[0] = account;
+    controller.authorizeLenders(lenders);
+  }
+
+  function _deauthorizeLender(address account) internal asAccount(parameters.borrower) {
+    address[] memory lenders = new address[](1);
+    lenders[0] = account;
+    controller.deauthorizeLenders(lenders);
   }
 
   function _depositBorrowWithdraw(
@@ -141,35 +162,5 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
 
   function _approve(address from, address to, uint256 amount) internal asAccount(from) {
     asset.approve(to, amount);
-  }
-
-  function _deployVault() internal {
-    vault = WildcatMarket(factory.deployVault(parameters));
-  }
-
-  function setupVault() internal {
-    _deployVault();
-    previousState = VaultState({
-      isClosed: false,
-      maxTotalSupply: parameters.maxTotalSupply,
-      scaledTotalSupply: 0,
-      isDelinquent: false,
-      timeDelinquent: 0,
-      liquidityCoverageRatio: parameters.liquidityCoverageRatio,
-      annualInterestBips: parameters.annualInterestBips,
-      scaleFactor: uint112(RAY),
-      lastInterestAccruedTimestamp: uint32(block.timestamp),
-      scaledPendingWithdrawals: 0,
-      pendingWithdrawalExpiry: 0,
-      reservedAssets: 0,
-      accruedProtocolFees: 0
-    });
-    lastTotalAssets = 0;
-
-    asset.mint(alice, type(uint128).max);
-    asset.mint(bob, type(uint128).max);
-
-    _approve(alice, address(vault), type(uint256).max);
-    _approve(bob, address(vault), type(uint256).max);
   }
 }

@@ -4,11 +4,6 @@ pragma solidity >=0.8.20;
 import 'src/WildcatVaultController.sol';
 
 contract MockController is WildcatVaultController {
-  constructor(
-    address _feeRecipient,
-    address _factory
-  ) WildcatVaultController(_feeRecipient, _factory) {}
-
   bool public AUTH_ALL;
   bool public DISABLE_PARAMETER_CHECKS;
 
@@ -24,16 +19,28 @@ contract MockController is WildcatVaultController {
     if (AUTH_ALL) {
       return true;
     }
-    return _authorizedLenders[lender];
+    return _authorizedLenders.contains(lender);
   }
 
-  function getFinalVaultParameters(
-    address deployer,
-    VaultParameters memory vaultParameters
-  ) public view virtual override returns (VaultParameters memory) {
-    if (DISABLE_PARAMETER_CHECKS) {
-      return vaultParameters;
+  function enforceParameterConstraints(
+    string memory namePrefix,
+    string memory symbolPrefix,
+    uint16 annualInterestBips,
+    uint16 delinquencyFeeBips,
+    uint32 withdrawalBatchDuration,
+    uint16 liquidityCoverageRatio,
+    uint32 delinquencyGracePeriod
+  ) internal view virtual override {
+    if (!DISABLE_PARAMETER_CHECKS) {
+      super.enforceParameterConstraints(
+        namePrefix,
+        symbolPrefix,
+        annualInterestBips,
+        delinquencyFeeBips,
+        withdrawalBatchDuration,
+        liquidityCoverageRatio,
+        delinquencyGracePeriod
+      );
     }
-    return super.getFinalVaultParameters(deployer, vaultParameters);
   }
 }

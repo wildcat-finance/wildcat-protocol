@@ -3,9 +3,8 @@ pragma solidity ^0.8.20;
 
 import { FeeMath, MathUtils, SafeCastLib, VaultState, HALF_RAY, RAY } from 'src/libraries/FeeMath.sol';
 import 'solmate/test/utils/mocks/MockERC20.sol';
-import { WildcatVaultFactory, VaultParameters } from 'src/WildcatVaultFactory.sol';
 import { WildcatVaultController } from 'src/WildcatVaultController.sol';
-import { WildcatMarket } from 'src/market/WildcatMarket.sol';
+import { WildcatMarket, VaultParameters } from 'src/market/WildcatMarket.sol';
 import { MockController } from '../helpers/MockController.sol';
 import { ConfigFuzzInputs, StateFuzzInputs } from './FuzzInputs.sol';
 import './TestConstants.sol';
@@ -33,18 +32,13 @@ contract BaseTest is Test {
   using MathUtils for uint256;
   using SafeCastLib for uint256;
 
-  WildcatVaultFactory internal factory;
-  WildcatVaultController internal controller;
   MockERC20 internal asset;
 
   function deployVault(ConfigFuzzInputs memory inputs) internal returns (WildcatMarket vault) {
-    factory = new WildcatVaultFactory();
-    MockController _controller = new MockController(feeRecipient, address(factory));
-    controller = _controller;
-    _controller.authorizeAll();
     asset = new MockERC20('Token', 'TKN', 18);
     VaultParameters memory parameters = getVaultParameters(inputs);
-    vault = WildcatMarket(factory.deployVault(parameters));
+
+    deployControllerAndVault(parameters, true, false);
   }
 
   function getVaultParameters(
@@ -56,7 +50,7 @@ contract BaseTest is Test {
       namePrefix: 'Wildcat ',
       symbolPrefix: 'WC',
       borrower: borrower,
-      controller: address(controller),
+      controller: controllerFactory.computeControllerAddress(borrower),
       feeRecipient: inputs.feeRecipient,
       sentinel: sentinel,
       maxTotalSupply: inputs.maxTotalSupply,

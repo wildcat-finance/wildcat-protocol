@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { Prankster } from 'sol-utils/test/Prankster.sol';
 import 'src/market/WildcatMarket.sol';
 import '../shared/TestConstants.sol';
 import './Assertions.sol';
+import '../shared/Test.sol';
 
-contract ExpectedStateTracker is Prankster, Assertions, IVaultEventsAndErrors {
+contract ExpectedStateTracker is Test, Assertions, IVaultEventsAndErrors {
   using FeeMath for VaultState;
   using SafeCastLib for uint256;
   using MathUtils for uint256;
@@ -28,7 +28,6 @@ contract ExpectedStateTracker is Prankster, Assertions, IVaultEventsAndErrors {
       liquidityCoverageRatio: DefaultLiquidityCoverage,
       delinquencyGracePeriod: DefaultGracePeriod
     });
-  WildcatMarket internal vault;
   VaultState internal previousState;
   WithdrawalData internal _withdrawalData;
   uint256 internal lastTotalAssets;
