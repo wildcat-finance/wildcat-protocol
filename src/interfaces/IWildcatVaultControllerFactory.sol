@@ -12,16 +12,20 @@ interface IWildcatVaultControllerFactory {
     uint256 originationFeeAmount
   );
 
-  error EmptyString();
   error NotRegisteredBorrower();
   error InvalidProtocolFeeConfiguration();
   error CallerNotArchControllerOwner();
+  error InvalidConstraints();
+  error ControllerAlreadyDeployed();
 
   // Returns immutable arch-controller
   function archController() external view returns (address);
 
   // Returns vault factory used by controller
   function vaultFactory() external view returns (address);
+
+  // Returns sentinel used by controller
+  function sentinel() external view returns (address);
 
   /**
    * @dev Returns protocol fee configuration for new vaults.

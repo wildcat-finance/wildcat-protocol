@@ -2,24 +2,9 @@
 pragma solidity >=0.8.20;
 
 import './WildcatStructsAndEnums.sol';
+import './IWildcatVaultControllerEventsAndErrors.sol';
 
-interface IWildcatVaultController {
-  error DelinquencyGracePeriodOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-  error LiquidityCoverageRatioOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-  error DelinquencyFeeBipsOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-  error WithdrawalBatchDurationOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-  error AnnualInterestBipsOutOfBounds(uint256 value, uint256 minimum, uint256 maximum);
-
-  // Error thrown when a borrower-only method is called by another account.
-  error CallerNotBorrower();
-
-  // Error thrown when `deployVault` called by an account other than `borrower` or
-  // `controllerFactory`.
-  error CallerNotBorrowerOrControllerFactory();
-
-  // Error thrown if borrower calls `deployVault` and is no longer
-  // registered with the arch-controller.
-  error NotRegisteredBorrower();
+interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
 
   // Returns immutable controller factory
   function controllerFactory() external view returns (address);
@@ -77,10 +62,6 @@ interface IWildcatVaultController {
   /* -------------------------------------------------------------------------- */
   /*                               Lender Registry                              */
   /* -------------------------------------------------------------------------- */
-
-  event LenderAuthorized(address);
-
-  event LenderDeauthorized(address);
 
   function getAuthorizedLenders() external view returns (address[] memory);
 

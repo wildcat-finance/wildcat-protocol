@@ -31,6 +31,8 @@ struct VaultControllerParameters {
   address archController;
   address borrower;
   address sentinel;
+  address vaultInitCodeStorage;
+  uint256 vaultInitCodeHash;
   uint32 minimumDelinquencyGracePeriod;
   uint32 maximumDelinquencyGracePeriod;
   uint16 minimumLiquidityCoverageRatio;
@@ -41,4 +43,11 @@ struct VaultControllerParameters {
   uint32 maximumWithdrawalBatchDuration;
   uint16 minimumAnnualInterestBips;
   uint16 maximumAnnualInterestBips;
+}
+
+struct ProtocolFeeConfiguration {
+  address feeRecipient;
+  address originationFeeAsset;
+  uint80 originationFeeAmount;
+  uint16 protocolFeeBips;
 }
