@@ -38,6 +38,11 @@ contract WildcatSanctionsSentinel {
 
   constructor(IWildcatArchController _archController) {
     archController = _archController;
+    _resetTmpVaultParams();
+  }
+
+  function _resetTmpVaultParams() internal {
+    tmpVaultParams = TmpVaultParams(address(1), address(1), address(1));
   }
 
   function isSanctioned(address account) public view returns (bool) {
@@ -82,5 +87,6 @@ contract WildcatSanctionsSentinel {
     new WildcatSanctionsEscrow{ salt: keccak256(abi.encode(borrower, account, asset)) }();
 
     emit NewSanctionsEscrow(borrower, account, asset);
+    _resetTmpVaultParams();
   }
 }
