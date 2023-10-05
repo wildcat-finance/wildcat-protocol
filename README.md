@@ -1,3 +1,50 @@
+## LOC
+
+```
+github.com/AlDanial/cloc v 1.98  T=0.03 s (1336.5 files/s, 169696.7 lines/s)
+------------------------------------------------------------------------------------------------------------
+File                                                                     blank        comment           code
+------------------------------------------------------------------------------------------------------------
+src/WildcatVaultController.sol                                              61             92            361
+src/market/WildcatMarketBase.sol                                            68            113            311
+src/WildcatVaultControllerFactory.sol                                       32             65            243
+src/market/WildcatMarketWithdrawals.sol                                     33             20            132
+src/WildcatArchController.sol                                               38             13            126
+src/libraries/MathUtils.sol                                                 23             70            110
+src/libraries/SafeCastLib.sol                                               33              1            106
+src/libraries/FeeMath.sol                                                   19             58             97
+src/libraries/StringQuery.sol                                               10             14             93
+src/market/WildcatMarket.sol                                                17             16             91
+src/interfaces/IWildcatVaultToken.sol                                       71              1             89
+src/market/WildcatMarketConfig.sol                                          21             54             85
+src/libraries/VaultState.sol                                                15             38             83
+src/Escrow.sol                                                              14              3             76
+src/interfaces/IVaultEventsAndErrors.sol                                    51             23             72
+src/libraries/LibStoredInitCode.sol                                         15             38             69
+src/interfaces/IWildcatVaultControllerFactory.sol                           12             60             62
+src/libraries/FIFOQueue.sol                                                 14              4             62
+src/interfaces/IWildcatVaultController.sol                                  22             69             60
+src/VaultLens.sol                                                           14             56             59
+src/market/WildcatMarketToken.sol                                           20             13             54
+src/interfaces/IWildcatArchController.sol                                   39             13             47
+src/interfaces/WildcatStructsAndEnums.sol                                    5              1             47
+src/libraries/Errors.sol                                                     6             19             41
+src/libraries/Withdrawal.sol                                                 7             16             37
+src/ReentrancyGuard.sol                                                     10             44             33
+src/interfaces/IWildcatVaultControllerEventsAndErrors.sol                   13             12             19
+src/interfaces/IWildcatVaultFactory.sol                                      7              1             19
+src/interfaces/IWildcatSanctionsSentinel.sol                                 7             20             18
+src/libraries/BoolUtils.sol                                                  3              1             18
+src/interfaces/ISanctionsSentinel.sol                                        7              4             16
+src/interfaces/IERC20.sol                                                    9              1             13
+src/interfaces/IERC20Metadata.sol                                            4              1              7
+src/libraries/Chainalysis.sol                                                2              1              5
+src/interfaces/IChainalysisSanctionsList.sol                                 1              1              4
+------------------------------------------------------------------------------------------------------------
+SUM:                                                                       723            956           2765
+------------------------------------------------------------------------------------------------------------
+```
+
 ## Withdrawals
 
 Immutable config value: `withdrawalCycle` - seconds between withdrawal batches.
