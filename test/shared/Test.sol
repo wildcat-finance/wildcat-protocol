@@ -5,7 +5,7 @@ import { console, console2, StdAssertions, StdChains, StdCheats, stdError, StdIn
 import { Prankster } from 'sol-utils/test/Prankster.sol';
 
 import 'src/WildcatArchController.sol';
-import { WildcatSanctionsSentinel} from 'src/WildcatSanctionsSentinel.sol';
+import { WildcatSanctionsSentinel } from 'src/WildcatSanctionsSentinel.sol';
 
 import '../helpers/VmUtils.sol' as VmUtils;
 import '../helpers/MockControllerFactory.sol';
@@ -19,7 +19,7 @@ contract Test is ForgeTest, Prankster {
   WildcatVaultControllerFactory internal controllerFactory;
   WildcatVaultController internal controller;
   WildcatMarket internal vault;
-  WildcatSanctionsSentinel internal sanctionsSentinel; 
+  WildcatSanctionsSentinel internal sanctionsSentinel;
 
   modifier asSelf() {
     startPrank(address(this));
@@ -32,7 +32,10 @@ contract Test is ForgeTest, Prankster {
     vm.etch(sentinel, type(MockSanctionsSentinel).runtimeCode);
     archController = new WildcatArchController();
     sanctionsSentinel = new WildcatSanctionsSentinel(address(archController));
-    controllerFactory = new MockControllerFactory(address(archController), address(sanctionsSentinel));
+    controllerFactory = new MockControllerFactory(
+      address(archController),
+      address(sanctionsSentinel)
+    );
     archController.registerControllerFactory(address(controllerFactory));
   }
 
@@ -41,7 +44,10 @@ contract Test is ForgeTest, Prankster {
     vm.etch(sentinel, type(MockSanctionsSentinel).runtimeCode);
     archController = new WildcatArchController();
     sanctionsSentinel = new WildcatSanctionsSentinel(address(archController));
-    controllerFactory = new MockControllerFactory(address(archController), address(sanctionsSentinel));
+    controllerFactory = new MockControllerFactory(
+      address(archController),
+      address(sanctionsSentinel)
+    );
     archController.registerControllerFactory(address(controllerFactory));
   }
 
