@@ -75,7 +75,11 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
   }
 
   function testCtrl() external {
-    assertEq(address(controller), controllerFactory.computeControllerAddress(borrower), 'bad controller address');
+    assertEq(
+      address(controller),
+      controllerFactory.computeControllerAddress(borrower),
+      'bad controller address'
+    );
     assertTrue(MockController(address(controller)).AUTH_ALL(), 'bad auth');
     assertEq(
       controllerFactory.controllerInitCodeHash(),
