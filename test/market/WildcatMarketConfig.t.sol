@@ -102,7 +102,7 @@ contract WildcatMarketConfigTest is BaseVaultTest {
 
   function test_nukeFromOrbit_WithBalance() external {
     _deposit(alice, 1e18);
-    address escrow = MockSanctionsSentinel(sentinel).getEscrowAddress(
+    address escrow = sanctionsSentinel.getEscrowAddress(
       alice,
       borrower,
       address(vault)
