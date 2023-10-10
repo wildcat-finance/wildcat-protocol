@@ -66,6 +66,9 @@ contract WildcatMarket is
     }
   }
 
+  /**
+   * @dev Withdraw available protocol fees to the fee recipient.
+   */
   function collectFees() external nonReentrant {
     VaultState memory state = _getUpdatedState();
     if (state.accruedProtocolFees == 0) {
@@ -81,6 +84,12 @@ contract WildcatMarket is
     emit FeesCollected(withdrawableFees);
   }
 
+  /**
+   * @dev Withdraws funds from the vault to the borrower.
+   *
+   *      Can only withdraw up to the assets that are not required
+   *      to meet the borrower's collateral obligations.
+   */
   function borrow(uint256 amount) external onlyBorrower nonReentrant {
     VaultState memory state = _getUpdatedState();
     if (state.isClosed) {
@@ -97,6 +106,9 @@ contract WildcatMarket is
 
   /**
    * @dev Sets the vault APR to 0% and marks vault as closed.
+   *
+   *      Can not be called if there are any unpaid withdrawal batches.
+   *
    *      Transfers remaining debts from borrower if vault is not fully
    *      collateralized; otherwise, transfers any assets in excess of
    *      debts to the borrower.

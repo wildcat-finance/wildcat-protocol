@@ -107,6 +107,8 @@ contract WildcatMarketConfig is WildcatMarketBase {
   /**
    * @dev Sets the maximum total supply - this only limits deposits and
    *      does not affect interest accrual.
+   *
+   *      Can not be set lower than current total supply.
    */
   function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyController nonReentrant {
     VaultState memory state = _getUpdatedState();
@@ -120,6 +122,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
     emit MaxTotalSupplyUpdated(_maxTotalSupply);
   }
 
+  /**
+   * @dev Sets the annual interest rate earned by lenders in bips.
+   */
   function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant {
     VaultState memory state = _getUpdatedState();
 
@@ -132,6 +137,16 @@ contract WildcatMarketConfig is WildcatMarketBase {
     emit AnnualInterestBipsUpdated(_annualInterestBips);
   }
 
+  /**
+   * @dev Adjust the vault's liquidity coverage ratio.
+   *
+   *      If the new ratio is lower than the old ratio,
+   *      asserts that the vault is not currently delinquent.
+   *
+   *      If the new ratio is higher than the old ratio,
+   *      asserts that the vault will not become delinquent
+   *      because of the change.
+   */
   function setLiquidityCoverageRatio(
     uint16 _liquidityCoverageRatio
   ) public onlyController nonReentrant {

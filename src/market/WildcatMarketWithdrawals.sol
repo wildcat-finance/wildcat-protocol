@@ -14,6 +14,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   using SafeCastLib for uint256;
   using BoolUtils for bool;
 
+  /**
+   * @dev Returns the expiry timestamp of every unpaid withdrawal batch.
+   */
   function getUnpaidBatchExpiries() external view nonReentrantView returns (uint32[] memory) {
     return _withdrawalData.unpaidBatches.values();
   }
@@ -109,6 +112,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     _writeState(state);
   }
 
+  /**
+   * @dev Execute a pending withdrawal request.
+   */
   function executeWithdrawal(
     address accountAddress,
     uint32 expiry
