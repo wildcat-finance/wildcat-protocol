@@ -7,7 +7,6 @@ import '../libraries/Withdrawal.sol';
 import { queryName, querySymbol } from '../libraries/StringQuery.sol';
 import '../interfaces/IVaultEventsAndErrors.sol';
 import '../interfaces/IWildcatVaultController.sol';
-import '../interfaces/IWildcatVaultFactory.sol';
 import '../interfaces/ISanctionsSentinel.sol';
 import { IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
@@ -76,7 +75,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   // ===================================================================== //
 
   constructor() {
-    VaultParameters memory parameters = IWildcatVaultFactory(msg.sender).getVaultParameters();
+    VaultParameters memory parameters = IWildcatVaultController(msg.sender).getVaultParameters();
 
     if ((parameters.protocolFeeBips > 0).and(parameters.feeRecipient == address(0))) {
       revert FeeSetWithoutRecipient();
