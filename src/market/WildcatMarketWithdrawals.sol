@@ -5,7 +5,7 @@ import './WildcatMarketBase.sol';
 import '../libraries/VaultState.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/FIFOQueue.sol';
-import '../interfaces/ISanctionsSentinel.sol';
+import '../interfaces/IWildcatSanctionsSentinel.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
 contract WildcatMarketWithdrawals is WildcatMarketBase {
@@ -138,9 +138,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     status.normalizedAmountWithdrawn = newTotalWithdrawn;
     state.reservedAssets -= normalizedAmountWithdrawn;
 
-    if (ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
       _blockAccount(state, accountAddress);
-      address escrow = ISanctionsSentinel(sentinel).createEscrow(
+      address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
         accountAddress,
         borrower,
         address(asset)

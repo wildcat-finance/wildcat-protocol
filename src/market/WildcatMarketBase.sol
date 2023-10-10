@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../interfaces/IERC20.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/Withdrawal.sol';
 import { queryName, querySymbol } from '../libraries/StringQuery.sol';
 import '../interfaces/IVaultEventsAndErrors.sol';
 import '../interfaces/IWildcatVaultController.sol';
-import '../interfaces/ISanctionsSentinel.sol';
-import { IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
+import '../interfaces/IWildcatSanctionsSentinel.sol';
+import { IERC20, IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
 import '../libraries/BoolUtils.sol';
 
@@ -164,7 +163,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 
       if (scaledBalance > 0) {
         account.scaledBalance = 0;
-        address escrow = ISanctionsSentinel(sentinel).createEscrow(
+        address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
           accountAddress,
           borrower,
           address(this)

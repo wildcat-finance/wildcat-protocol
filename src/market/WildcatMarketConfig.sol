@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../interfaces/ISanctionsSentinel.sol';
+import '../interfaces/IWildcatSanctionsSentinel.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/SafeCastLib.sol';
 import './WildcatMarketBase.sol';
@@ -92,7 +92,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
   //   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
   // ******************************************************************
   function nukeFromOrbit(address accountAddress) external nonReentrant {
-    if (!ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+    if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
       revert BadLaunchCode();
     }
     VaultState memory state = _getUpdatedState();

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
-
-import { WildcatSanctionsSentinel, WildcatSanctionsEscrow, IChainalysisSanctionsList, IWildcatArchController } from '../src/WildcatSanctionsSentinel.sol';
-import { SanctionsList } from '../src/libraries/Chainalysis.sol';
+import { Test } from 'forge-std/Test.sol';
+import { WildcatSanctionsSentinel, IChainalysisSanctionsList, IWildcatArchController } from 'src/WildcatSanctionsSentinel.sol';
+import { WildcatSanctionsEscrow, IWildcatSanctionsEscrow } from 'src/WildcatSanctionsEscrow.sol';
+import { SanctionsList } from 'src/libraries/Chainalysis.sol';
 
 import { MockChainalysis, deployMockChainalysis } from './helpers/MockChainalysis.sol';
 import { MockERC20 } from './helpers/MockERC20.sol';
-import { Test } from 'forge-std/Test.sol';
 
 // -- TEMP START --
 contract MockWildcatArchController {
@@ -220,7 +220,7 @@ contract EscrowTest is Test {
 
     MockChainalysis(address(SanctionsList)).sanction(account);
 
-    vm.expectRevert(WildcatSanctionsEscrow.CanNotReleaseEscrow.selector);
+    vm.expectRevert(IWildcatSanctionsEscrow.CanNotReleaseEscrow.selector);
     escrow.releaseEscrow();
   }
 
@@ -243,7 +243,7 @@ contract EscrowTest is Test {
     assertEq(escrow.balance(), amount);
 
     if (sanctioned && caller != borrower) {
-      vm.expectRevert(WildcatSanctionsEscrow.CanNotReleaseEscrow.selector);
+      vm.expectRevert(IWildcatSanctionsEscrow.CanNotReleaseEscrow.selector);
       escrow.releaseEscrow();
     } else {
       vm.expectEmit(true, true, true, true, address(escrow));
