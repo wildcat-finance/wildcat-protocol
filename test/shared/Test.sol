@@ -31,7 +31,7 @@ contract Test is ForgeTest, Prankster {
     deployMockChainalysis();
     vm.etch(sentinel, type(MockSanctionsSentinel).runtimeCode);
     archController = new WildcatArchController();
-    sanctionsSentinel = new WildcatSanctionsSentinel(address(archController));
+    sanctionsSentinel = new WildcatSanctionsSentinel(address(archController), sentinel);
     controllerFactory = new MockControllerFactory(
       address(archController),
       address(sanctionsSentinel)
@@ -43,7 +43,7 @@ contract Test is ForgeTest, Prankster {
     deployMockChainalysis();
     vm.etch(sentinel, type(MockSanctionsSentinel).runtimeCode);
     archController = new WildcatArchController();
-    sanctionsSentinel = new WildcatSanctionsSentinel(address(archController));
+    sanctionsSentinel = new WildcatSanctionsSentinel(address(archController), sentinel);
     controllerFactory = new MockControllerFactory(
       address(archController),
       address(sanctionsSentinel)

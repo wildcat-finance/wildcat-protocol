@@ -32,7 +32,7 @@ contract SentinelTest is Test {
   function setUp() public {
     deployMockChainalysis();
     archController = new MockWildcatArchController();
-    sentinel = new WildcatSanctionsSentinel(address(archController));
+    sentinel = new WildcatSanctionsSentinel(address(archController), address(SanctionsList));
   }
 
   function testWildcatSanctionsEscrowInitcodeHash() public {

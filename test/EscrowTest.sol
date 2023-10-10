@@ -33,7 +33,7 @@ contract EscrowTest is Test {
   function setUp() public {
     deployMockChainalysis();
     archController = new MockWildcatArchController();
-    sentinel = new WildcatSanctionsSentinel(address(archController));
+    sentinel = new WildcatSanctionsSentinel(address(archController), address(SanctionsList));
     archController.setIsRegsiteredVault(address(this), true);
   }
 
