@@ -114,7 +114,7 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
     sanctionOverrides[borrower][escrowContract] = true;
 
     emit SanctionOverride(borrower, escrowContract);
-    
+
     _resetTmpEscrowParams();
   }
 }

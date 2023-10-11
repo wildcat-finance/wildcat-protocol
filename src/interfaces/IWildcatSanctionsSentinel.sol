@@ -2,7 +2,11 @@
 pragma solidity >=0.8.20;
 
 interface IWildcatSanctionsSentinel {
-  event NewSanctionsEscrow(address indexed borrower, address indexed account, address indexed asset);
+  event NewSanctionsEscrow(
+    address indexed borrower,
+    address indexed account,
+    address indexed asset
+  );
 
   event SanctionOverride(address indexed borrower, address indexed account);
 

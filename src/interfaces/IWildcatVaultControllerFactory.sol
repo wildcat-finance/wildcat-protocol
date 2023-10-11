@@ -88,9 +88,7 @@ interface IWildcatVaultControllerFactory {
   function getParameterConstraints()
     external
     view
-    returns (
-      VaultParameterConstraints memory constraints
-    );
+    returns (VaultParameterConstraints memory constraints);
 
   function getVaultControllerParameters() external view returns (VaultControllerParameters memory);
 

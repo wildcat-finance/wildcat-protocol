@@ -432,9 +432,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   function getParameterConstraints()
     external
     view
-    returns (
-      VaultParameterConstraints memory constraints
-    )
+    returns (VaultParameterConstraints memory constraints)
   {
     constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
     constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;

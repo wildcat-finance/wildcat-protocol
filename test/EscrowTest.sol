@@ -20,11 +20,7 @@ contract MockWildcatArchController {
 // -- TEMP END --
 
 contract EscrowTest is Test {
-  event EscrowReleased(
-    address indexed account,
-    address indexed asset,
-    uint256 amount
-  );
+  event EscrowReleased(address indexed account, address indexed asset, uint256 amount);
 
   MockWildcatArchController internal archController;
   WildcatSanctionsSentinel internal sentinel;
@@ -248,7 +244,7 @@ contract EscrowTest is Test {
       escrow.releaseEscrow();
     } else {
       vm.expectEmit(true, true, true, true, address(escrow));
-      emit EscrowReleased( account, asset, amount);
+      emit EscrowReleased(account, asset, amount);
 
       vm.prank(caller);
       escrow.releaseEscrow();
