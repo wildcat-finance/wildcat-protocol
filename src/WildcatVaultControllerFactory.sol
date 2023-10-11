@@ -11,6 +11,8 @@ import './market/WildcatMarket.sol';
 import './WildcatVaultController.sol';
 
 contract WildcatVaultControllerFactory {
+  // using EnumerableSet for EnumerableSet.AddressSet;
+
   event NewController(address borrower, address controller, string namePrefix, string symbolPrefix);
   event UpdateProtocolFeeConfiguration(
     address feeRecipient,
@@ -59,6 +61,7 @@ contract WildcatVaultControllerFactory {
   ProtocolFeeConfiguration internal _protocolFeeConfiguration;
 
   AddressSet internal _deployedControllers;
+  // EnumerableSet.AddressSet internal _deployedControllers;
 
   modifier onlyArchControllerOwner() {
     if (msg.sender != archController.owner()) {
@@ -135,9 +138,9 @@ contract WildcatVaultControllerFactory {
 
   function getDeployedControllers(
     uint256 start,
-    uint256 count
+    uint256 end
   ) external view returns (address[] memory) {
-    return _deployedControllers.slice(start, count);
+    return _deployedControllers.slice(start, end);
   }
 
   /**
