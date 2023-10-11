@@ -27,52 +27,41 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
   }
 
   function test_getParameterConstraints() public {
-    (
-      uint32 minimumDelinquencyGracePeriod,
-      uint32 maximumDelinquencyGracePeriod,
-      uint16 minimumLiquidityCoverageRatio,
-      uint16 maximumLiquidityCoverageRatio,
-      uint16 minimumDelinquencyFeeBips,
-      uint16 maximumDelinquencyFeeBips,
-      uint32 minimumWithdrawalBatchDuration,
-      uint32 maximumWithdrawalBatchDuration,
-      uint16 minimumAnnualInterestBips,
-      uint16 maximumAnnualInterestBips
-    ) = controller.getParameterConstraints();
+    VaultParameterConstraints memory constraints = controller.getParameterConstraints();
     assertEq(
-      minimumDelinquencyGracePeriod,
+      constraints.minimumDelinquencyGracePeriod,
       MinimumDelinquencyGracePeriod,
       'minimumDelinquencyGracePeriod'
     );
     assertEq(
-      maximumDelinquencyGracePeriod,
+      constraints.maximumDelinquencyGracePeriod,
       MaximumDelinquencyGracePeriod,
       'maximumDelinquencyGracePeriod'
     );
     assertEq(
-      minimumLiquidityCoverageRatio,
+      constraints.minimumLiquidityCoverageRatio,
       MinimumLiquidityCoverageRatio,
       'minimumLiquidityCoverageRatio'
     );
     assertEq(
-      maximumLiquidityCoverageRatio,
+      constraints.maximumLiquidityCoverageRatio,
       MaximumLiquidityCoverageRatio,
       'maximumLiquidityCoverageRatio'
     );
-    assertEq(minimumDelinquencyFeeBips, MinimumDelinquencyFeeBips, 'minimumDelinquencyFeeBips');
-    assertEq(maximumDelinquencyFeeBips, MaximumDelinquencyFeeBips, 'maximumDelinquencyFeeBips');
+    assertEq(constraints.minimumDelinquencyFeeBips, MinimumDelinquencyFeeBips, 'minimumDelinquencyFeeBips');
+    assertEq(constraints.maximumDelinquencyFeeBips, MaximumDelinquencyFeeBips, 'maximumDelinquencyFeeBips');
     assertEq(
-      minimumWithdrawalBatchDuration,
+      constraints.minimumWithdrawalBatchDuration,
       MinimumWithdrawalBatchDuration,
       'minimumWithdrawalBatchDuration'
     );
     assertEq(
-      maximumWithdrawalBatchDuration,
+      constraints.maximumWithdrawalBatchDuration,
       MaximumWithdrawalBatchDuration,
       'maximumWithdrawalBatchDuration'
     );
-    assertEq(minimumAnnualInterestBips, MinimumAnnualInterestBips, 'minimumAnnualInterestBips');
-    assertEq(maximumAnnualInterestBips, MaximumAnnualInterestBips, 'maximumAnnualInterestBips');
+    assertEq(constraints.minimumAnnualInterestBips, MinimumAnnualInterestBips, 'minimumAnnualInterestBips');
+    assertEq(constraints.maximumAnnualInterestBips, MaximumAnnualInterestBips, 'maximumAnnualInterestBips');
   }
 
   function _getLenders() internal view returns (address[] memory lenders) {
