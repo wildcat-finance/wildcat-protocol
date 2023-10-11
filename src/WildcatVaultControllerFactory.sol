@@ -130,6 +130,26 @@ contract WildcatVaultControllerFactory {
     initCodeStorage = LibStoredInitCode.deployInitCode(vaultInitCode);
   }
 
+  function isDeployedController(address controller) external view returns (bool) {
+    return _deployedControllers.contains(controller);
+  }
+
+  function getDeployedControllersCount() external view returns (uint256) {
+    return _deployedControllers.length();
+  }
+
+  function getDeployedControllers() external view returns (address[] memory) {
+    return _deployedControllers.values();
+  }
+
+  function getDeployedControllers(uint256 start, uint256 count)
+    external
+    view
+    returns (address[] memory)
+  {
+    return _deployedControllers.slice(start, count);
+  }
+
   /**
    * @dev Returns protocol fee configuration for new vaults.
    *
@@ -290,6 +310,7 @@ contract WildcatVaultControllerFactory {
     LibStoredInitCode.create2WithStoredInitCode(controllerInitCodeStorage, salt);
     _tmpVaultBorrowerParameter = address(1);
     archController.registerController(controller);
+    _deployedControllers.add(controller);
   }
 
   /**

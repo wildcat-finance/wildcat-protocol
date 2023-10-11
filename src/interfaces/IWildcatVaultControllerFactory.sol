@@ -27,6 +27,17 @@ interface IWildcatVaultControllerFactory {
   // Returns sentinel used by controller
   function sentinel() external view returns (address);
 
+  function isDeployedController(address controller) external view returns (bool);
+
+  function getDeployedControllersCount() external view returns (uint256);
+
+  function getDeployedControllers() external view returns (address[] memory);
+
+  function getDeployedControllers(
+    uint256 start,
+    uint256 count
+  ) external view returns (address[] memory);
+
   /**
    * @dev Returns protocol fee configuration for new vaults.
    *
