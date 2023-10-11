@@ -92,7 +92,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
   //   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
   // ******************************************************************
   function nukeFromOrbit(address accountAddress) external nonReentrant {
-    if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+    if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       revert BadLaunchCode();
     }
     VaultState memory state = _getUpdatedState();
