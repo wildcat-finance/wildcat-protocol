@@ -59,6 +59,14 @@ contract Test is ForgeTest, Prankster {
     archController.registerBorrower(borrower);
     startPrank(borrower);
     MockController _controller = MockController(controllerFactory.deployController());
+    assertTrue(
+      controllerFactory.isDeployedController(address(_controller)),
+      'controller not recognized by factory'
+    );
+    assertTrue(
+      archController.isRegisteredController(address(_controller)),
+      'controller not recognized by arch controller'
+    );
     stopPrank();
     if (disableConstraints) {
       _controller.toggleParameterChecks();
@@ -92,6 +100,14 @@ contract Test is ForgeTest, Prankster {
         parameters.liquidityCoverageRatio,
         parameters.delinquencyGracePeriod
       )
+    );
+    assertTrue(
+      controller.isControlledVault(address(vault)),
+      'deployed vault is not recognized by the controller'
+    );
+    assertTrue(
+      archController.isRegisteredVault(address(vault)),
+      'deployed vault is not recognized by the arch controller'
     );
   }
 

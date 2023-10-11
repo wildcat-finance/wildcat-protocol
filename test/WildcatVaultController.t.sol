@@ -140,6 +140,13 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
       parameters.liquidityCoverageRatio,
       parameters.delinquencyGracePeriod
     );
+    if (vaultAddress != address(0)) {
+      assertTrue(controller.isControlledVault(vaultAddress), 'controller does not recognize vault');
+      assertTrue(
+        archController.isRegisteredVault(vaultAddress),
+        'arch controller does not recognize vault'
+      );
+    }
   }
 
   function test_VaultSet() external {
@@ -164,8 +171,8 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     vaultSlice[0] = vaults[1];
     assertEq(controller.getControlledVaults(1, 2), vaultSlice, 'getControlledVaults(start, end)');
 
-    assertEq(controller.isControlledVault(address(vault)), true, 'isControlledVault');
-    assertEq(controller.isControlledVault(vaults[1]), true, 'isControlledVault');
+    assertTrue(controller.isControlledVault(vaults[0]), 'isControlledVault');
+    assertTrue(controller.isControlledVault(vaults[1]), 'isControlledVault');
 
     assertEq(controller.getControlledVaultsCount(), 2, 'getControlledVaultsCount');
 
