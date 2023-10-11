@@ -3,7 +3,7 @@ pragma solidity >=0.8.20;
 
 address constant alice = address(0xa11ce);
 address constant bob = address(0xb0b);
-address constant sentinel = address(0x533);
+address constant sentinel = 0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
 address constant feeRecipient = address(0xfee);
 address constant borrower = address(0xb04405e4);
 

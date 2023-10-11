@@ -2,15 +2,9 @@
 pragma solidity >=0.8.20;
 
 import { IChainalysisSanctionsList } from './interfaces/IChainalysisSanctionsList.sol';
+import { IWildcatArchController } from './interfaces/IWildcatArchController.sol';
 import { SanctionsList } from './libraries/Chainalysis.sol';
 import { WildcatSanctionsEscrow } from './WildcatSanctionsEscrow.sol';
-
-// -- TEMP START --
-interface IWildcatArchController {
-  function isRegisteredVault(address) external view returns (bool);
-}
-
-// -- TEMP END --
 
 contract WildcatSanctionsSentinel {
   event NewSanctionsEscrow(
@@ -30,14 +24,15 @@ contract WildcatSanctionsSentinel {
   bytes32 public constant WildcatSanctionsEscrowInitcodeHash =
     keccak256(type(WildcatSanctionsEscrow).creationCode);
 
-  IChainalysisSanctionsList public constant chainalysisSanctionsList = SanctionsList;
+  IChainalysisSanctionsList public immutable chainalysisSanctionsList;
 
   IWildcatArchController public immutable archController;
 
   TmpVaultParams public tmpVaultParams;
 
-  constructor(IWildcatArchController _archController) {
-    archController = _archController;
+  constructor(address _archController, address _chainalysisSanctionsList) {
+    archController = IWildcatArchController(_archController);
+    chainalysisSanctionsList = IChainalysisSanctionsList(_chainalysisSanctionsList);
     _resetTmpVaultParams();
   }
 

@@ -10,6 +10,10 @@ contract MockChainalysis {
   function sanction(address account) external {
     isSanctioned[account] = true;
   }
+
+  function unsanction(address account) external {
+    isSanctioned[account] = false;
+  }
 }
 
 function deployMockChainalysis() {

@@ -9,7 +9,7 @@ import { MockERC20 } from './helpers/MockERC20.sol';
 import { Test } from 'forge-std/Test.sol';
 
 // -- TEMP START --
-contract MockWildcatArchController is IWildcatArchController {
+contract MockWildcatArchController {
   mapping(address vault => bool) public isRegisteredVault;
 
   function setIsRegsiteredVault(address vault, bool isRegistered) external {
@@ -33,7 +33,7 @@ contract EscrowTest is Test {
   function setUp() public {
     deployMockChainalysis();
     archController = new MockWildcatArchController();
-    sentinel = new WildcatSanctionsSentinel(archController);
+    sentinel = new WildcatSanctionsSentinel(address(archController), address(SanctionsList));
     archController.setIsRegsiteredVault(address(this), true);
   }
 

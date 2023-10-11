@@ -3,27 +3,16 @@ pragma solidity >=0.8.20;
 
 import 'src/WildcatVaultControllerFactory.sol';
 import './MockController.sol';
-import {
-  MinimumDelinquencyGracePeriod as MinDelinquencyGracePeriod,
-  MaximumDelinquencyGracePeriod as MaxDelinquencyGracePeriod,
-  MinimumLiquidityCoverageRatio as MinLiquidityCoverageRatio,
-  MaximumLiquidityCoverageRatio as MaxLiquidityCoverageRatio,
-  MinimumDelinquencyFeeBips as MinDelinquencyFeeBips,
-  MaximumDelinquencyFeeBips as MaxDelinquencyFeeBips,
-  MinimumWithdrawalBatchDuration as MinWithdrawalBatchDuration,
-  MaximumWithdrawalBatchDuration as MaxWithdrawalBatchDuration,
-  MinimumAnnualInterestBips as MinAnnualInterestBips,
-  MaximumAnnualInterestBips as MaxAnnualInterestBips,
-  sentinel as SentinelAddress
-} from '../shared/TestConstants.sol';
+import { MinimumDelinquencyGracePeriod as MinDelinquencyGracePeriod, MaximumDelinquencyGracePeriod as MaxDelinquencyGracePeriod, MinimumLiquidityCoverageRatio as MinLiquidityCoverageRatio, MaximumLiquidityCoverageRatio as MaxLiquidityCoverageRatio, MinimumDelinquencyFeeBips as MinDelinquencyFeeBips, MaximumDelinquencyFeeBips as MaxDelinquencyFeeBips, MinimumWithdrawalBatchDuration as MinWithdrawalBatchDuration, MaximumWithdrawalBatchDuration as MaxWithdrawalBatchDuration, MinimumAnnualInterestBips as MinAnnualInterestBips, MaximumAnnualInterestBips as MaxAnnualInterestBips, sentinel as SentinelAddress } from '../shared/TestConstants.sol';
 
 contract MockControllerFactory is WildcatVaultControllerFactory {
   constructor(
-    address _archController
+    address _archController,
+    address _sentinel
   )
     WildcatVaultControllerFactory(
       _archController,
-      SentinelAddress,
+      _sentinel,
       MinDelinquencyGracePeriod,
       MaxDelinquencyGracePeriod,
       MinLiquidityCoverageRatio,

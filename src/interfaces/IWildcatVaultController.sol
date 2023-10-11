@@ -5,7 +5,6 @@ import './WildcatStructsAndEnums.sol';
 import './IWildcatVaultControllerEventsAndErrors.sol';
 
 interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
-
   // Returns immutable controller factory
   function controllerFactory() external view returns (address);
 

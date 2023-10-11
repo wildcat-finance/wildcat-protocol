@@ -124,11 +124,7 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
       mstore(lenders, 0)
     }
     assertEq(controller.getAuthorizedLenders(), lenders, 'getAuthorizedLenders');
-    assertEq(
-      controller.getAuthorizedLenders(0, 2),
-      lenders,
-      'getAuthorizedLenders(start, end)'
-    );
+    assertEq(controller.getAuthorizedLenders(0, 2), lenders, 'getAuthorizedLenders(start, end)');
     assertEq(controller.getAuthorizedLendersCount(), 0, 'getAuthorizedLendersCount');
   }
 
@@ -208,25 +204,19 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
 
   function test_deployVault_WithdrawalBatchDurationOutOfBounds() external {
     parameters.withdrawalBatchDuration = MaximumWithdrawalBatchDuration + 1;
-    vm.expectRevert(
-      WithdrawalBatchDurationOutOfBounds.selector
-    );
+    vm.expectRevert(WithdrawalBatchDurationOutOfBounds.selector);
     _callDeployVault(borrower);
   }
 
   function test_deployVault_LiquidityCoverageRatioOutOfBounds() external {
     parameters.liquidityCoverageRatio = MaximumLiquidityCoverageRatio + 1;
-    vm.expectRevert(
-      LiquidityCoverageRatioOutOfBounds.selector
-    );
+    vm.expectRevert(LiquidityCoverageRatioOutOfBounds.selector);
     _callDeployVault(borrower);
   }
 
   function test_deployVault_DelinquencyGracePeriodOutOfBounds() external {
     parameters.delinquencyGracePeriod = MaximumDelinquencyGracePeriod + 1;
-    vm.expectRevert(
-      DelinquencyGracePeriodOutOfBounds.selector
-    );
+    vm.expectRevert(DelinquencyGracePeriodOutOfBounds.selector);
     _callDeployVault(borrower);
   }
 
@@ -241,9 +231,7 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
   }
 
   function test_deployVault_CallerNotBorrowerOrControllerFactory() external {
-    vm.expectRevert(
-      CallerNotBorrowerOrControllerFactory.selector
-    );
+    vm.expectRevert(CallerNotBorrowerOrControllerFactory.selector);
     _callDeployVault(address(this));
   }
 
@@ -340,9 +328,7 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     vm.prank(borrower);
     controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
 
-    vm.expectRevert(
-      ExcessLiquidityCoverageStillActive.selector
-    );
+    vm.expectRevert(ExcessLiquidityCoverageStillActive.selector);
     controller.resetLiquidityCoverage(address(vault));
   }
 
