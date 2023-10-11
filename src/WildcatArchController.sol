@@ -13,6 +13,16 @@ contract WildcatArchController is Ownable {
   error NotControllerFactory();
   error NotController();
 
+  error BorrowerAlreadyExists();
+  error ControllerFactoryAlreadyExists();
+  error ControllerAlreadyExists();
+  error VaultAlreadyExists();
+
+  error BorrowerDoesNotExist();
+  error ControllerFactoryDoesNotExist();
+  error ControllerDoesNotExist();
+  error VaultDoesNotExist();
+
   event VaultAdded(address indexed controller, address vault);
   event VaultRemoved(address vault);
 
@@ -48,12 +58,16 @@ contract WildcatArchController is Ownable {
   /* ========================================================================== */
 
   function registerBorrower(address borrower) external onlyOwner {
-    _borrowers.add(borrower);
+    if (!_borrowers.add(borrower)) {
+      revert BorrowerAlreadyExists();
+    }
     emit BorrowerAdded(borrower);
   }
 
   function removeBorrower(address borrower) external onlyOwner {
-    _borrowers.remove(borrower);
+    if (!_borrowers.remove(borrower)) {
+      revert BorrowerDoesNotExist();
+    }
     emit BorrowerRemoved(borrower);
   }
 
@@ -81,12 +95,16 @@ contract WildcatArchController is Ownable {
   /* ========================================================================== */
 
   function registerControllerFactory(address factory) external onlyOwner {
-    _controllerFactories.add(factory);
+    if (!_controllerFactories.add(factory)) {
+      revert ControllerFactoryAlreadyExists();
+    }
     emit ControllerFactoryAdded(factory);
   }
 
   function removeControllerFactory(address factory) external onlyOwner {
-    _controllerFactories.remove(factory);
+    if (!_controllerFactories.remove(factory)) {
+      revert ControllerFactoryDoesNotExist();
+    }
     emit ControllerFactoryRemoved(factory);
   }
 
@@ -114,12 +132,16 @@ contract WildcatArchController is Ownable {
   /* ========================================================================== */
 
   function registerController(address controller) external onlyControllerFactory {
-    _controllers.add(controller);
+    if (!_controllers.add(controller)) {
+      revert ControllerAlreadyExists();
+    }
     emit ControllerAdded(msg.sender, controller);
   }
 
   function removeController(address controller) external onlyOwner {
-    _controllers.remove(controller);
+    if (!_controllers.remove(controller)) {
+      revert ControllerDoesNotExist();
+    }
     emit ControllerRemoved(controller);
   }
 
@@ -147,12 +169,16 @@ contract WildcatArchController is Ownable {
   /* ========================================================================== */
 
   function registerVault(address vault) external onlyController {
-    _vaults.add(vault);
+    if (!_vaults.add(vault)) {
+      revert VaultAlreadyExists();
+    }
     emit VaultAdded(msg.sender, vault);
   }
 
   function removeVault(address vault) external onlyOwner {
-    _vaults.remove(vault);
+    if (!_vaults.remove(vault)) {
+      revert VaultDoesNotExist();
+    }
     emit VaultRemoved(vault);
   }
 
