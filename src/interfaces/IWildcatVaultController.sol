@@ -45,18 +45,7 @@ interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   function getParameterConstraints()
     external
     view
-    returns (
-      uint32 minimumDelinquencyGracePeriod,
-      uint32 maximumDelinquencyGracePeriod,
-      uint16 minimumLiquidityCoverageRatio,
-      uint16 maximumLiquidityCoverageRatio,
-      uint16 minimumDelinquencyFeeBips,
-      uint16 maximumDelinquencyFeeBips,
-      uint32 minimumWithdrawalBatchDuration,
-      uint32 maximumWithdrawalBatchDuration,
-      uint16 minimumAnnualInterestBips,
-      uint16 maximumAnnualInterestBips
-    );
+    returns (VaultParameterConstraints memory constraints);
 
   /* -------------------------------------------------------------------------- */
   /*                               Lender Registry                              */

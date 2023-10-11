@@ -51,3 +51,16 @@ struct ProtocolFeeConfiguration {
   uint80 originationFeeAmount;
   uint16 protocolFeeBips;
 }
+
+struct VaultParameterConstraints {
+  uint32 minimumDelinquencyGracePeriod;
+  uint32 maximumDelinquencyGracePeriod;
+  uint16 minimumLiquidityCoverageRatio;
+  uint16 maximumLiquidityCoverageRatio;
+  uint16 minimumDelinquencyFeeBips;
+  uint16 maximumDelinquencyFeeBips;
+  uint32 minimumWithdrawalBatchDuration;
+  uint32 maximumWithdrawalBatchDuration;
+  uint16 minimumAnnualInterestBips;
+  uint16 maximumAnnualInterestBips;
+}

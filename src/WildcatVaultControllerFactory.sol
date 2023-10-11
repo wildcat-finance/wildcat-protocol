@@ -70,41 +70,32 @@ contract WildcatVaultControllerFactory {
   constructor(
     address _archController,
     address _sentinel,
-    uint32 minimumDelinquencyGracePeriod,
-    uint32 maximumDelinquencyGracePeriod,
-    uint16 minimumLiquidityCoverageRatio,
-    uint16 maximumLiquidityCoverageRatio,
-    uint16 minimumDelinquencyFeeBips,
-    uint16 maximumDelinquencyFeeBips,
-    uint32 minimumWithdrawalBatchDuration,
-    uint32 maximumWithdrawalBatchDuration,
-    uint16 minimumAnnualInterestBips,
-    uint16 maximumAnnualInterestBips
+    VaultParameterConstraints memory constraints
   ) {
     archController = IWildcatArchController(_archController);
     sentinel = _sentinel;
     if (
-      minimumAnnualInterestBips > maximumAnnualInterestBips ||
-      maximumAnnualInterestBips > 10000 ||
-      minimumDelinquencyFeeBips > maximumDelinquencyFeeBips ||
-      maximumDelinquencyFeeBips > 10000 ||
-      minimumLiquidityCoverageRatio > maximumLiquidityCoverageRatio ||
-      maximumLiquidityCoverageRatio > 10000 ||
-      minimumDelinquencyGracePeriod > maximumDelinquencyGracePeriod ||
-      minimumWithdrawalBatchDuration > maximumWithdrawalBatchDuration
+      constraints.minimumAnnualInterestBips > constraints.maximumAnnualInterestBips ||
+      constraints.maximumAnnualInterestBips > 10000 ||
+      constraints.minimumDelinquencyFeeBips > constraints.maximumDelinquencyFeeBips ||
+      constraints.maximumDelinquencyFeeBips > 10000 ||
+      constraints.minimumLiquidityCoverageRatio > constraints.maximumLiquidityCoverageRatio ||
+      constraints.maximumLiquidityCoverageRatio > 10000 ||
+      constraints.minimumDelinquencyGracePeriod > constraints.maximumDelinquencyGracePeriod ||
+      constraints.minimumWithdrawalBatchDuration > constraints.maximumWithdrawalBatchDuration
     ) {
       revert InvalidConstraints();
     }
-    MinimumDelinquencyGracePeriod = minimumDelinquencyGracePeriod;
-    MaximumDelinquencyGracePeriod = maximumDelinquencyGracePeriod;
-    MinimumLiquidityCoverageRatio = minimumLiquidityCoverageRatio;
-    MaximumLiquidityCoverageRatio = maximumLiquidityCoverageRatio;
-    MinimumDelinquencyFeeBips = minimumDelinquencyFeeBips;
-    MaximumDelinquencyFeeBips = maximumDelinquencyFeeBips;
-    MinimumWithdrawalBatchDuration = minimumWithdrawalBatchDuration;
-    MaximumWithdrawalBatchDuration = maximumWithdrawalBatchDuration;
-    MinimumAnnualInterestBips = minimumAnnualInterestBips;
-    MaximumAnnualInterestBips = maximumAnnualInterestBips;
+    MinimumDelinquencyGracePeriod = constraints.minimumDelinquencyGracePeriod;
+    MaximumDelinquencyGracePeriod = constraints.maximumDelinquencyGracePeriod;
+    MinimumLiquidityCoverageRatio = constraints.minimumLiquidityCoverageRatio;
+    MaximumLiquidityCoverageRatio = constraints.maximumLiquidityCoverageRatio;
+    MinimumDelinquencyFeeBips = constraints.minimumDelinquencyFeeBips;
+    MaximumDelinquencyFeeBips = constraints.maximumDelinquencyFeeBips;
+    MinimumWithdrawalBatchDuration = constraints.minimumWithdrawalBatchDuration;
+    MaximumWithdrawalBatchDuration = constraints.maximumWithdrawalBatchDuration;
+    MinimumAnnualInterestBips = constraints.minimumAnnualInterestBips;
+    MaximumAnnualInterestBips = constraints.maximumAnnualInterestBips;
 
     (controllerInitCodeStorage, controllerInitCodeHash) = _storeControllerInitCode();
     (vaultInitCodeStorage, vaultInitCodeHash) = _storeVaultInitCode();
@@ -142,11 +133,10 @@ contract WildcatVaultControllerFactory {
     return _deployedControllers.values();
   }
 
-  function getDeployedControllers(uint256 start, uint256 count)
-    external
-    view
-    returns (address[] memory)
-  {
+  function getDeployedControllers(
+    uint256 start,
+    uint256 count
+  ) external view returns (address[] memory) {
     return _deployedControllers.slice(start, count);
   }
 
@@ -225,29 +215,18 @@ contract WildcatVaultControllerFactory {
   function getParameterConstraints()
     external
     view
-    returns (
-      uint32 minimumDelinquencyGracePeriod,
-      uint32 maximumDelinquencyGracePeriod,
-      uint16 minimumLiquidityCoverageRatio,
-      uint16 maximumLiquidityCoverageRatio,
-      uint16 minimumDelinquencyFeeBips,
-      uint16 maximumDelinquencyFeeBips,
-      uint32 minimumWithdrawalBatchDuration,
-      uint32 maximumWithdrawalBatchDuration,
-      uint16 minimumAnnualInterestBips,
-      uint16 maximumAnnualInterestBips
-    )
+    returns (VaultParameterConstraints memory constraints)
   {
-    minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
-    maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
-    minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
-    maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
-    minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
-    maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
-    minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
-    maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
-    minimumAnnualInterestBips = MinimumAnnualInterestBips;
-    maximumAnnualInterestBips = MaximumAnnualInterestBips;
+    constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
+    constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
+    constraints.minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
+    constraints.maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
+    constraints.minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
+    constraints.maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
+    constraints.minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
+    constraints.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
+    constraints.minimumAnnualInterestBips = MinimumAnnualInterestBips;
+    constraints.maximumAnnualInterestBips = MaximumAnnualInterestBips;
   }
 
   /* -------------------------------------------------------------------------- */

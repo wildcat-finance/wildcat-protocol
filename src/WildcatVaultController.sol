@@ -433,28 +433,19 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     external
     view
     returns (
-      uint32 minimumDelinquencyGracePeriod,
-      uint32 maximumDelinquencyGracePeriod,
-      uint16 minimumLiquidityCoverageRatio,
-      uint16 maximumLiquidityCoverageRatio,
-      uint16 minimumDelinquencyFeeBips,
-      uint16 maximumDelinquencyFeeBips,
-      uint32 minimumWithdrawalBatchDuration,
-      uint32 maximumWithdrawalBatchDuration,
-      uint16 minimumAnnualInterestBips,
-      uint16 maximumAnnualInterestBips
+      VaultParameterConstraints memory constraints
     )
   {
-    minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
-    maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
-    minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
-    maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
-    minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
-    maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
-    minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
-    maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
-    minimumAnnualInterestBips = MinimumAnnualInterestBips;
-    maximumAnnualInterestBips = MaximumAnnualInterestBips;
+    constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
+    constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
+    constraints.minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
+    constraints.maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
+    constraints.minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
+    constraints.maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
+    constraints.minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
+    constraints.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
+    constraints.minimumAnnualInterestBips = MinimumAnnualInterestBips;
+    constraints.maximumAnnualInterestBips = MaximumAnnualInterestBips;
   }
 
   /**
