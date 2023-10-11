@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../interfaces/IERC20.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/Withdrawal.sol';
 import { queryName, querySymbol } from '../libraries/StringQuery.sol';
 import '../interfaces/IVaultEventsAndErrors.sol';
 import '../interfaces/IWildcatVaultController.sol';
-import '../interfaces/IWildcatVaultFactory.sol';
-import '../interfaces/ISanctionsSentinel.sol';
-import { IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
+import '../interfaces/IWildcatSanctionsSentinel.sol';
+import { IERC20, IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
 import '../libraries/BoolUtils.sol';
 
@@ -22,6 +20,8 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   // ==================================================================== //
   //                       Vault Config (immutable)                       //
   // ==================================================================== //
+
+  string public constant version = '1.0';
 
   /// @dev Account with blacklist control, used for blocking sanctioned addresses.
   address public immutable sentinel;
@@ -74,7 +74,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   // ===================================================================== //
 
   constructor() {
-    VaultParameters memory parameters = IWildcatVaultFactory(msg.sender).getVaultParameters();
+    VaultParameters memory parameters = IWildcatVaultController(msg.sender).getVaultParameters();
 
     if ((parameters.protocolFeeBips > 0).and(parameters.feeRecipient == address(0))) {
       revert FeeSetWithoutRecipient();
@@ -163,7 +163,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 
       if (scaledBalance > 0) {
         account.scaledBalance = 0;
-        address escrow = ISanctionsSentinel(sentinel).createEscrow(
+        address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
           accountAddress,
           borrower,
           address(this)
@@ -219,30 +219,57 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     return currentState().borrowableAssets(totalAssets());
   }
 
+  /**
+   * @dev Returns the amount of protocol fees (in underlying asset amount)
+   *      that have accrued and are pending withdrawal.
+   */
   function accruedProtocolFees() external view nonReentrantView returns (uint256) {
     return currentState().accruedProtocolFees;
   }
 
+  /**
+   * @dev Returns the state of the vault as of the last update.
+   */
   function previousState() external view returns (VaultState memory) {
     return _state;
   }
 
+  /**
+   * @dev Return the state the vault would have at the current block after applying
+   *      interest and fees accrued since the last update and processing the pending
+   *      withdrawal batch if it is expired.
+   */
   function currentState() public view nonReentrantView returns (VaultState memory state) {
     (state, , ) = _calculateCurrentState();
   }
 
+  /**
+   * @dev Returns the scaled total supply the vaut would have at the current block
+   *      after applying interest and fees accrued since the last update and burning
+   *      vault tokens for the pending withdrawal batch if it is expired.
+   */
   function scaledTotalSupply() external view nonReentrantView returns (uint256) {
     return currentState().scaledTotalSupply;
   }
 
+  /**
+   * @dev Returns the scaled balance of `account`
+   */
   function scaledBalanceOf(address account) external view nonReentrantView returns (uint256) {
     return _accounts[account].scaledBalance;
   }
 
+  /**
+   * @dev Returns current role of `account`.
+   */
   function getAccountRole(address account) external view nonReentrantView returns (AuthRole) {
     return _accounts[account].approval;
   }
 
+  /**
+   * @dev Returns the amount of protocol fees that are currently
+   *      withdrawable by the fee recipient.
+   */
   function withdrawableProtocolFees() external view returns (uint128) {
     return currentState().withdrawableProtocolFees(totalAssets());
   }

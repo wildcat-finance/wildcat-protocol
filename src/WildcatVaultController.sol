@@ -4,7 +4,6 @@ pragma solidity >=0.8.20;
 import { AddressSet } from 'sol-utils/types/EnumerableSet.sol';
 import 'solady/utils/SafeTransferLib.sol';
 import './market/WildcatMarket.sol';
-import './interfaces/IWildcatVaultFactory.sol';
 import './interfaces/IWildcatArchController.sol';
 import './interfaces/IWildcatVaultControllerEventsAndErrors.sol';
 import './interfaces/IWildcatVaultControllerFactory.sol';

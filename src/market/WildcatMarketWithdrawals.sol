@@ -5,7 +5,7 @@ import './WildcatMarketBase.sol';
 import '../libraries/VaultState.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/FIFOQueue.sol';
-import '../interfaces/ISanctionsSentinel.sol';
+import '../interfaces/IWildcatSanctionsSentinel.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
 contract WildcatMarketWithdrawals is WildcatMarketBase {
@@ -14,6 +14,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   using SafeCastLib for uint256;
   using BoolUtils for bool;
 
+  /**
+   * @dev Returns the expiry timestamp of every unpaid withdrawal batch.
+   */
   function getUnpaidBatchExpiries() external view nonReentrantView returns (uint32[] memory) {
     return _withdrawalData.unpaidBatches.values();
   }
@@ -109,6 +112,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     _writeState(state);
   }
 
+  /**
+   * @dev Execute a pending withdrawal request.
+   */
   function executeWithdrawal(
     address accountAddress,
     uint32 expiry
@@ -132,9 +138,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     status.normalizedAmountWithdrawn = newTotalWithdrawn;
     state.reservedAssets -= normalizedAmountWithdrawn;
 
-    if (ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
       _blockAccount(state, accountAddress);
-      address escrow = ISanctionsSentinel(sentinel).createEscrow(
+      address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
         accountAddress,
         borrower,
         address(asset)
