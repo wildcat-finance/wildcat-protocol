@@ -124,6 +124,36 @@ contract WildcatMarketConfigTest is BaseVaultTest {
     vault.nukeFromOrbit(_account);
   }
 
+  function test_ofacMadeAnOopsie() external {
+    sanctionsSentinel.sanction(alice);
+
+    vm.expectEmit(address(vault));
+    emit AuthorizationStatusUpdated(alice, AuthRole.Blocked);
+    vault.nukeFromOrbit(alice);
+
+    vm.prank(borrower);
+    sanctionsSentinel.overrideSanction(alice);
+
+    vm.expectEmit(address(vault));
+    emit AuthorizationStatusUpdated(alice, AuthRole.Null);
+    vault.ofacMadeAnOopsie(alice);
+    assertEq(uint(vault.getAccountRole(alice)), uint(AuthRole.Null), 'account role should be Null');
+  }
+
+  function test_ofacMadeAnOopsie_AccountNotBlocked(address _account) external {
+    vm.expectRevert(IVaultEventsAndErrors.AccountNotBlocked.selector);
+    vault.ofacMadeAnOopsie(_account);
+  }
+
+  function test_ofacMadeAnOopsie_OFACDidNotMakeAnOopsie() external {
+    sanctionsSentinel.sanction(alice);
+    vm.expectEmit(address(vault));
+    emit AuthorizationStatusUpdated(alice, AuthRole.Blocked);
+    vault.nukeFromOrbit(alice);
+    vm.expectRevert(IVaultEventsAndErrors.OFACDidNotMakeAnOopsie.selector);
+    vault.ofacMadeAnOopsie(alice);
+  }
+
   function test_setMaxTotalSupply(
     uint256 _totalSupply,
     uint256 _maxTotalSupply

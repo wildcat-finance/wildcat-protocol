@@ -100,6 +100,27 @@ contract WildcatMarketConfig is WildcatMarketBase {
     _writeState(state);
   }
 
+  /**
+   * @dev Unblock an account that was previously sanctioned and blocked
+   *      and has since been removed from the sanctions list or had
+   *      their sanctioned status overridden by the borrower.
+   */
+  function ofacMadeAnOopsie(address accountAddress) external nonReentrant {
+    Account memory account = _accounts[accountAddress];
+    if (account.approval != AuthRole.Blocked) {
+      revert AccountNotBlocked();
+    }
+
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
+      revert OFACDidNotMakeAnOopsie();
+    }
+
+    account.approval = AuthRole.Null;
+    emit AuthorizationStatusUpdated(accountAddress, account.approval);
+
+    _accounts[accountAddress] = account;
+  }
+
   // /*//////////////////////////////////////////////////////////////
   //                       Management Actions
   // //////////////////////////////////////////////////////////////*/
