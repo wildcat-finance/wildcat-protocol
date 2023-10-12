@@ -48,8 +48,16 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
       MaximumLiquidityCoverageRatio,
       'maximumLiquidityCoverageRatio'
     );
-    assertEq(constraints.minimumDelinquencyFeeBips, MinimumDelinquencyFeeBips, 'minimumDelinquencyFeeBips');
-    assertEq(constraints.maximumDelinquencyFeeBips, MaximumDelinquencyFeeBips, 'maximumDelinquencyFeeBips');
+    assertEq(
+      constraints.minimumDelinquencyFeeBips,
+      MinimumDelinquencyFeeBips,
+      'minimumDelinquencyFeeBips'
+    );
+    assertEq(
+      constraints.maximumDelinquencyFeeBips,
+      MaximumDelinquencyFeeBips,
+      'maximumDelinquencyFeeBips'
+    );
     assertEq(
       constraints.minimumWithdrawalBatchDuration,
       MinimumWithdrawalBatchDuration,
@@ -60,8 +68,16 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
       MaximumWithdrawalBatchDuration,
       'maximumWithdrawalBatchDuration'
     );
-    assertEq(constraints.minimumAnnualInterestBips, MinimumAnnualInterestBips, 'minimumAnnualInterestBips');
-    assertEq(constraints.maximumAnnualInterestBips, MaximumAnnualInterestBips, 'maximumAnnualInterestBips');
+    assertEq(
+      constraints.minimumAnnualInterestBips,
+      MinimumAnnualInterestBips,
+      'minimumAnnualInterestBips'
+    );
+    assertEq(
+      constraints.maximumAnnualInterestBips,
+      MaximumAnnualInterestBips,
+      'maximumAnnualInterestBips'
+    );
   }
 
   function _getLenders() internal view returns (address[] memory lenders) {
