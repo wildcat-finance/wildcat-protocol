@@ -52,7 +52,7 @@ library WithdrawalLib {
     // Subtract normalized value of pending scaled withdrawals, processed
     // withdrawals and protocol fees.
     uint256 priorScaledAmountPending = (state.scaledPendingWithdrawals - batch.scaledOwedAmount());
-    uint256 unavailableAssets = state.normalizedReservedWithdrawals +
+    uint256 unavailableAssets = state.normalizedUnclaimedWithdrawals +
       state.normalizeAmount(priorScaledAmountPending) +
       state.accruedProtocolFees;
     return totalAssets.satSub(unavailableAssets);

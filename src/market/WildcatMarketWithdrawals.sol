@@ -155,7 +155,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     uint128 normalizedAmountWithdrawn = newTotalWithdrawn - status.normalizedAmountWithdrawn;
 
     status.normalizedAmountWithdrawn = newTotalWithdrawn;
-    state.normalizedReservedWithdrawals -= normalizedAmountWithdrawn;
+    state.normalizedUnclaimedWithdrawals -= normalizedAmountWithdrawn;
 
     if (normalizedAmountWithdrawn == 0) {
       revert NullWithdrawalAmount();
@@ -197,7 +197,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
     // Calculate assets available to process the batch
-    uint256 availableLiquidity = totalAssets() - (state.normalizedReservedWithdrawals + state.accruedProtocolFees);
+    uint256 availableLiquidity = totalAssets() - (state.normalizedUnclaimedWithdrawals + state.accruedProtocolFees);
 
     _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
 

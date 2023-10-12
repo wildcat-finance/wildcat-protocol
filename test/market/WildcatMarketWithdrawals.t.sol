@@ -71,7 +71,7 @@ contract WithdrawalsTest is BaseVaultTest {
     assertEq(state.timeDelinquent, 0, 'timeDelinquent');
     assertEq(state.scaledPendingWithdrawals, 0, 'scaledPendingWithdrawals');
     assertEq(state.scaledTotalSupply, 0, 'scaledTotalSupply');
-    assertEq(state.normalizedReservedWithdrawals, userBalance1 + userBalance2, 'normalizedReservedWithdrawals');
+    assertEq(state.normalizedUnclaimedWithdrawals, userBalance1 + userBalance2, 'normalizedUnclaimedWithdrawals');
   }
 
   function test_queueWithdrawal_BurnAll(
@@ -86,7 +86,7 @@ contract WithdrawalsTest is BaseVaultTest {
     assertEq(state.timeDelinquent, 0, 'timeDelinquent');
     assertEq(state.scaledPendingWithdrawals, 0, 'scaledPendingWithdrawals');
     assertEq(state.scaledTotalSupply, 0, 'scaledTotalSupply');
-    assertEq(state.normalizedReservedWithdrawals, userBalance, 'normalizedReservedWithdrawals');
+    assertEq(state.normalizedUnclaimedWithdrawals, userBalance, 'normalizedUnclaimedWithdrawals');
   }
 
   function test_queueWithdrawal_BurnPartial(
@@ -107,7 +107,7 @@ contract WithdrawalsTest is BaseVaultTest {
 
     assertEq(state.scaledPendingWithdrawals, borrowAmount, 'state.scaledPendingWithdrawals');
     assertEq(state.scaledTotalSupply, borrowAmount, 'state.scaledTotalSupply');
-    assertEq(state.normalizedReservedWithdrawals, remainingAssets, 'state.normalizedReservedWithdrawals');
+    assertEq(state.normalizedUnclaimedWithdrawals, remainingAssets, 'state.normalizedUnclaimedWithdrawals');
   }
 
   function test_queueWithdrawal(
@@ -142,7 +142,7 @@ contract WithdrawalsTest is BaseVaultTest {
     VaultState memory state = pendingState();
     updateState(state);
     uint256 previousBalance = asset.balanceOf(alice);
-    uint256 withdrawalAmount = state.normalizedReservedWithdrawals;
+    uint256 withdrawalAmount = state.normalizedUnclaimedWithdrawals;
     vm.prank(alice);
     vault.executeWithdrawal(alice, uint32(expiry));
     assertEq(asset.balanceOf(alice), previousBalance + withdrawalAmount);
@@ -161,7 +161,7 @@ contract WithdrawalsTest is BaseVaultTest {
     VaultState memory state = pendingState();
     updateState(state);
     uint256 previousBalance = asset.balanceOf(alice);
-    uint256 withdrawalAmount = state.normalizedReservedWithdrawals;
+    uint256 withdrawalAmount = state.normalizedUnclaimedWithdrawals;
     vm.prank(alice);
     vault.executeWithdrawal(alice, uint32(expiry));
     assertEq(asset.balanceOf(alice), previousBalance + withdrawalAmount);

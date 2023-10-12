@@ -44,7 +44,7 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
       lastInterestAccruedTimestamp: uint32(block.timestamp),
       scaledPendingWithdrawals: 0,
       pendingWithdrawalExpiry: 0,
-      normalizedReservedWithdrawals: 0,
+      normalizedUnclaimedWithdrawals: 0,
       accruedProtocolFees: 0
     });
     lastTotalAssets = 0;
