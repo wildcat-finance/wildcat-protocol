@@ -25,7 +25,7 @@ contract ExpectedStateTracker is Test, Assertions, IVaultEventsAndErrors {
       annualInterestBips: DefaultInterest,
       delinquencyFeeBips: DefaultDelinquencyFee,
       withdrawalBatchDuration: DefaultWithdrawalBatchDuration,
-      liquidityCoverageRatio: DefaultLiquidityCoverage,
+      reserveRatioBips: DefaultReserveRatio,
       delinquencyGracePeriod: DefaultGracePeriod
     });
   VaultState internal previousState;
@@ -103,7 +103,7 @@ contract ExpectedStateTracker is Test, Assertions, IVaultEventsAndErrors {
     VaultState memory state
   ) internal view returns (uint256) {
     uint104 scaledAmountOwed = batch.scaledTotalAmount - batch.scaledAmountBurned;
-    uint256 unavailableAssets = state.reservedAssets +
+    uint256 unavailableAssets = state.normalizedUnclaimedWithdrawals +
       state.accruedProtocolFees +
       state.normalizeAmount(state.scaledPendingWithdrawals - scaledAmountOwed);
 
@@ -132,8 +132,8 @@ contract ExpectedStateTracker is Test, Assertions, IVaultEventsAndErrors {
     batch.normalizedAmountPaid += normalizedAmountPaid;
     state.scaledPendingWithdrawals -= scaledAmountBurned;
 
-    // Update reservedAssets so the tokens are only accessible for withdrawals.
-    state.reservedAssets += normalizedAmountPaid;
+    // Update normalizedUnclaimedWithdrawals so the tokens are only accessible for withdrawals.
+    state.normalizedUnclaimedWithdrawals += normalizedAmountPaid;
 
     // Burn vault tokens to stop interest accrual upon withdrawal payment.
     state.scaledTotalSupply -= scaledAmountBurned;

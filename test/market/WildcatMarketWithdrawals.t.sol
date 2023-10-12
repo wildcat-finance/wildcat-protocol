@@ -71,7 +71,11 @@ contract WithdrawalsTest is BaseVaultTest {
     assertEq(state.timeDelinquent, 0, 'timeDelinquent');
     assertEq(state.scaledPendingWithdrawals, 0, 'scaledPendingWithdrawals');
     assertEq(state.scaledTotalSupply, 0, 'scaledTotalSupply');
-    assertEq(state.normalizedUnclaimedWithdrawals, userBalance1 + userBalance2, 'normalizedUnclaimedWithdrawals');
+    assertEq(
+      state.normalizedUnclaimedWithdrawals,
+      userBalance1 + userBalance2,
+      'normalizedUnclaimedWithdrawals'
+    );
   }
 
   function test_queueWithdrawal_BurnAll(
@@ -95,7 +99,7 @@ contract WithdrawalsTest is BaseVaultTest {
   ) external asAccount(alice) {
     userBalance = uint128(bound(userBalance, 2, DefaultMaximumSupply));
     borrowAmount = uint128(
-      bound(borrowAmount, 2, uint256(userBalance).bipMul(10000 - parameters.liquidityCoverageRatio))
+      bound(borrowAmount, 2, uint256(userBalance).bipMul(10000 - parameters.reserveRatioBips))
     );
     _deposit(alice, userBalance);
     _borrow(borrowAmount);
@@ -107,7 +111,11 @@ contract WithdrawalsTest is BaseVaultTest {
 
     assertEq(state.scaledPendingWithdrawals, borrowAmount, 'state.scaledPendingWithdrawals');
     assertEq(state.scaledTotalSupply, borrowAmount, 'state.scaledTotalSupply');
-    assertEq(state.normalizedUnclaimedWithdrawals, remainingAssets, 'state.normalizedUnclaimedWithdrawals');
+    assertEq(
+      state.normalizedUnclaimedWithdrawals,
+      remainingAssets,
+      'state.normalizedUnclaimedWithdrawals'
+    );
   }
 
   function test_queueWithdrawal(

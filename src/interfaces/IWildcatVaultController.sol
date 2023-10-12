@@ -93,19 +93,19 @@ interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   /**
    * @dev Modify the interest rate for a vault.
    * If the new interest rate is lower than the current interest rate,
-   * the liquidity coverage ratio is set to 90% for the next two weeks.
+   * the reserve ratio is set to 90% for the next two weeks.
    */
   function setAnnualInterestBips(address vault, uint16 annualInterestBips) external;
 
   /**
-   * @dev Reset the liquidity coverage ratio to the value it had prior to
+   * @dev Reset the reserve ratio to the value it had prior to
    *      a call to `setAnnualInterestBips`.
    */
-  function resetLiquidityCoverage(address vault) external;
+  function resetReserveRatio(address vault) external;
 
-  function temporaryExcessLiquidityCoverage(
+  function temporaryExcessReserveRatio(
     address
-  ) external view returns (uint128 liquidityCoverageRatio, uint128 expiry);
+  ) external view returns (uint128 reserveRatioBips, uint128 expiry);
 
   /**
    * @dev Deploys a new instance of the vault through the vault factory
@@ -131,7 +131,7 @@ interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     uint16 annualInterestBips,
     uint16 delinquencyFeeBips,
     uint32 withdrawalBatchDuration,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
   ) external returns (address);
 

@@ -11,19 +11,19 @@ import 'solady/utils/SafeTransferLib.sol';
 contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEventsAndErrors {
   function _check(
     uint256 apr,
-    uint256 coverage,
-    uint256 cachedCoverage,
+    uint256 reserveRatio,
+    uint256 cachedReserveRatio,
     uint256 tmpExpiry
   ) internal {
-    (uint256 liquidityCoverageRatio, uint256 expiry) = controller.temporaryExcessLiquidityCoverage(
+    (uint256 reserveRatioBips, uint256 expiry) = controller.temporaryExcessReserveRatio(
       address(vault)
     );
 
     assertEq(vault.annualInterestBips(), apr, 'APR');
-    assertEq(vault.liquidityCoverageRatio(), coverage, 'Liquidity coverage ratio');
+    assertEq(vault.reserveRatioBips(), reserveRatio, 'reserve ratio');
 
-    assertEq(liquidityCoverageRatio, cachedCoverage, 'Previous liquidity coverage');
-    assertEq(expiry, tmpExpiry, 'Temporary coverage expiry');
+    assertEq(reserveRatioBips, cachedReserveRatio, 'Previous reserve ratio');
+    assertEq(expiry, tmpExpiry, 'Temporary reserve ratio expiry');
   }
 
   function test_getParameterConstraints() public {
@@ -39,14 +39,14 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
       'maximumDelinquencyGracePeriod'
     );
     assertEq(
-      constraints.minimumLiquidityCoverageRatio,
-      MinimumLiquidityCoverageRatio,
-      'minimumLiquidityCoverageRatio'
+      constraints.minimumReserveRatioBips,
+      MinimumReserveRatioBips,
+      'minimumReserveRatioBips'
     );
     assertEq(
-      constraints.maximumLiquidityCoverageRatio,
-      MaximumLiquidityCoverageRatio,
-      'maximumLiquidityCoverageRatio'
+      constraints.maximumReserveRatioBips,
+      MaximumReserveRatioBips,
+      'maximumReserveRatioBips'
     );
     assertEq(
       constraints.minimumDelinquencyFeeBips,
@@ -142,7 +142,7 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
       parameters.annualInterestBips,
       parameters.delinquencyFeeBips,
       parameters.withdrawalBatchDuration,
-      parameters.liquidityCoverageRatio,
+      parameters.reserveRatioBips,
       parameters.delinquencyGracePeriod
     );
     if (vaultAddress != address(0)) {
@@ -220,9 +220,9 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     _callDeployVault(borrower);
   }
 
-  function test_deployVault_LiquidityCoverageRatioOutOfBounds() external {
-    parameters.liquidityCoverageRatio = MaximumLiquidityCoverageRatio + 1;
-    vm.expectRevert(LiquidityCoverageRatioOutOfBounds.selector);
+  function test_deployVault_ReserveRatioBipsOutOfBounds() external {
+    parameters.reserveRatioBips = MaximumReserveRatioBips + 1;
+    vm.expectRevert(ReserveRatioBipsOutOfBounds.selector);
     _callDeployVault(borrower);
   }
 
@@ -289,7 +289,7 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
   function test_setAnnualInterestBips_Decrease() public {
     vm.prank(borrower);
     controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
-    _check(DefaultInterest - 1, 9000, DefaultLiquidityCoverage, block.timestamp + 2 weeks);
+    _check(DefaultInterest - 1, 9000, DefaultReserveRatio, block.timestamp + 2 weeks);
   }
 
   function test_setAnnualInterestBips_Decrease_AlreadyPending() public {
@@ -297,12 +297,12 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
 
     uint256 expiry = block.timestamp + 2 weeks;
-    _check(DefaultInterest - 1, 9000, DefaultLiquidityCoverage, expiry);
+    _check(DefaultInterest - 1, 9000, DefaultReserveRatio, expiry);
 
     fastForward(2 weeks);
     vm.prank(borrower);
     controller.setAnnualInterestBips(address(vault), DefaultInterest - 2);
-    _check(DefaultInterest - 2, 9000, DefaultLiquidityCoverage, expiry + 2 weeks);
+    _check(DefaultInterest - 2, 9000, DefaultReserveRatio, expiry + 2 weeks);
   }
 
   function test_setAnnualInterestBips_Decrease_Undercollateralized() public {
@@ -311,7 +311,7 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     vault.borrow(5_000e18 + 1);
 
     vm.startPrank(borrower);
-    vm.expectRevert(IVaultEventsAndErrors.InsufficientCoverageForNewLiquidityRatio.selector);
+    vm.expectRevert(IVaultEventsAndErrors.InsufficientReservesForNewLiquidityRatio.selector);
     controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
   }
 
@@ -319,7 +319,7 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     vm.prank(borrower);
     controller.setAnnualInterestBips(address(vault), DefaultInterest + 1);
 
-    _check(DefaultInterest + 1, DefaultLiquidityCoverage, 0, 0);
+    _check(DefaultInterest + 1, DefaultReserveRatio, 0, 0);
   }
 
   function test_setAnnualInterestBips_Increase_Undercollateralized() public {
@@ -331,32 +331,28 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     controller.setAnnualInterestBips(address(vault), DefaultInterest + 1);
   }
 
-  function test_resetLiquidityCoverage_NotPending() public {
+  function test_resetReserveRatio_NotPending() public {
     vm.expectRevert(AprChangeNotPending.selector);
-    controller.resetLiquidityCoverage(address(vault));
+    controller.resetReserveRatio(address(vault));
   }
 
-  function test_resetLiquidityCoverage_StillActive() public {
+  function test_resetReserveRatio_StillActive() public {
     vm.prank(borrower);
     controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
 
-    vm.expectRevert(ExcessLiquidityCoverageStillActive.selector);
-    controller.resetLiquidityCoverage(address(vault));
+    vm.expectRevert(ExcessReserveRatioStillActive.selector);
+    controller.resetReserveRatio(address(vault));
   }
 
-  function test_resetLiquidityCoverage() public {
+  function test_resetReserveRatio() public {
     vm.prank(borrower);
     controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
 
     fastForward(2 weeks);
-    controller.resetLiquidityCoverage(address(vault));
+    controller.resetReserveRatio(address(vault));
 
-    assertEq(
-      vault.liquidityCoverageRatio(),
-      DefaultLiquidityCoverage,
-      'Liquidity coverage ratio not reset'
-    );
+    assertEq(vault.reserveRatioBips(), DefaultReserveRatio, 'reserve ratio not reset');
 
-    _check(DefaultInterest - 1, DefaultLiquidityCoverage, 0, 0);
+    _check(DefaultInterest - 1, DefaultReserveRatio, 0, 0);
   }
 }

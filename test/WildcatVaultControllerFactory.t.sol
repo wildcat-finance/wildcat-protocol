@@ -4,7 +4,7 @@ pragma solidity >=0.8.20;
 import 'forge-std/Test.sol';
 import 'src/WildcatArchController.sol';
 import 'src/WildcatVaultControllerFactory.sol';
-import { MinimumDelinquencyGracePeriod, MaximumDelinquencyGracePeriod, MinimumLiquidityCoverageRatio, MaximumLiquidityCoverageRatio, MinimumDelinquencyFeeBips, MaximumDelinquencyFeeBips, MinimumWithdrawalBatchDuration, MaximumWithdrawalBatchDuration, MinimumAnnualInterestBips, MaximumAnnualInterestBips } from './shared/TestConstants.sol';
+import { MinimumDelinquencyGracePeriod, MaximumDelinquencyGracePeriod, MinimumReserveRatioBips, MaximumReserveRatioBips, MinimumDelinquencyFeeBips, MaximumDelinquencyFeeBips, MinimumWithdrawalBatchDuration, MaximumWithdrawalBatchDuration, MinimumAnnualInterestBips, MaximumAnnualInterestBips } from './shared/TestConstants.sol';
 
 contract WildcatVaultControllerFactoryTest is Test {
   WildcatArchController internal archController;
@@ -25,8 +25,8 @@ contract WildcatVaultControllerFactoryTest is Test {
     constraints = VaultParameterConstraints({
       minimumDelinquencyGracePeriod: MinimumDelinquencyGracePeriod,
       maximumDelinquencyGracePeriod: MaximumDelinquencyGracePeriod,
-      minimumLiquidityCoverageRatio: MinimumLiquidityCoverageRatio,
-      maximumLiquidityCoverageRatio: MaximumLiquidityCoverageRatio,
+      minimumReserveRatioBips: MinimumReserveRatioBips,
+      maximumReserveRatioBips: MaximumReserveRatioBips,
       minimumDelinquencyFeeBips: MinimumDelinquencyFeeBips,
       maximumDelinquencyFeeBips: MaximumDelinquencyFeeBips,
       minimumWithdrawalBatchDuration: MinimumWithdrawalBatchDuration,
@@ -47,7 +47,7 @@ contract WildcatVaultControllerFactoryTest is Test {
     _expectRevertInvalidConstraints();
     constraints.minimumDelinquencyFeeBips = constraints.maximumDelinquencyFeeBips + 1;
     _expectRevertInvalidConstraints();
-    constraints.minimumLiquidityCoverageRatio = constraints.maximumLiquidityCoverageRatio + 1;
+    constraints.minimumReserveRatioBips = constraints.maximumReserveRatioBips + 1;
     _expectRevertInvalidConstraints();
     constraints.minimumDelinquencyGracePeriod = constraints.maximumDelinquencyGracePeriod + 1;
     _expectRevertInvalidConstraints();
@@ -58,7 +58,7 @@ contract WildcatVaultControllerFactoryTest is Test {
     _expectRevertInvalidConstraints();
     constraints.maximumDelinquencyFeeBips = 10001;
     _expectRevertInvalidConstraints();
-    constraints.maximumLiquidityCoverageRatio = 10001;
+    constraints.maximumReserveRatioBips = 10001;
     _expectRevertInvalidConstraints();
   }
 
@@ -95,14 +95,14 @@ contract WildcatVaultControllerFactoryTest is Test {
       'maximumDelinquencyGracePeriod'
     );
     assertEq(
-      parameters.minimumLiquidityCoverageRatio,
-      MinimumLiquidityCoverageRatio,
-      'minimumLiquidityCoverageRatio'
+      parameters.minimumReserveRatioBips,
+      MinimumReserveRatioBips,
+      'minimumReserveRatioBips'
     );
     assertEq(
-      parameters.maximumLiquidityCoverageRatio,
-      MaximumLiquidityCoverageRatio,
-      'maximumLiquidityCoverageRatio'
+      parameters.maximumReserveRatioBips,
+      MaximumReserveRatioBips,
+      'maximumReserveRatioBips'
     );
     assertEq(
       parameters.minimumDelinquencyFeeBips,

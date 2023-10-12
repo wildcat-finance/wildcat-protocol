@@ -39,8 +39,8 @@ contract WildcatMarketConfig is WildcatMarketBase {
     return _state.annualInterestBips;
   }
 
-  function liquidityCoverageRatio() external view returns (uint256) {
-    return _state.liquidityCoverageRatio;
+  function reserveRatioBips() external view returns (uint256) {
+    return _state.reserveRatioBips;
   }
 
   /* -------------------------------------------------------------------------- */
@@ -159,7 +159,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
   }
 
   /**
-   * @dev Adjust the vault's liquidity coverage ratio.
+   * @dev Adjust the vault's reserve ratio.
    *
    *      If the new ratio is lower than the old ratio,
    *      asserts that the vault is not currently delinquent.
@@ -168,29 +168,27 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      asserts that the vault will not become delinquent
    *      because of the change.
    */
-  function setLiquidityCoverageRatio(
-    uint16 _liquidityCoverageRatio
-  ) public onlyController nonReentrant {
-    if (_liquidityCoverageRatio > BIP) {
-      revert LiquidityCoverageRatioTooHigh();
+  function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant {
+    if (_reserveRatioBips > BIP) {
+      revert ReserveRatioBipsTooHigh();
     }
 
     VaultState memory state = _getUpdatedState();
 
-    uint256 initialLiquidityCoverageRatio = state.liquidityCoverageRatio;
+    uint256 initialReserveRatioBips = state.reserveRatioBips;
 
-    if (_liquidityCoverageRatio < initialLiquidityCoverageRatio) {
+    if (_reserveRatioBips < initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientCoverageForOldLiquidityRatio();
+        revert InsufficientReservesForOldLiquidityRatio();
       }
     }
-    state.liquidityCoverageRatio = _liquidityCoverageRatio;
-    if (_liquidityCoverageRatio > initialLiquidityCoverageRatio) {
+    state.reserveRatioBips = _reserveRatioBips;
+    if (_reserveRatioBips > initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientCoverageForNewLiquidityRatio();
+        revert InsufficientReservesForNewLiquidityRatio();
       }
     }
     _writeState(state);
-    emit LiquidityCoverageRatioUpdated(_liquidityCoverageRatio);
+    emit ReserveRatioBipsUpdated(_reserveRatioBips);
   }
 }

@@ -9,7 +9,7 @@ address constant borrower = address(0xb04405e4);
 uint128 constant DefaultMaximumSupply = 100_000e18;
 uint16 constant DefaultInterest = 1000;
 uint16 constant DefaultDelinquencyFee = 1000;
-uint16 constant DefaultLiquidityCoverage = 2000;
+uint16 constant DefaultReserveRatio = 2000;
 uint32 constant DefaultGracePeriod = 2000;
 uint16 constant DefaultProtocolFeeBips = 1000;
 uint32 constant DefaultWithdrawalBatchDuration = 86400;
@@ -17,8 +17,8 @@ uint32 constant DefaultWithdrawalBatchDuration = 86400;
 uint32 constant MinimumDelinquencyGracePeriod = 0;
 uint32 constant MaximumDelinquencyGracePeriod = 86_400;
 
-uint16 constant MinimumLiquidityCoverageRatio = 1_000;
-uint16 constant MaximumLiquidityCoverageRatio = 10_000;
+uint16 constant MinimumReserveRatioBips = 1_000;
+uint16 constant MaximumReserveRatioBips = 10_000;
 
 uint16 constant MinimumDelinquencyFeeBips = 1_000;
 uint16 constant MaximumDelinquencyFeeBips = 10_000;

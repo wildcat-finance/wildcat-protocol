@@ -162,11 +162,11 @@ contract WildcatMarketTest is BaseVaultTest {
     vault.collectFees();
   }
 
-  function test_collectFees_InsufficientCoverageForFeeWithdrawal() external {
+  function test_collectFees_InsufficientReservesForFeeWithdrawal() external {
     _deposit(alice, 1e18);
     fastForward(1);
     asset.burn(address(vault), 1e18);
-    vm.expectRevert(IVaultEventsAndErrors.InsufficientCoverageForFeeWithdrawal.selector);
+    vm.expectRevert(IVaultEventsAndErrors.InsufficientReservesForFeeWithdrawal.selector);
     vault.collectFees();
   }
 

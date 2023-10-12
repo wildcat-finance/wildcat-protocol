@@ -100,7 +100,7 @@ contract WildcatMarket is
     }
     uint128 withdrawableFees = state.withdrawableProtocolFees(totalAssets());
     if (withdrawableFees == 0) {
-      revert InsufficientCoverageForFeeWithdrawal();
+      revert InsufficientReservesForFeeWithdrawal();
     }
     state.accruedProtocolFees -= withdrawableFees;
     _writeState(state);
@@ -143,7 +143,7 @@ contract WildcatMarket is
     VaultState memory state = _getUpdatedState();
     state.annualInterestBips = 0;
     state.isClosed = true;
-    state.liquidityCoverageRatio = 0;
+    state.reserveRatioBips = 0;
     if (_withdrawalData.unpaidBatches.length() > 0) {
       revert CloseVaultWithUnpaidWithdrawals();
     }

@@ -12,7 +12,7 @@ import './Test.sol';
 
 struct FuzzInput {
   StateFuzzInputs state;
-  uint256 liquidityCoverageRatio;
+  uint256 reserveRatioBips;
   uint256 protocolFeeBips;
   uint256 delinquencyFeeBips;
   uint256 delinquencyGracePeriod;
@@ -21,7 +21,7 @@ struct FuzzInput {
 
 struct FuzzContext {
   VaultState state;
-  uint256 liquidityCoverageRatio;
+  uint256 reserveRatioBips;
   uint256 protocolFeeBips;
   uint256 delinquencyFeeBips;
   uint256 delinquencyGracePeriod;
@@ -58,7 +58,7 @@ contract BaseTest is Test {
       annualInterestBips: inputs.annualInterestBips,
       delinquencyFeeBips: inputs.delinquencyFeeBips,
       withdrawalBatchDuration: inputs.withdrawalBatchDuration,
-      liquidityCoverageRatio: inputs.liquidityCoverageRatio,
+      reserveRatioBips: inputs.reserveRatioBips,
       delinquencyGracePeriod: inputs.delinquencyGracePeriod
     });
   }
@@ -77,7 +77,7 @@ contract BaseTest is Test {
 
   function getFuzzContext(FuzzInput calldata input) internal returns (FuzzContext memory context) {
     context.state = getVaultState(input.state);
-    context.liquidityCoverageRatio = bound(input.liquidityCoverageRatio, 1, 1e4).toUint16();
+    context.reserveRatioBips = bound(input.reserveRatioBips, 1, 1e4).toUint16();
     context.protocolFeeBips = bound(input.protocolFeeBips, 1, 1e4).toUint16();
     context.delinquencyFeeBips = bound(input.delinquencyFeeBips, 1, 1e4).toUint16();
     context.delinquencyGracePeriod = input.delinquencyGracePeriod;

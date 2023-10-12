@@ -10,8 +10,8 @@ import './interfaces/IWildcatVaultControllerFactory.sol';
 import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 
-struct TemporaryLiquidityCoverage {
-  uint128 liquidityCoverageRatio;
+struct TemporaryReserveRatio {
+  uint128 reserveRatioBips;
   uint128 expiry;
 }
 
@@ -25,7 +25,7 @@ struct TmpVaultParameterStorage {
   uint16 annualInterestBips;
   uint16 delinquencyFeeBips;
   uint32 withdrawalBatchDuration;
-  uint16 liquidityCoverageRatio;
+  uint16 reserveRatioBips;
   uint32 delinquencyGracePeriod;
 }
 
@@ -55,8 +55,8 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   uint32 internal immutable MinimumDelinquencyGracePeriod;
   uint32 internal immutable MaximumDelinquencyGracePeriod;
 
-  uint16 internal immutable MinimumLiquidityCoverageRatio;
-  uint16 internal immutable MaximumLiquidityCoverageRatio;
+  uint16 internal immutable MinimumReserveRatioBips;
+  uint16 internal immutable MaximumReserveRatioBips;
 
   uint16 internal immutable MinimumDelinquencyFeeBips;
   uint16 internal immutable MaximumDelinquencyFeeBips;
@@ -73,7 +73,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   /// @dev Temporary storage for vault parameters, used during vault deployment
   TmpVaultParameterStorage internal _tmpVaultParameters;
 
-  mapping(address => TemporaryLiquidityCoverage) public temporaryExcessLiquidityCoverage;
+  mapping(address => TemporaryReserveRatio) public temporaryExcessReserveRatio;
 
   // VaultParameterConstraints internal immutable constraints
 
@@ -101,8 +101,8 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     vaultInitCodeHash = parameters.vaultInitCodeHash;
     MinimumDelinquencyGracePeriod = parameters.minimumDelinquencyGracePeriod;
     MaximumDelinquencyGracePeriod = parameters.maximumDelinquencyGracePeriod;
-    MinimumLiquidityCoverageRatio = parameters.minimumLiquidityCoverageRatio;
-    MaximumLiquidityCoverageRatio = parameters.maximumLiquidityCoverageRatio;
+    MinimumReserveRatioBips = parameters.minimumReserveRatioBips;
+    MaximumReserveRatioBips = parameters.maximumReserveRatioBips;
     MinimumDelinquencyFeeBips = parameters.minimumDelinquencyFeeBips;
     MaximumDelinquencyFeeBips = parameters.maximumDelinquencyFeeBips;
     MinimumWithdrawalBatchDuration = parameters.minimumWithdrawalBatchDuration;
@@ -248,7 +248,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     parameters.annualInterestBips = _tmpVaultParameters.annualInterestBips;
     parameters.delinquencyFeeBips = _tmpVaultParameters.delinquencyFeeBips;
     parameters.withdrawalBatchDuration = _tmpVaultParameters.withdrawalBatchDuration;
-    parameters.liquidityCoverageRatio = _tmpVaultParameters.liquidityCoverageRatio;
+    parameters.reserveRatioBips = _tmpVaultParameters.reserveRatioBips;
     parameters.delinquencyGracePeriod = _tmpVaultParameters.delinquencyGracePeriod;
   }
 
@@ -262,7 +262,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     _tmpVaultParameters.annualInterestBips = 1;
     _tmpVaultParameters.delinquencyFeeBips = 1;
     _tmpVaultParameters.withdrawalBatchDuration = 1;
-    _tmpVaultParameters.liquidityCoverageRatio = 1;
+    _tmpVaultParameters.reserveRatioBips = 1;
     _tmpVaultParameters.delinquencyGracePeriod = 1;
   }
 
@@ -296,7 +296,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     uint16 annualInterestBips,
     uint16 delinquencyFeeBips,
     uint32 withdrawalBatchDuration,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
   ) external returns (address vault) {
     if (msg.sender == borrower) {
@@ -313,7 +313,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
       annualInterestBips,
       delinquencyFeeBips,
       withdrawalBatchDuration,
-      liquidityCoverageRatio,
+      reserveRatioBips,
       delinquencyGracePeriod
     );
 
@@ -327,7 +327,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
       annualInterestBips: annualInterestBips,
       delinquencyFeeBips: delinquencyFeeBips,
       withdrawalBatchDuration: withdrawalBatchDuration,
-      liquidityCoverageRatio: liquidityCoverageRatio,
+      reserveRatioBips: reserveRatioBips,
       delinquencyGracePeriod: delinquencyGracePeriod
     });
 
@@ -388,7 +388,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   /**
    * @dev Enforce constraints on vault parameters, ensuring that
    *      `annualInterestBips`, `delinquencyFeeBips`, `withdrawalBatchDuration`,
-   *      `liquidityCoverageRatio` and `delinquencyGracePeriod` are within the
+   *      `reserveRatioBips` and `delinquencyGracePeriod` are within the
    *      allowed ranges and that `namePrefix` and `symbolPrefix` are not null.
    */
   function enforceParameterConstraints(
@@ -397,7 +397,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     uint16 annualInterestBips,
     uint16 delinquencyFeeBips,
     uint32 withdrawalBatchDuration,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
   ) internal view virtual {
     assembly {
@@ -426,10 +426,10 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
       WithdrawalBatchDurationOutOfBounds.selector
     );
     assertValueInRange(
-      liquidityCoverageRatio,
-      MinimumLiquidityCoverageRatio,
-      MaximumLiquidityCoverageRatio,
-      LiquidityCoverageRatioOutOfBounds.selector
+      reserveRatioBips,
+      MinimumReserveRatioBips,
+      MaximumReserveRatioBips,
+      ReserveRatioBipsOutOfBounds.selector
     );
     assertValueInRange(
       delinquencyGracePeriod,
@@ -450,8 +450,8 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   {
     constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
     constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
-    constraints.minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
-    constraints.maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
+    constraints.minimumReserveRatioBips = MinimumReserveRatioBips;
+    constraints.maximumReserveRatioBips = MaximumReserveRatioBips;
     constraints.minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
     constraints.maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
     constraints.minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
@@ -463,22 +463,22 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   /**
    * @dev Modify the interest rate for a vault.
    * If the new interest rate is lower than the current interest rate,
-   * the liquidity coverage ratio is set to 90% for the next two weeks.
+   * the reserve ratio is set to 90% for the next two weeks.
    */
   function setAnnualInterestBips(
     address vault,
     uint16 annualInterestBips
   ) external virtual onlyBorrower onlyControlledVault(vault) {
-    // If borrower is reducing the interest rate, increase the liquidity
-    // coverage ratio for the next two weeks.
+    // If borrower is reducing the interest rate, increase the reserve
+    // ratio for the next two weeks.
     if (annualInterestBips < WildcatMarket(vault).annualInterestBips()) {
-      TemporaryLiquidityCoverage storage tmp = temporaryExcessLiquidityCoverage[vault];
+      TemporaryReserveRatio storage tmp = temporaryExcessReserveRatio[vault];
 
       if (tmp.expiry == 0) {
-        tmp.liquidityCoverageRatio = uint128(WildcatMarket(vault).liquidityCoverageRatio());
+        tmp.reserveRatioBips = uint128(WildcatMarket(vault).reserveRatioBips());
 
         // Require 90% liquidity coverage for the next 2 weeks
-        WildcatMarket(vault).setLiquidityCoverageRatio(9000);
+        WildcatMarket(vault).setReserveRatioBips(9000);
       }
 
       tmp.expiry = uint128(block.timestamp + 2 weeks);
@@ -487,17 +487,17 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     WildcatMarket(vault).setAnnualInterestBips(annualInterestBips);
   }
 
-  function resetLiquidityCoverage(address vault) external virtual {
-    TemporaryLiquidityCoverage memory tmp = temporaryExcessLiquidityCoverage[vault];
+  function resetReserveRatio(address vault) external virtual {
+    TemporaryReserveRatio memory tmp = temporaryExcessReserveRatio[vault];
     if (tmp.expiry == 0) {
       revertWithSelector(AprChangeNotPending.selector);
     }
     if (block.timestamp < tmp.expiry) {
-      revertWithSelector(ExcessLiquidityCoverageStillActive.selector);
+      revertWithSelector(ExcessReserveRatioStillActive.selector);
     }
 
-    WildcatMarket(vault).setLiquidityCoverageRatio(uint256(tmp.liquidityCoverageRatio).toUint16());
-    delete temporaryExcessLiquidityCoverage[vault];
+    WildcatMarket(vault).setReserveRatioBips(uint256(tmp.reserveRatioBips).toUint16());
+    delete temporaryExcessReserveRatio[vault];
   }
 
   function assertValueInRange(

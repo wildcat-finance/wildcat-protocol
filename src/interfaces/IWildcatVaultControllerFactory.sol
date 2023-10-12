@@ -128,7 +128,7 @@ interface IWildcatVaultControllerFactory {
     uint16 annualInterestBips,
     uint16 delinquencyFeeBips,
     uint32 withdrawalBatchDuration,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
   ) external returns (address controller, address vault);
 }

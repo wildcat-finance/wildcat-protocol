@@ -29,7 +29,7 @@ library VaultStateLibExternal {
   }
 
   /// Collateralization requires all pending withdrawals be covered
-  /// and coverage ratio for remaining liquidity.
+  /// and reserve ratio for remaining liquidity.
   function $liquidityRequired(
     VaultState memory state
   ) external pure returns (uint256 _liquidityRequired) {

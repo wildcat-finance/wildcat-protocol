@@ -82,8 +82,8 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     if (parameters.annualInterestBips > BIP) {
       revert InterestRateTooHigh();
     }
-    if (parameters.liquidityCoverageRatio > BIP) {
-      revert LiquidityCoverageRatioTooHigh();
+    if (parameters.reserveRatioBips > BIP) {
+      revert ReserveRatioBipsTooHigh();
     }
     if (parameters.protocolFeeBips > BIP) {
       revert InterestFeeTooHigh();
@@ -109,7 +109,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
       isDelinquent: false,
       timeDelinquent: 0,
       annualInterestBips: parameters.annualInterestBips,
-      liquidityCoverageRatio: parameters.liquidityCoverageRatio,
+      reserveRatioBips: parameters.reserveRatioBips,
       scaleFactor: uint112(RAY),
       lastInterestAccruedTimestamp: uint32(block.timestamp)
     });
@@ -246,7 +246,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
    *      This is the balance of underlying assets minus:
    *      - pending (unpaid) withdrawals
    *      - paid withdrawals
-   *      - liquidity coverage on the portion of the supply not pending withdrawal
+   *      - reserve ratio times the portion of the supply not pending withdrawal
    *      - protocol fees
    */
   function borrowableAssets() external view nonReentrantView returns (uint256) {

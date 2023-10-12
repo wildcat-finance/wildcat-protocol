@@ -79,24 +79,24 @@ contract VaultStateTest is Test {
   function test_liquidityRequired(
     uint104 scaledPendingWithdrawals,
     uint104 scaledTotalSupply,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint128 accruedProtocolFees,
     uint128 normalizedUnclaimedWithdrawals
   ) external {
-    liquidityCoverageRatio = uint16(bound(liquidityCoverageRatio, 1, 10000));
+    reserveRatioBips = uint16(bound(reserveRatioBips, 1, 10000));
     scaledPendingWithdrawals = uint104(bound(scaledPendingWithdrawals, 0, scaledTotalSupply));
 
     VaultState memory state;
     state.scaledPendingWithdrawals = scaledPendingWithdrawals;
     state.scaledTotalSupply = scaledTotalSupply;
-    state.liquidityCoverageRatio = liquidityCoverageRatio;
+    state.reserveRatioBips = reserveRatioBips;
     state.accruedProtocolFees = accruedProtocolFees;
     state.normalizedUnclaimedWithdrawals = normalizedUnclaimedWithdrawals;
 
-    uint256 scaledCoverageLiquidity = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
-      uint256(liquidityCoverageRatio)) / uint256(10000);
+    uint256 scaledRequiredReserves = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
+      uint256(reserveRatioBips)) / uint256(10000);
     uint256 collateralForOutstanding = state.$normalizeAmount(
-      scaledCoverageLiquidity + scaledPendingWithdrawals
+      scaledRequiredReserves + scaledPendingWithdrawals
     );
 
     assertEq(
@@ -119,25 +119,25 @@ contract VaultStateTest is Test {
   function test_borrowableAssets(
     uint104 scaledPendingWithdrawals,
     uint104 scaledTotalSupply,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint128 accruedProtocolFees,
     uint128 normalizedUnclaimedWithdrawals,
     uint128 totalAssets
   ) external {
-    liquidityCoverageRatio = uint16(bound(liquidityCoverageRatio, 1, 10000));
+    reserveRatioBips = uint16(bound(reserveRatioBips, 1, 10000));
     scaledPendingWithdrawals = uint104(bound(scaledPendingWithdrawals, 0, scaledTotalSupply));
 
     VaultState memory state;
     state.scaledPendingWithdrawals = scaledPendingWithdrawals;
     state.scaledTotalSupply = scaledTotalSupply;
-    state.liquidityCoverageRatio = liquidityCoverageRatio;
+    state.reserveRatioBips = reserveRatioBips;
     state.accruedProtocolFees = accruedProtocolFees;
     state.normalizedUnclaimedWithdrawals = normalizedUnclaimedWithdrawals;
 
-    uint256 scaledCoverageLiquidity = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
-      uint256(liquidityCoverageRatio)) / uint256(10000);
+    uint256 scaledRequiredReserves = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
+      uint256(reserveRatioBips)) / uint256(10000);
     uint256 collateralForOutstanding = state.$normalizeAmount(
-      scaledCoverageLiquidity + scaledPendingWithdrawals
+      scaledRequiredReserves + scaledPendingWithdrawals
     );
 
     assertEq(
