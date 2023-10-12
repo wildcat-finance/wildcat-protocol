@@ -30,7 +30,7 @@ struct VaultState {
   // Annual interest rate accrued to lenders, in basis points
   uint16 annualInterestBips;
   // Percentage of outstanding balance that must be held in liquid reserves
-  uint16 liquidityCoverageRatio;
+  uint16 reserveRatioBips;
   // Ratio between internal balances and underlying token amounts
   uint112 scaleFactor;
   uint32 lastInterestAccruedTimestamp;
@@ -78,18 +78,21 @@ library VaultStateLib {
   }
 
   /**
-   * @dev Collateralization requires all pending withdrawals be covered
-   *      and coverage ratio for remaining liquidity.
+   * @dev Collateralization requirement is:
+   *      - 100% of all pending (unpaid) withdrawals
+   *      - 100% of all unclaimed (paid) withdrawals
+   *      - reserve ratio times the outstanding debt (supply - pending withdrawals)
+   *      - accrued protocol fees
    */
   function liquidityRequired(
     VaultState memory state
   ) internal pure returns (uint256 _liquidityRequired) {
     uint256 scaledWithdrawals = state.scaledPendingWithdrawals;
-    uint256 scaledCoverageLiquidity = (state.scaledTotalSupply - scaledWithdrawals).bipMul(
-      state.liquidityCoverageRatio
+    uint256 scaledRequiredReserves = (state.scaledTotalSupply - scaledWithdrawals).bipMul(
+      state.reserveRatioBips
     ) + scaledWithdrawals;
     return
-      state.normalizeAmount(scaledCoverageLiquidity) +
+      state.normalizeAmount(scaledRequiredReserves) +
       state.accruedProtocolFees +
       state.normalizedUnclaimedWithdrawals;
   }
@@ -112,8 +115,8 @@ library VaultStateLib {
    *
    *      The borrower must maintain sufficient assets in the vault to
    *      cover 100% of pending withdrawals, 100% of previously processed
-   *      withdrawals (before they are executed), and the liquidity coverage
-   *      ratio times the outstanding debt (deposits not pending withdrawal).
+   *      withdrawals (before they are executed), and the reserve ratio
+   *      times the outstanding debt (deposits not pending withdrawal).
    *
    *      Any underlying assets in the market above this amount can be borrowed.
    */
