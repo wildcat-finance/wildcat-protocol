@@ -100,7 +100,9 @@ contract WildcatArchControllerTest is Test, Prankster {
   function test_isRegisteredController() external returns (bool) {
     assertFalse(archController.isRegisteredController(controller));
     _registerController(controllerFactory, controller);
+    _registerController(controllerFactory, controller2);
     assertTrue(archController.isRegisteredController(controller));
+    assertTrue(archController.isRegisteredController(controller2));
     archController.removeController(controller);
     assertFalse(archController.isRegisteredController(controller));
   }
