@@ -14,6 +14,10 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   using SafeCastLib for uint256;
   using BoolUtils for bool;
 
+  /* -------------------------------------------------------------------------- */
+  /*                             Withdrawal Queries                             */
+  /* -------------------------------------------------------------------------- */
+
   /**
    * @dev Returns the expiry timestamp of every unpaid withdrawal batch.
    */
@@ -62,6 +66,10 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     );
     return newTotalWithdrawn - previousTotalWithdrawn;
   }
+
+  /* -------------------------------------------------------------------------- */
+  /*                             Withdrawal Actions                             */
+  /* -------------------------------------------------------------------------- */
 
   /**
    * @dev Create a withdrawal request for a lender.

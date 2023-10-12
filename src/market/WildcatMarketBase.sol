@@ -145,7 +145,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   /**
    * @dev Retrieve an account from storage.
    *
-   * note: If the account is blacklisted, reverts.
+   *      Reverts if account is blocked.
    */
   function _getAccount(address accountAddress) internal view returns (Account memory account) {
     account = _accounts[accountAddress];
@@ -154,6 +154,12 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     }
   }
 
+  /**
+   * @dev Block an account and transfer its balance of vault tokens
+   *      to an escrow contract.
+   *
+   *      If the account is already blocked, this function does nothing.
+   */
   function _blockAccount(VaultState memory state, address accountAddress) internal {
     Account memory account = _accounts[accountAddress];
     if (account.approval != AuthRole.Blocked) {
@@ -180,6 +186,14 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     }
   }
 
+  /**
+   * @dev Retrieve an account from storage and assert that it has at
+   *      least the required role.
+   *
+   *      If the account's role is not set, queries the controller to
+   *      determine if it is an approved lender; if it is, its role
+   *      is initialized to DepositAndWithdraw.
+   */
   function _getAccountWithRole(
     address accountAddress,
     AuthRole requiredRole
@@ -202,21 +216,39 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   //                       External State Getters                          //
   // ===================================================================== //
 
+  /**
+   * @dev Returns the amount of underlying assets the borrower is obligated
+   *      to maintain in the vault to avoid delinquency.
+   */
   function coverageLiquidity() external view nonReentrantView returns (uint256) {
     return currentState().liquidityRequired();
   }
 
+  /**
+   * @dev Returns the scale factor (in ray) used to convert scaled balances
+   *      to normalized balances.
+   */
   function scaleFactor() external view nonReentrantView returns (uint256) {
     return currentState().scaleFactor;
   }
 
-  /// @dev Total balance in underlying asset
+  /**
+   * @dev Total balance in underlying asset.
+   */
   function totalAssets() public view returns (uint256) {
     return IERC20(asset).balanceOf(address(this));
   }
 
-  /// @dev  Balance in underlying asset which is not owed in fees.
-  ///       Returns current value after calculating new protocol fees.
+  /**
+   * @dev Returns the amount of underlying assets the borrower is allowed
+   *      to borrow.
+   *
+   *      This is the balance of underlying assets minus:
+   *      - pending (unpaid) withdrawals
+   *      - paid withdrawals
+   *      - liquidity coverage on the portion of the supply not pending withdrawal
+   *      - protocol fees
+   */
   function borrowableAssets() external view nonReentrantView returns (uint256) {
     return currentState().borrowableAssets(totalAssets());
   }
@@ -421,17 +453,16 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   }
 
   /**
-	 * @dev Handles an expired withdrawal batch.
-   *      - Retrieves the amount of underlying assets that can be used to pay for the batch
-   *        (assets which are not owed to protocol fees, prior withdrawal batches).
-	 *      - If the amount is sufficient to pay the full amount owed to the batch, the batch
-            is closed and the total withdrawal amount is reserved.
+   * @dev Handles an expired withdrawal batch:
+   *      - Retrieves the amount of underlying assets that can be used to pay for the batch.
+   *      - If the amount is sufficient to pay the full amount owed to the batch, the batch
+   *        is closed and the total withdrawal amount is reserved.
    *      - If the amount is insufficient to pay the full amount owed to the batch, the batch
    *        is recorded as an unpaid batch and the available assets are reserved.
    *      - The assets reserved for the batch are scaled by the current scale factor and that
-            amount of scaled tokens is burned, ensuring borrowers do not continue paying interest
-            on withdrawn assets.
-	 */
+   *        amount of scaled tokens is burned, ensuring borrowers do not continue paying interest
+   *        on withdrawn assets.
+   */
   function _processExpiredWithdrawalBatch(VaultState memory state) internal {
     uint32 expiry = state.pendingWithdrawalExpiry;
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];

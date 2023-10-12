@@ -43,29 +43,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
     return _state.liquidityCoverageRatio;
   }
 
-  // =====================================================================//
-  //                        External Config Setters                       //
-  // =====================================================================//
-
-  /**
-   * @dev Updates an account's authorization status based on whether the controller
-   *      has it marked as approved.
-   */
-  function updateAccountAuthorization(
-    address _account,
-    bool _isAuthorized
-  ) external onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
-    Account memory account = _getAccount(_account);
-    if (_isAuthorized) {
-      account.approval = AuthRole.DepositAndWithdraw;
-    } else {
-      account.approval = AuthRole.WithdrawOnly;
-    }
-    _accounts[_account] = account;
-    _writeState(state);
-    emit AuthorizationStatusUpdated(_account, account.approval);
-  }
+  /* -------------------------------------------------------------------------- */
+  /*                                  Sanctions                                 */
+  /* -------------------------------------------------------------------------- */
 
   /// @dev Block a sanctioned account from interacting with the market
   ///      and transfer its balance to an escrow contract.
@@ -121,9 +101,29 @@ contract WildcatMarketConfig is WildcatMarketBase {
     _accounts[accountAddress] = account;
   }
 
-  // /*//////////////////////////////////////////////////////////////
-  //                       Management Actions
-  // //////////////////////////////////////////////////////////////*/
+  /* -------------------------------------------------------------------------- */
+  /*                           External Config Setters                          */
+  /* -------------------------------------------------------------------------- */
+
+  /**
+   * @dev Updates an account's authorization status based on whether the controller
+   *      has it marked as approved.
+   */
+  function updateAccountAuthorization(
+    address _account,
+    bool _isAuthorized
+  ) external onlyController nonReentrant {
+    VaultState memory state = _getUpdatedState();
+    Account memory account = _getAccount(_account);
+    if (_isAuthorized) {
+      account.approval = AuthRole.DepositAndWithdraw;
+    } else {
+      account.approval = AuthRole.WithdrawOnly;
+    }
+    _accounts[_account] = account;
+    _writeState(state);
+    emit AuthorizationStatusUpdated(_account, account.approval);
+  }
 
   /**
    * @dev Sets the maximum total supply - this only limits deposits and
