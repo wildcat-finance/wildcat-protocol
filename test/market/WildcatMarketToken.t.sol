@@ -56,7 +56,7 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
       borrower: borrower,
       controller: controllerFactory.computeControllerAddress(borrower),
       feeRecipient: feeRecipient,
-      sentinel: address(new MockSanctionsSentinel()),
+      sentinel: address(sanctionsSentinel),
       maxTotalSupply: uint128(_maxAmount()),
       protocolFeeBips: DefaultProtocolFeeBips,
       annualInterestBips: 10000,

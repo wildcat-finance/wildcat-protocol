@@ -38,6 +38,10 @@ interface IVaultEventsAndErrors {
   /// @notice Error thrown when transfer target is blacklisted
   error AccountBlacklisted();
 
+  error AccountNotBlocked();
+
+  error NotReversedOrStunning();
+
   error UnknownNameQueryError();
 
   error UnknownSymbolQueryError();
@@ -82,8 +86,6 @@ interface IVaultEventsAndErrors {
   event LiquidityCoverageRatioUpdated(uint256 liquidityCoverageRatioUpdated);
 
   event SanctionedAccountAssetsSentToEscrow(address account, address escrow, uint256 amount);
-
-  event SanctionedStatusLifted(address account);
 
   event Deposit(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 

@@ -20,12 +20,7 @@ contract MockWildcatArchController {
 // -- TEMP END --
 
 contract EscrowTest is Test {
-  event EscrowReleased(
-    address indexed caller,
-    address indexed account,
-    address indexed asset,
-    uint256 amount
-  );
+  event EscrowReleased(address indexed account, address indexed asset, uint256 amount);
 
   MockWildcatArchController internal archController;
   WildcatSanctionsSentinel internal sentinel;
@@ -181,14 +176,14 @@ contract EscrowTest is Test {
     assertEq(escrow.balance(), 1);
 
     vm.expectEmit(true, true, true, true, address(escrow));
-    emit EscrowReleased(address(this), account, asset, 1);
+    emit EscrowReleased(account, asset, 1);
 
     escrow.releaseEscrow();
 
     assertEq(escrow.balance(), 0);
   }
 
-  function testReleaseEscrowAsBorrower() public {
+  function testReleaseEscrowWithOverride() public {
     address borrower = address(1);
     address account = address(2);
     address asset = address(new MockERC20());
@@ -201,10 +196,12 @@ contract EscrowTest is Test {
     MockERC20(asset).mint(address(escrow), 1);
     assertEq(escrow.balance(), 1);
 
-    vm.expectEmit(true, true, true, true, address(escrow));
-    emit EscrowReleased(borrower, account, asset, 1);
-
     vm.prank(borrower);
+    sentinel.overrideSanction(account);
+
+    vm.expectEmit(true, true, true, true, address(escrow));
+    emit EscrowReleased(account, asset, 1);
+
     escrow.releaseEscrow();
 
     assertEq(escrow.balance(), 0);
@@ -247,7 +244,7 @@ contract EscrowTest is Test {
       escrow.releaseEscrow();
     } else {
       vm.expectEmit(true, true, true, true, address(escrow));
-      emit EscrowReleased(caller, account, asset, amount);
+      emit EscrowReleased(account, asset, amount);
 
       vm.prank(caller);
       escrow.releaseEscrow();

@@ -19,7 +19,7 @@ contract ExpectedStateTracker is Test, Assertions, IVaultEventsAndErrors {
       borrower: borrower,
       controller: address(0),
       feeRecipient: feeRecipient,
-      sentinel: sentinel,
+      sentinel: address(sanctionsSentinel),
       maxTotalSupply: uint128(DefaultMaximumSupply),
       protocolFeeBips: DefaultProtocolFeeBips,
       annualInterestBips: DefaultInterest,

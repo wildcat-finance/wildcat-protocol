@@ -1,17 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { AddressSet } from 'sol-utils/types/EnumerableSet.sol';
+import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import 'solady/auth/Ownable.sol';
+import './libraries/MathUtils.sol';
 
 contract WildcatArchController is Ownable {
-  AddressSet internal _vaults;
-  AddressSet internal _controllerFactories;
-  AddressSet internal _borrowers;
-  AddressSet internal _controllers;
+  using EnumerableSet for EnumerableSet.AddressSet;
+
+  EnumerableSet.AddressSet internal _vaults;
+  EnumerableSet.AddressSet internal _controllerFactories;
+  EnumerableSet.AddressSet internal _borrowers;
+  EnumerableSet.AddressSet internal _controllers;
 
   error NotControllerFactory();
   error NotController();
+
+  error BorrowerAlreadyExists();
+  error ControllerFactoryAlreadyExists();
+  error ControllerAlreadyExists();
+  error VaultAlreadyExists();
+
+  error BorrowerDoesNotExist();
+  error ControllerFactoryDoesNotExist();
+  error ControllerDoesNotExist();
+  error VaultDoesNotExist();
 
   event VaultAdded(address indexed controller, address vault);
   event VaultRemoved(address vault);
@@ -48,12 +61,16 @@ contract WildcatArchController is Ownable {
   /* ========================================================================== */
 
   function registerBorrower(address borrower) external onlyOwner {
-    _borrowers.add(borrower);
+    if (!_borrowers.add(borrower)) {
+      revert BorrowerAlreadyExists();
+    }
     emit BorrowerAdded(borrower);
   }
 
   function removeBorrower(address borrower) external onlyOwner {
-    _borrowers.remove(borrower);
+    if (!_borrowers.remove(borrower)) {
+      revert BorrowerDoesNotExist();
+    }
     emit BorrowerRemoved(borrower);
   }
 
@@ -68,8 +85,14 @@ contract WildcatArchController is Ownable {
   function getRegisteredBorrowers(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _borrowers.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _borrowers.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _borrowers.at(start + i);
+    }
   }
 
   function getRegisteredBorrowersCount() external view returns (uint256) {
@@ -81,12 +104,16 @@ contract WildcatArchController is Ownable {
   /* ========================================================================== */
 
   function registerControllerFactory(address factory) external onlyOwner {
-    _controllerFactories.add(factory);
+    if (!_controllerFactories.add(factory)) {
+      revert ControllerFactoryAlreadyExists();
+    }
     emit ControllerFactoryAdded(factory);
   }
 
   function removeControllerFactory(address factory) external onlyOwner {
-    _controllerFactories.remove(factory);
+    if (!_controllerFactories.remove(factory)) {
+      revert ControllerFactoryDoesNotExist();
+    }
     emit ControllerFactoryRemoved(factory);
   }
 
@@ -101,8 +128,14 @@ contract WildcatArchController is Ownable {
   function getRegisteredControllerFactories(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _controllerFactories.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _controllerFactories.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _controllerFactories.at(start + i);
+    }
   }
 
   function getRegisteredControllerFactoriesCount() external view returns (uint256) {
@@ -114,12 +147,16 @@ contract WildcatArchController is Ownable {
   /* ========================================================================== */
 
   function registerController(address controller) external onlyControllerFactory {
-    _controllers.add(controller);
+    if (!_controllers.add(controller)) {
+      revert ControllerAlreadyExists();
+    }
     emit ControllerAdded(msg.sender, controller);
   }
 
   function removeController(address controller) external onlyOwner {
-    _controllers.remove(controller);
+    if (!_controllers.remove(controller)) {
+      revert ControllerDoesNotExist();
+    }
     emit ControllerRemoved(controller);
   }
 
@@ -134,8 +171,14 @@ contract WildcatArchController is Ownable {
   function getRegisteredControllers(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _controllers.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _controllers.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _controllers.at(start + i);
+    }
   }
 
   function getRegisteredControllersCount() external view returns (uint256) {
@@ -147,12 +190,16 @@ contract WildcatArchController is Ownable {
   /* ========================================================================== */
 
   function registerVault(address vault) external onlyController {
-    _vaults.add(vault);
+    if (!_vaults.add(vault)) {
+      revert VaultAlreadyExists();
+    }
     emit VaultAdded(msg.sender, vault);
   }
 
   function removeVault(address vault) external onlyOwner {
-    _vaults.remove(vault);
+    if (!_vaults.remove(vault)) {
+      revert VaultDoesNotExist();
+    }
     emit VaultRemoved(vault);
   }
 
@@ -167,8 +214,14 @@ contract WildcatArchController is Ownable {
   function getRegisteredVaults(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _vaults.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _vaults.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _vaults.at(start + i);
+    }
   }
 
   function getRegisteredVaultsCount() external view returns (uint256) {

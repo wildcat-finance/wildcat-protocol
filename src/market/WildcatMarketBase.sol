@@ -185,14 +185,16 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     AuthRole requiredRole
   ) internal returns (Account memory account) {
     account = _getAccount(accountAddress);
-    // If account role is insufficient, see if it is authorized on controller.
-    if (uint256(account.approval) < uint256(requiredRole)) {
+    // If account role is null, see if it is authorized on controller.
+    if (account.approval == AuthRole.Null) {
       if (IWildcatVaultController(controller).isAuthorizedLender(accountAddress)) {
         account.approval = AuthRole.DepositAndWithdraw;
         emit AuthorizationStatusUpdated(accountAddress, AuthRole.DepositAndWithdraw);
-      } else {
-        revert NotApprovedLender();
       }
+    }
+    // If account role is insufficient, revert.
+    if (uint256(account.approval) < uint256(requiredRole)) {
+      revert NotApprovedLender();
     }
   }
 

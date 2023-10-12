@@ -88,7 +88,7 @@ contract WildcatMarketConfigTest is BaseVaultTest {
   // }
 
   function test_nukeFromOrbit(address _account) external {
-    MockSanctionsSentinel(sentinel).sanction(_account);
+    sanctionsSentinel.sanction(_account);
 
     vm.expectEmit(address(vault));
     emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
@@ -103,7 +103,7 @@ contract WildcatMarketConfigTest is BaseVaultTest {
   function test_nukeFromOrbit_WithBalance() external {
     _deposit(alice, 1e18);
     address escrow = sanctionsSentinel.getEscrowAddress(alice, borrower, address(vault));
-    MockSanctionsSentinel(sentinel).sanction(alice);
+    sanctionsSentinel.sanction(alice);
 
     vm.expectEmit(address(vault));
     emit AuthorizationStatusUpdated(alice, AuthRole.Blocked);
@@ -122,6 +122,36 @@ contract WildcatMarketConfigTest is BaseVaultTest {
   function test_nukeFromOrbit_BadLaunchCode(address _account) external {
     vm.expectRevert(IVaultEventsAndErrors.BadLaunchCode.selector);
     vault.nukeFromOrbit(_account);
+  }
+
+  function test_stunningReversal() external {
+    sanctionsSentinel.sanction(alice);
+
+    vm.expectEmit(address(vault));
+    emit AuthorizationStatusUpdated(alice, AuthRole.Blocked);
+    vault.nukeFromOrbit(alice);
+
+    vm.prank(borrower);
+    sanctionsSentinel.overrideSanction(alice);
+
+    vm.expectEmit(address(vault));
+    emit AuthorizationStatusUpdated(alice, AuthRole.Null);
+    vault.stunningReversal(alice);
+    assertEq(uint(vault.getAccountRole(alice)), uint(AuthRole.Null), 'account role should be Null');
+  }
+
+  function test_stunningReversal_AccountNotBlocked(address _account) external {
+    vm.expectRevert(IVaultEventsAndErrors.AccountNotBlocked.selector);
+    vault.stunningReversal(_account);
+  }
+
+  function test_stunningReversal_NotReversedOrStunning() external {
+    sanctionsSentinel.sanction(alice);
+    vm.expectEmit(address(vault));
+    emit AuthorizationStatusUpdated(alice, AuthRole.Blocked);
+    vault.nukeFromOrbit(alice);
+    vm.expectRevert(IVaultEventsAndErrors.NotReversedOrStunning.selector);
+    vault.stunningReversal(alice);
   }
 
   function test_setMaxTotalSupply(

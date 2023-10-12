@@ -52,7 +52,7 @@ contract BaseTest is Test {
       borrower: borrower,
       controller: controllerFactory.computeControllerAddress(borrower),
       feeRecipient: inputs.feeRecipient,
-      sentinel: sentinel,
+      sentinel: address(sanctionsSentinel),
       maxTotalSupply: inputs.maxTotalSupply,
       protocolFeeBips: inputs.protocolFeeBips,
       annualInterestBips: inputs.annualInterestBips,

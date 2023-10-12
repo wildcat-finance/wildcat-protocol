@@ -92,12 +92,33 @@ contract WildcatMarketConfig is WildcatMarketBase {
   //   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
   // ******************************************************************
   function nukeFromOrbit(address accountAddress) external nonReentrant {
-    if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+    if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       revert BadLaunchCode();
     }
     VaultState memory state = _getUpdatedState();
     _blockAccount(state, accountAddress);
     _writeState(state);
+  }
+
+  /**
+   * @dev Unblock an account that was previously sanctioned and blocked
+   *      and has since been removed from the sanctions list or had
+   *      their sanctioned status overridden by the borrower.
+   */
+  function stunningReversal(address accountAddress) external nonReentrant {
+    Account memory account = _accounts[accountAddress];
+    if (account.approval != AuthRole.Blocked) {
+      revert AccountNotBlocked();
+    }
+
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
+      revert NotReversedOrStunning();
+    }
+
+    account.approval = AuthRole.Null;
+    emit AuthorizationStatusUpdated(accountAddress, account.approval);
+
+    _accounts[accountAddress] = account;
   }
 
   // /*//////////////////////////////////////////////////////////////

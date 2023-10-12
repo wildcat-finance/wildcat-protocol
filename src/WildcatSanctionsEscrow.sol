@@ -8,14 +8,14 @@ import { WildcatSanctionsSentinel } from './WildcatSanctionsSentinel.sol';
 import { IWildcatSanctionsEscrow } from './interfaces/IWildcatSanctionsEscrow.sol';
 
 contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
+  address public immutable override sentinel;
   address public immutable override borrower;
   address public immutable override account;
-
-  IChainalysisSanctionsList internal constant chainalysisSanctionsList = SanctionsList;
   address internal immutable asset;
 
   constructor() {
-    (borrower, account, asset) = WildcatSanctionsSentinel(msg.sender).tmpVaultParams();
+    sentinel = msg.sender;
+    (borrower, account, asset) = WildcatSanctionsSentinel(sentinel).tmpEscrowParams();
   }
 
   function balance() public view override returns (uint256) {
@@ -23,7 +23,7 @@ contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
   }
 
   function canReleaseEscrow() public view override returns (bool) {
-    return !chainalysisSanctionsList.isSanctioned(account);
+    return !WildcatSanctionsSentinel(sentinel).isSanctioned(borrower, account);
   }
 
   function escrowedAsset() public view override returns (address, uint256) {
@@ -31,12 +31,12 @@ contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
   }
 
   function releaseEscrow() public override {
-    if (msg.sender != borrower && !canReleaseEscrow()) revert CanNotReleaseEscrow();
+    if (!canReleaseEscrow()) revert CanNotReleaseEscrow();
 
     uint256 amount = balance();
 
     IERC20(asset).transfer(account, amount);
 
-    emit EscrowReleased(msg.sender, account, asset, amount);
+    emit EscrowReleased(account, asset, amount);
   }
 }

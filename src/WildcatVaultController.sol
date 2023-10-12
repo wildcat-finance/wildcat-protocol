@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { AddressSet } from 'sol-utils/types/EnumerableSet.sol';
+import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import 'solady/utils/SafeTransferLib.sol';
 import './market/WildcatMarket.sol';
 import './interfaces/IWildcatArchController.sol';
 import './interfaces/IWildcatVaultControllerEventsAndErrors.sol';
 import './interfaces/IWildcatVaultControllerFactory.sol';
 import './libraries/LibStoredInitCode.sol';
+import './libraries/MathUtils.sol';
 
 struct TemporaryLiquidityCoverage {
   uint128 liquidityCoverageRatio;
@@ -29,6 +30,7 @@ struct TmpVaultParameterStorage {
 }
 
 contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
+  using EnumerableSet for EnumerableSet.AddressSet;
   using SafeCastLib for uint256;
   using SafeTransferLib for address;
 
@@ -65,8 +67,8 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   uint16 internal immutable MinimumAnnualInterestBips;
   uint16 internal immutable MaximumAnnualInterestBips;
 
-  AddressSet internal _authorizedLenders;
-  AddressSet internal _controlledVaults;
+  EnumerableSet.AddressSet internal _authorizedLenders;
+  EnumerableSet.AddressSet internal _controlledVaults;
 
   /// @dev Temporary storage for vault parameters, used during vault deployment
   TmpVaultParameterStorage internal _tmpVaultParameters;
@@ -123,8 +125,14 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   function getAuthorizedLenders(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _authorizedLenders.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _authorizedLenders.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _authorizedLenders.at(start + i);
+    }
   }
 
   function getAuthorizedLendersCount() external view returns (uint256) {
@@ -196,8 +204,14 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   function getControlledVaults(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _controlledVaults.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _controlledVaults.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _controlledVaults.at(start + i);
+    }
   }
 
   function getControlledVaultsCount() external view returns (uint256) {
@@ -432,29 +446,18 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   function getParameterConstraints()
     external
     view
-    returns (
-      uint32 minimumDelinquencyGracePeriod,
-      uint32 maximumDelinquencyGracePeriod,
-      uint16 minimumLiquidityCoverageRatio,
-      uint16 maximumLiquidityCoverageRatio,
-      uint16 minimumDelinquencyFeeBips,
-      uint16 maximumDelinquencyFeeBips,
-      uint32 minimumWithdrawalBatchDuration,
-      uint32 maximumWithdrawalBatchDuration,
-      uint16 minimumAnnualInterestBips,
-      uint16 maximumAnnualInterestBips
-    )
+    returns (VaultParameterConstraints memory constraints)
   {
-    minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
-    maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
-    minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
-    maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
-    minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
-    maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
-    minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
-    maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
-    minimumAnnualInterestBips = MinimumAnnualInterestBips;
-    maximumAnnualInterestBips = MaximumAnnualInterestBips;
+    constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
+    constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
+    constraints.minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
+    constraints.maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
+    constraints.minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
+    constraints.maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
+    constraints.minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
+    constraints.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
+    constraints.minimumAnnualInterestBips = MinimumAnnualInterestBips;
+    constraints.maximumAnnualInterestBips = MaximumAnnualInterestBips;
   }
 
   /**

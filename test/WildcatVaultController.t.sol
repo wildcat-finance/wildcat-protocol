@@ -27,52 +27,57 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
   }
 
   function test_getParameterConstraints() public {
-    (
-      uint32 minimumDelinquencyGracePeriod,
-      uint32 maximumDelinquencyGracePeriod,
-      uint16 minimumLiquidityCoverageRatio,
-      uint16 maximumLiquidityCoverageRatio,
-      uint16 minimumDelinquencyFeeBips,
-      uint16 maximumDelinquencyFeeBips,
-      uint32 minimumWithdrawalBatchDuration,
-      uint32 maximumWithdrawalBatchDuration,
-      uint16 minimumAnnualInterestBips,
-      uint16 maximumAnnualInterestBips
-    ) = controller.getParameterConstraints();
+    VaultParameterConstraints memory constraints = controller.getParameterConstraints();
     assertEq(
-      minimumDelinquencyGracePeriod,
+      constraints.minimumDelinquencyGracePeriod,
       MinimumDelinquencyGracePeriod,
       'minimumDelinquencyGracePeriod'
     );
     assertEq(
-      maximumDelinquencyGracePeriod,
+      constraints.maximumDelinquencyGracePeriod,
       MaximumDelinquencyGracePeriod,
       'maximumDelinquencyGracePeriod'
     );
     assertEq(
-      minimumLiquidityCoverageRatio,
+      constraints.minimumLiquidityCoverageRatio,
       MinimumLiquidityCoverageRatio,
       'minimumLiquidityCoverageRatio'
     );
     assertEq(
-      maximumLiquidityCoverageRatio,
+      constraints.maximumLiquidityCoverageRatio,
       MaximumLiquidityCoverageRatio,
       'maximumLiquidityCoverageRatio'
     );
-    assertEq(minimumDelinquencyFeeBips, MinimumDelinquencyFeeBips, 'minimumDelinquencyFeeBips');
-    assertEq(maximumDelinquencyFeeBips, MaximumDelinquencyFeeBips, 'maximumDelinquencyFeeBips');
     assertEq(
-      minimumWithdrawalBatchDuration,
+      constraints.minimumDelinquencyFeeBips,
+      MinimumDelinquencyFeeBips,
+      'minimumDelinquencyFeeBips'
+    );
+    assertEq(
+      constraints.maximumDelinquencyFeeBips,
+      MaximumDelinquencyFeeBips,
+      'maximumDelinquencyFeeBips'
+    );
+    assertEq(
+      constraints.minimumWithdrawalBatchDuration,
       MinimumWithdrawalBatchDuration,
       'minimumWithdrawalBatchDuration'
     );
     assertEq(
-      maximumWithdrawalBatchDuration,
+      constraints.maximumWithdrawalBatchDuration,
       MaximumWithdrawalBatchDuration,
       'maximumWithdrawalBatchDuration'
     );
-    assertEq(minimumAnnualInterestBips, MinimumAnnualInterestBips, 'minimumAnnualInterestBips');
-    assertEq(maximumAnnualInterestBips, MaximumAnnualInterestBips, 'maximumAnnualInterestBips');
+    assertEq(
+      constraints.minimumAnnualInterestBips,
+      MinimumAnnualInterestBips,
+      'minimumAnnualInterestBips'
+    );
+    assertEq(
+      constraints.maximumAnnualInterestBips,
+      MaximumAnnualInterestBips,
+      'maximumAnnualInterestBips'
+    );
   }
 
   function _getLenders() internal view returns (address[] memory lenders) {
@@ -140,6 +145,13 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
       parameters.liquidityCoverageRatio,
       parameters.delinquencyGracePeriod
     );
+    if (vaultAddress != address(0)) {
+      assertTrue(controller.isControlledVault(vaultAddress), 'controller does not recognize vault');
+      assertTrue(
+        archController.isRegisteredVault(vaultAddress),
+        'arch controller does not recognize vault'
+      );
+    }
   }
 
   function test_VaultSet() external {
@@ -164,8 +176,8 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     vaultSlice[0] = vaults[1];
     assertEq(controller.getControlledVaults(1, 2), vaultSlice, 'getControlledVaults(start, end)');
 
-    assertEq(controller.isControlledVault(address(vault)), true, 'isControlledVault');
-    assertEq(controller.isControlledVault(vaults[1]), true, 'isControlledVault');
+    assertTrue(controller.isControlledVault(vaults[0]), 'isControlledVault');
+    assertTrue(controller.isControlledVault(vaults[1]), 'isControlledVault');
 
     assertEq(controller.getControlledVaultsCount(), 2, 'getControlledVaultsCount');
 

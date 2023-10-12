@@ -27,6 +27,17 @@ interface IWildcatVaultControllerFactory {
   // Returns sentinel used by controller
   function sentinel() external view returns (address);
 
+  function isDeployedController(address controller) external view returns (bool);
+
+  function getDeployedControllersCount() external view returns (uint256);
+
+  function getDeployedControllers() external view returns (address[] memory);
+
+  function getDeployedControllers(
+    uint256 start,
+    uint256 count
+  ) external view returns (address[] memory);
+
   /**
    * @dev Returns protocol fee configuration for new vaults.
    *
@@ -77,18 +88,7 @@ interface IWildcatVaultControllerFactory {
   function getParameterConstraints()
     external
     view
-    returns (
-      uint32 minimumDelinquencyGracePeriod,
-      uint32 maximumDelinquencyGracePeriod,
-      uint16 minimumLiquidityCoverageRatio,
-      uint16 maximumLiquidityCoverageRatio,
-      uint16 minimumDelinquencyFeeBips,
-      uint16 maximumDelinquencyFeeBips,
-      uint32 minimumWithdrawalBatchDuration,
-      uint32 maximumWithdrawalBatchDuration,
-      uint16 minimumAnnualInterestBips,
-      uint16 maximumAnnualInterestBips
-    );
+    returns (VaultParameterConstraints memory constraints);
 
   function getVaultControllerParameters() external view returns (VaultControllerParameters memory);
 

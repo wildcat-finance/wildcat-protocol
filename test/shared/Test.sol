@@ -12,14 +12,12 @@ import '../helpers/MockControllerFactory.sol';
 import '../helpers/MockSanctionsSentinel.sol';
 import { deployMockChainalysis } from '../helpers/MockChainalysis.sol';
 
-import { sentinel } from './TestConstants.sol';
-
 contract Test is ForgeTest, Prankster {
   WildcatArchController internal archController;
   WildcatVaultControllerFactory internal controllerFactory;
   WildcatVaultController internal controller;
   WildcatMarket internal vault;
-  WildcatSanctionsSentinel internal sanctionsSentinel;
+  MockSanctionsSentinel internal sanctionsSentinel;
 
   modifier asSelf() {
     startPrank(address(this));
@@ -29,9 +27,8 @@ contract Test is ForgeTest, Prankster {
 
   constructor() {
     deployMockChainalysis();
-    vm.etch(sentinel, type(MockSanctionsSentinel).runtimeCode);
     archController = new WildcatArchController();
-    sanctionsSentinel = new WildcatSanctionsSentinel(address(archController), sentinel);
+    sanctionsSentinel = new MockSanctionsSentinel(address(archController));
     controllerFactory = new MockControllerFactory(
       address(archController),
       address(sanctionsSentinel)
@@ -41,9 +38,8 @@ contract Test is ForgeTest, Prankster {
 
   function deployBaseContracts() internal asSelf {
     deployMockChainalysis();
-    vm.etch(sentinel, type(MockSanctionsSentinel).runtimeCode);
     archController = new WildcatArchController();
-    sanctionsSentinel = new WildcatSanctionsSentinel(address(archController), sentinel);
+    sanctionsSentinel = new MockSanctionsSentinel(address(archController));
     controllerFactory = new MockControllerFactory(
       address(archController),
       address(sanctionsSentinel)
@@ -59,6 +55,14 @@ contract Test is ForgeTest, Prankster {
     archController.registerBorrower(borrower);
     startPrank(borrower);
     MockController _controller = MockController(controllerFactory.deployController());
+    assertTrue(
+      controllerFactory.isDeployedController(address(_controller)),
+      'controller not recognized by factory'
+    );
+    assertTrue(
+      archController.isRegisteredController(address(_controller)),
+      'controller not recognized by arch controller'
+    );
     stopPrank();
     if (disableConstraints) {
       _controller.toggleParameterChecks();
@@ -92,6 +96,14 @@ contract Test is ForgeTest, Prankster {
         parameters.liquidityCoverageRatio,
         parameters.delinquencyGracePeriod
       )
+    );
+    assertTrue(
+      controller.isControlledVault(address(vault)),
+      'deployed vault is not recognized by the controller'
+    );
+    assertTrue(
+      archController.isRegisteredVault(address(vault)),
+      'deployed vault is not recognized by the arch controller'
     );
   }
 

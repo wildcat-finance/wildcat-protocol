@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { AddressSet } from 'sol-utils/types/EnumerableSet.sol';
+import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import './interfaces/WildcatStructsAndEnums.sol';
 import './interfaces/IWildcatVaultController.sol';
 import './interfaces/IWildcatArchController.sol';
-
 import './libraries/LibStoredInitCode.sol';
+import './libraries/MathUtils.sol';
 import './market/WildcatMarket.sol';
 import './WildcatVaultController.sol';
 
 contract WildcatVaultControllerFactory {
+  using EnumerableSet for EnumerableSet.AddressSet;
+
   event NewController(address borrower, address controller, string namePrefix, string symbolPrefix);
   event UpdateProtocolFeeConfiguration(
     address feeRecipient,
@@ -58,7 +60,7 @@ contract WildcatVaultControllerFactory {
 
   ProtocolFeeConfiguration internal _protocolFeeConfiguration;
 
-  AddressSet internal _deployedControllers;
+  EnumerableSet.AddressSet internal _deployedControllers;
 
   modifier onlyArchControllerOwner() {
     if (msg.sender != archController.owner()) {
@@ -70,41 +72,32 @@ contract WildcatVaultControllerFactory {
   constructor(
     address _archController,
     address _sentinel,
-    uint32 minimumDelinquencyGracePeriod,
-    uint32 maximumDelinquencyGracePeriod,
-    uint16 minimumLiquidityCoverageRatio,
-    uint16 maximumLiquidityCoverageRatio,
-    uint16 minimumDelinquencyFeeBips,
-    uint16 maximumDelinquencyFeeBips,
-    uint32 minimumWithdrawalBatchDuration,
-    uint32 maximumWithdrawalBatchDuration,
-    uint16 minimumAnnualInterestBips,
-    uint16 maximumAnnualInterestBips
+    VaultParameterConstraints memory constraints
   ) {
     archController = IWildcatArchController(_archController);
     sentinel = _sentinel;
     if (
-      minimumAnnualInterestBips > maximumAnnualInterestBips ||
-      maximumAnnualInterestBips > 10000 ||
-      minimumDelinquencyFeeBips > maximumDelinquencyFeeBips ||
-      maximumDelinquencyFeeBips > 10000 ||
-      minimumLiquidityCoverageRatio > maximumLiquidityCoverageRatio ||
-      maximumLiquidityCoverageRatio > 10000 ||
-      minimumDelinquencyGracePeriod > maximumDelinquencyGracePeriod ||
-      minimumWithdrawalBatchDuration > maximumWithdrawalBatchDuration
+      constraints.minimumAnnualInterestBips > constraints.maximumAnnualInterestBips ||
+      constraints.maximumAnnualInterestBips > 10000 ||
+      constraints.minimumDelinquencyFeeBips > constraints.maximumDelinquencyFeeBips ||
+      constraints.maximumDelinquencyFeeBips > 10000 ||
+      constraints.minimumLiquidityCoverageRatio > constraints.maximumLiquidityCoverageRatio ||
+      constraints.maximumLiquidityCoverageRatio > 10000 ||
+      constraints.minimumDelinquencyGracePeriod > constraints.maximumDelinquencyGracePeriod ||
+      constraints.minimumWithdrawalBatchDuration > constraints.maximumWithdrawalBatchDuration
     ) {
       revert InvalidConstraints();
     }
-    MinimumDelinquencyGracePeriod = minimumDelinquencyGracePeriod;
-    MaximumDelinquencyGracePeriod = maximumDelinquencyGracePeriod;
-    MinimumLiquidityCoverageRatio = minimumLiquidityCoverageRatio;
-    MaximumLiquidityCoverageRatio = maximumLiquidityCoverageRatio;
-    MinimumDelinquencyFeeBips = minimumDelinquencyFeeBips;
-    MaximumDelinquencyFeeBips = maximumDelinquencyFeeBips;
-    MinimumWithdrawalBatchDuration = minimumWithdrawalBatchDuration;
-    MaximumWithdrawalBatchDuration = maximumWithdrawalBatchDuration;
-    MinimumAnnualInterestBips = minimumAnnualInterestBips;
-    MaximumAnnualInterestBips = maximumAnnualInterestBips;
+    MinimumDelinquencyGracePeriod = constraints.minimumDelinquencyGracePeriod;
+    MaximumDelinquencyGracePeriod = constraints.maximumDelinquencyGracePeriod;
+    MinimumLiquidityCoverageRatio = constraints.minimumLiquidityCoverageRatio;
+    MaximumLiquidityCoverageRatio = constraints.maximumLiquidityCoverageRatio;
+    MinimumDelinquencyFeeBips = constraints.minimumDelinquencyFeeBips;
+    MaximumDelinquencyFeeBips = constraints.maximumDelinquencyFeeBips;
+    MinimumWithdrawalBatchDuration = constraints.minimumWithdrawalBatchDuration;
+    MaximumWithdrawalBatchDuration = constraints.maximumWithdrawalBatchDuration;
+    MinimumAnnualInterestBips = constraints.minimumAnnualInterestBips;
+    MaximumAnnualInterestBips = constraints.maximumAnnualInterestBips;
 
     (controllerInitCodeStorage, controllerInitCodeHash) = _storeControllerInitCode();
     (vaultInitCodeStorage, vaultInitCodeHash) = _storeVaultInitCode();
@@ -128,6 +121,31 @@ contract WildcatVaultControllerFactory {
     bytes memory vaultInitCode = type(WildcatMarket).creationCode;
     initCodeHash = uint256(keccak256(vaultInitCode));
     initCodeStorage = LibStoredInitCode.deployInitCode(vaultInitCode);
+  }
+
+  function isDeployedController(address controller) external view returns (bool) {
+    return _deployedControllers.contains(controller);
+  }
+
+  function getDeployedControllersCount() external view returns (uint256) {
+    return _deployedControllers.length();
+  }
+
+  function getDeployedControllers() external view returns (address[] memory) {
+    return _deployedControllers.values();
+  }
+
+  function getDeployedControllers(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory arr) {
+    uint256 len = _deployedControllers.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _deployedControllers.at(start + i);
+    }
   }
 
   /**
@@ -205,29 +223,18 @@ contract WildcatVaultControllerFactory {
   function getParameterConstraints()
     external
     view
-    returns (
-      uint32 minimumDelinquencyGracePeriod,
-      uint32 maximumDelinquencyGracePeriod,
-      uint16 minimumLiquidityCoverageRatio,
-      uint16 maximumLiquidityCoverageRatio,
-      uint16 minimumDelinquencyFeeBips,
-      uint16 maximumDelinquencyFeeBips,
-      uint32 minimumWithdrawalBatchDuration,
-      uint32 maximumWithdrawalBatchDuration,
-      uint16 minimumAnnualInterestBips,
-      uint16 maximumAnnualInterestBips
-    )
+    returns (VaultParameterConstraints memory constraints)
   {
-    minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
-    maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
-    minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
-    maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
-    minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
-    maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
-    minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
-    maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
-    minimumAnnualInterestBips = MinimumAnnualInterestBips;
-    maximumAnnualInterestBips = MaximumAnnualInterestBips;
+    constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
+    constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
+    constraints.minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
+    constraints.maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
+    constraints.minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
+    constraints.maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
+    constraints.minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
+    constraints.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
+    constraints.minimumAnnualInterestBips = MinimumAnnualInterestBips;
+    constraints.maximumAnnualInterestBips = MaximumAnnualInterestBips;
   }
 
   /* -------------------------------------------------------------------------- */
@@ -290,6 +297,7 @@ contract WildcatVaultControllerFactory {
     LibStoredInitCode.create2WithStoredInitCode(controllerInitCodeStorage, salt);
     _tmpVaultBorrowerParameter = address(1);
     archController.registerController(controller);
+    _deployedControllers.add(controller);
   }
 
   /**

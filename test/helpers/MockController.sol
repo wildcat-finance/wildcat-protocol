@@ -4,6 +4,8 @@ pragma solidity >=0.8.20;
 import 'src/WildcatVaultController.sol';
 
 contract MockController is WildcatVaultController {
+  using EnumerableSet for EnumerableSet.AddressSet;
+
   bool public AUTH_ALL;
   bool public DISABLE_PARAMETER_CHECKS;
 

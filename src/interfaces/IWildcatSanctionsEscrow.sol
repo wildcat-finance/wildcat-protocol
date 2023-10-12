@@ -2,14 +2,11 @@
 pragma solidity >=0.8.20;
 
 interface IWildcatSanctionsEscrow {
-  event EscrowReleased(
-    address indexed caller,
-    address indexed account,
-    address indexed asset,
-    uint256 amount
-  );
+  event EscrowReleased(address indexed account, address indexed asset, uint256 amount);
 
   error CanNotReleaseEscrow();
+
+  function sentinel() external view returns (address);
 
   function borrower() external view returns (address);
 

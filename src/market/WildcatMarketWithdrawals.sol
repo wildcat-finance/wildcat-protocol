@@ -138,7 +138,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     status.normalizedAmountWithdrawn = newTotalWithdrawn;
     state.reservedAssets -= normalizedAmountWithdrawn;
 
-    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       _blockAccount(state, accountAddress);
       address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
         accountAddress,
