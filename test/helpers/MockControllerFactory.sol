@@ -3,7 +3,7 @@ pragma solidity >=0.8.20;
 
 import 'src/WildcatVaultControllerFactory.sol';
 import './MockController.sol';
-import { MinimumDelinquencyGracePeriod as MinDelinquencyGracePeriod, MaximumDelinquencyGracePeriod as MaxDelinquencyGracePeriod, MinimumLiquidityCoverageRatio as MinLiquidityCoverageRatio, MaximumLiquidityCoverageRatio as MaxLiquidityCoverageRatio, MinimumDelinquencyFeeBips as MinDelinquencyFeeBips, MaximumDelinquencyFeeBips as MaxDelinquencyFeeBips, MinimumWithdrawalBatchDuration as MinWithdrawalBatchDuration, MaximumWithdrawalBatchDuration as MaxWithdrawalBatchDuration, MinimumAnnualInterestBips as MinAnnualInterestBips, MaximumAnnualInterestBips as MaxAnnualInterestBips, sentinel as SentinelAddress } from '../shared/TestConstants.sol';
+import { MinimumDelinquencyGracePeriod as MinDelinquencyGracePeriod, MaximumDelinquencyGracePeriod as MaxDelinquencyGracePeriod, MinimumLiquidityCoverageRatio as MinLiquidityCoverageRatio, MaximumLiquidityCoverageRatio as MaxLiquidityCoverageRatio, MinimumDelinquencyFeeBips as MinDelinquencyFeeBips, MaximumDelinquencyFeeBips as MaxDelinquencyFeeBips, MinimumWithdrawalBatchDuration as MinWithdrawalBatchDuration, MaximumWithdrawalBatchDuration as MaxWithdrawalBatchDuration, MinimumAnnualInterestBips as MinAnnualInterestBips, MaximumAnnualInterestBips as MaxAnnualInterestBips } from '../shared/TestConstants.sol';
 
 contract MockControllerFactory is WildcatVaultControllerFactory {
   constructor(
@@ -13,16 +13,18 @@ contract MockControllerFactory is WildcatVaultControllerFactory {
     WildcatVaultControllerFactory(
       _archController,
       _sentinel,
-      MinDelinquencyGracePeriod,
-      MaxDelinquencyGracePeriod,
-      MinLiquidityCoverageRatio,
-      MaxLiquidityCoverageRatio,
-      MinDelinquencyFeeBips,
-      MaxDelinquencyFeeBips,
-      MinWithdrawalBatchDuration,
-      MaxWithdrawalBatchDuration,
-      MinAnnualInterestBips,
-      MaxAnnualInterestBips
+      VaultParameterConstraints(
+        MinDelinquencyGracePeriod,
+        MaxDelinquencyGracePeriod,
+        MinLiquidityCoverageRatio,
+        MaxLiquidityCoverageRatio,
+        MinDelinquencyFeeBips,
+        MaxDelinquencyFeeBips,
+        MinWithdrawalBatchDuration,
+        MaxWithdrawalBatchDuration,
+        MinAnnualInterestBips,
+        MaxAnnualInterestBips
+      )
     )
   {}
 
