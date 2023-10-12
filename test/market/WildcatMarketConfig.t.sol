@@ -124,7 +124,7 @@ contract WildcatMarketConfigTest is BaseVaultTest {
     vault.nukeFromOrbit(_account);
   }
 
-  function test_ofacMadeAnOopsie() external {
+  function test_stunningReversal() external {
     sanctionsSentinel.sanction(alice);
 
     vm.expectEmit(address(vault));
@@ -136,22 +136,22 @@ contract WildcatMarketConfigTest is BaseVaultTest {
 
     vm.expectEmit(address(vault));
     emit AuthorizationStatusUpdated(alice, AuthRole.Null);
-    vault.ofacMadeAnOopsie(alice);
+    vault.stunningReversal(alice);
     assertEq(uint(vault.getAccountRole(alice)), uint(AuthRole.Null), 'account role should be Null');
   }
 
-  function test_ofacMadeAnOopsie_AccountNotBlocked(address _account) external {
+  function test_stunningReversal_AccountNotBlocked(address _account) external {
     vm.expectRevert(IVaultEventsAndErrors.AccountNotBlocked.selector);
-    vault.ofacMadeAnOopsie(_account);
+    vault.stunningReversal(_account);
   }
 
-  function test_ofacMadeAnOopsie_OFACDidNotMakeAnOopsie() external {
+  function test_stunningReversal_NotReversedOrStunning() external {
     sanctionsSentinel.sanction(alice);
     vm.expectEmit(address(vault));
     emit AuthorizationStatusUpdated(alice, AuthRole.Blocked);
     vault.nukeFromOrbit(alice);
-    vm.expectRevert(IVaultEventsAndErrors.OFACDidNotMakeAnOopsie.selector);
-    vault.ofacMadeAnOopsie(alice);
+    vm.expectRevert(IVaultEventsAndErrors.NotReversedOrStunning.selector);
+    vault.stunningReversal(alice);
   }
 
   function test_setMaxTotalSupply(

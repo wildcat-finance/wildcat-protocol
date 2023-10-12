@@ -105,14 +105,14 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      and has since been removed from the sanctions list or had
    *      their sanctioned status overridden by the borrower.
    */
-  function ofacMadeAnOopsie(address accountAddress) external nonReentrant {
+  function stunningReversal(address accountAddress) external nonReentrant {
     Account memory account = _accounts[accountAddress];
     if (account.approval != AuthRole.Blocked) {
       revert AccountNotBlocked();
     }
 
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
-      revert OFACDidNotMakeAnOopsie();
+      revert NotReversedOrStunning();
     }
 
     account.approval = AuthRole.Null;

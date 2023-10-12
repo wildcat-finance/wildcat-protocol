@@ -40,7 +40,7 @@ interface IVaultEventsAndErrors {
 
   error AccountNotBlocked();
 
-  error OFACDidNotMakeAnOopsie();
+  error NotReversedOrStunning();
 
   error UnknownNameQueryError();
 
