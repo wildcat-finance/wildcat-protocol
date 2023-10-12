@@ -33,7 +33,7 @@ library LibStoredInitCode {
       initCodeStorage := create(0, add(data, 21), createSize)
       // if (initCodeStorage == address(0)) revert InitCodeDeploymentFailed();
       if iszero(initCodeStorage) {
-        mstore(0, 0xfa91252a)
+        mstore(0, 0x11c8c3c0)
         revert(0x1c, 0x04)
       }
       // Restore `data.length`

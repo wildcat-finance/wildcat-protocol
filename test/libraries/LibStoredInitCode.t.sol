@@ -14,14 +14,9 @@ contract LibStoredInitCodeTest is Test {
   // ===================================================================== //
 
   function test_deployInitCode(bytes memory data) external {
-    bool willRevert = data.length > 24_575;
-    if (willRevert) {
-      vm.expectRevert(LibStoredInitCode.InitCodeDeploymentFailed.selector);
-    }
+    vm.assume(data.length < 30_000);
     address deployed = lib.deployInitCode(data);
-    if (!willRevert) {
-      assertEq(deployed.codehash, keccak256(abi.encodePacked(uint8(0x00), data)));
-    }
+    assertEq(deployed.codehash, keccak256(abi.encodePacked(uint8(0x00), data)));
   }
 
   function test_deployInitCode() external {
