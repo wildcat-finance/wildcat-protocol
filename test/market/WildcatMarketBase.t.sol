@@ -157,7 +157,7 @@ contract WildcatMarketBaseTest is BaseVaultTest {
     assertEq(vault.withdrawableProtocolFees(), 1e16);
   }
 
-  function test_withdrawableProtocolFees_LessReservedAssets() external {
+  function test_withdrawableProtocolFees_LessNormalizedReservedWithdrawals() external {
     assertEq(vault.withdrawableProtocolFees(), 0);
     _deposit(alice, 1e18);
     _borrow(8e17);

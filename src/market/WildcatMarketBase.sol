@@ -102,7 +102,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
       isClosed: false,
       maxTotalSupply: parameters.maxTotalSupply,
       accruedProtocolFees: 0,
-      reservedAssets: 0,
+      normalizedReservedWithdrawals: 0,
       scaledTotalSupply: 0,
       scaledPendingWithdrawals: 0,
       pendingWithdrawalExpiry: 0,
@@ -514,8 +514,8 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     batch.normalizedAmountPaid += normalizedAmountPaid;
     state.scaledPendingWithdrawals -= scaledAmountBurned;
 
-    // Update reservedAssets so the tokens are only accessible for withdrawals.
-    state.reservedAssets += normalizedAmountPaid;
+    // Update normalizedReservedWithdrawals so the tokens are only accessible for withdrawals.
+    state.normalizedReservedWithdrawals += normalizedAmountPaid;
 
     // Burn vault tokens to stop interest accrual upon withdrawal payment.
     state.scaledTotalSupply -= scaledAmountBurned;
@@ -543,8 +543,8 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     batch.normalizedAmountPaid += normalizedAmountPaid;
     state.scaledPendingWithdrawals -= scaledAmountBurned;
 
-    // Update reservedAssets so the tokens are only accessible for withdrawals.
-    state.reservedAssets += normalizedAmountPaid;
+    // Update normalizedReservedWithdrawals so the tokens are only accessible for withdrawals.
+    state.normalizedReservedWithdrawals += normalizedAmountPaid;
 
     // Burn vault tokens to stop interest accrual upon withdrawal payment.
     state.scaledTotalSupply -= scaledAmountBurned;

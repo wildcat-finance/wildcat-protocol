@@ -81,7 +81,7 @@ contract VaultStateTest is Test {
     uint104 scaledTotalSupply,
     uint16 liquidityCoverageRatio,
     uint128 accruedProtocolFees,
-    uint128 reservedAssets
+    uint128 normalizedReservedWithdrawals
   ) external {
     liquidityCoverageRatio = uint16(bound(liquidityCoverageRatio, 1, 10000));
     scaledPendingWithdrawals = uint104(bound(scaledPendingWithdrawals, 0, scaledTotalSupply));
@@ -91,7 +91,7 @@ contract VaultStateTest is Test {
     state.scaledTotalSupply = scaledTotalSupply;
     state.liquidityCoverageRatio = liquidityCoverageRatio;
     state.accruedProtocolFees = accruedProtocolFees;
-    state.reservedAssets = reservedAssets;
+    state.normalizedReservedWithdrawals = normalizedReservedWithdrawals;
 
     uint256 scaledCoverageLiquidity = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
       uint256(liquidityCoverageRatio)) / uint256(10000);
@@ -101,7 +101,7 @@ contract VaultStateTest is Test {
 
     assertEq(
       state.$liquidityRequired(),
-      collateralForOutstanding + state.reservedAssets + uint256(accruedProtocolFees)
+      collateralForOutstanding + state.normalizedReservedWithdrawals + uint256(accruedProtocolFees)
     );
   }
 
@@ -121,7 +121,7 @@ contract VaultStateTest is Test {
     uint104 scaledTotalSupply,
     uint16 liquidityCoverageRatio,
     uint128 accruedProtocolFees,
-    uint128 reservedAssets,
+    uint128 normalizedReservedWithdrawals,
     uint128 totalAssets
   ) external {
     liquidityCoverageRatio = uint16(bound(liquidityCoverageRatio, 1, 10000));
@@ -132,7 +132,7 @@ contract VaultStateTest is Test {
     state.scaledTotalSupply = scaledTotalSupply;
     state.liquidityCoverageRatio = liquidityCoverageRatio;
     state.accruedProtocolFees = accruedProtocolFees;
-    state.reservedAssets = reservedAssets;
+    state.normalizedReservedWithdrawals = normalizedReservedWithdrawals;
 
     uint256 scaledCoverageLiquidity = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
       uint256(liquidityCoverageRatio)) / uint256(10000);
@@ -142,7 +142,7 @@ contract VaultStateTest is Test {
 
     assertEq(
       state.$liquidityRequired(),
-      collateralForOutstanding + state.reservedAssets + uint256(accruedProtocolFees)
+      collateralForOutstanding + state.normalizedReservedWithdrawals + uint256(accruedProtocolFees)
     );
     assertEq(
       state.$borrowableAssets(totalAssets),
@@ -152,16 +152,16 @@ contract VaultStateTest is Test {
 
   function test_withdrawableProtocolFees(
     uint256 accruedProtocolFees,
-    uint256 reservedAssets,
+    uint256 normalizedReservedWithdrawals,
     uint256 totalAssets
   ) external {
     accruedProtocolFees = bound(accruedProtocolFees, 0, type(uint128).max);
-    reservedAssets = bound(reservedAssets, 0, type(uint128).max);
-    totalAssets = bound(totalAssets, reservedAssets, type(uint128).max);
+    normalizedReservedWithdrawals = bound(normalizedReservedWithdrawals, 0, type(uint128).max);
+    totalAssets = bound(totalAssets, normalizedReservedWithdrawals, type(uint128).max);
     VaultState memory state;
     state.accruedProtocolFees = uint128(accruedProtocolFees);
-    state.reservedAssets = uint128(reservedAssets);
-    uint256 availableAssets = totalAssets - reservedAssets;
+    state.normalizedReservedWithdrawals = uint128(normalizedReservedWithdrawals);
+    uint256 availableAssets = totalAssets - normalizedReservedWithdrawals;
     uint256 expectedWithdrawable = accruedProtocolFees > availableAssets
       ? availableAssets
       : accruedProtocolFees;

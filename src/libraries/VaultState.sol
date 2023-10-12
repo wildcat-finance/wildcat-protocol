@@ -14,8 +14,8 @@ struct VaultState {
   bool isClosed;
   uint128 maxTotalSupply;
   uint128 accruedProtocolFees;
-  // Underlying assets reserved for protocol fees and withdrawals
-  uint128 reservedAssets;
+  // Underlying assets reserved for withdrawals
+  uint128 normalizedReservedWithdrawals;
   // Scaled token supply (divided by scaleFactor)
   uint104 scaledTotalSupply;
   // Scaled token amount in withdrawal batches that have not been
@@ -90,7 +90,7 @@ library VaultStateLib {
     return
       state.normalizeAmount(scaledCoverageLiquidity) +
       state.accruedProtocolFees +
-      state.reservedAssets;
+      state.normalizedReservedWithdrawals;
   }
 
   /**
@@ -102,7 +102,7 @@ library VaultStateLib {
     VaultState memory state,
     uint256 totalAssets
   ) internal pure returns (uint128) {
-    uint256 totalAvailableAssets = totalAssets - state.reservedAssets;
+    uint256 totalAvailableAssets = totalAssets - state.normalizedReservedWithdrawals;
     return uint128(MathUtils.min(totalAvailableAssets, state.accruedProtocolFees));
   }
 
@@ -134,7 +134,7 @@ library VaultStateLib {
   function totalDebts(VaultState memory state) internal pure returns (uint256) {
     return
       state.normalizeAmount(state.scaledTotalSupply) +
-      state.reservedAssets +
+      state.normalizedReservedWithdrawals +
       state.accruedProtocolFees;
   }
 }
