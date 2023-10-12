@@ -113,7 +113,18 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   }
 
   /**
-   * @dev Execute a pending withdrawal request.
+   * @dev Execute a pending withdrawal request for a batch that has expired.
+   *
+   *      Withdraws the proportional amount of the paid batch owed to
+   *      `accountAddress` which has not already been withdrawn.
+   *
+   *      If `accountAddress` is sanctioned, transfers the owed amount to
+   *      an escrow contract specific to the account and blocks the account.
+   *
+   *      Reverts if:
+   *      - `expiry > block.timestamp`
+   *      -  `expiry` does not correspond to an existing withdrawal batch
+   *      - `accountAddress` has already withdrawn the full amount owed
    */
   function executeWithdrawal(
     address accountAddress,
@@ -137,6 +148,10 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 
     status.normalizedAmountWithdrawn = newTotalWithdrawn;
     state.reservedAssets -= normalizedAmountWithdrawn;
+
+    if (normalizedAmountWithdrawn == 0) {
+      revert NullWithdrawalAmount();
+    }
 
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       _blockAccount(state, accountAddress);

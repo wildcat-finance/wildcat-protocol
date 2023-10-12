@@ -65,6 +65,8 @@ interface IVaultEventsAndErrors {
 
   error NullTransferAmount();
 
+  error NullWithdrawalAmount();
+
   error DepositToClosedVault();
 
   error BorrowFromClosedVault();

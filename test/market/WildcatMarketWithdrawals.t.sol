@@ -148,6 +148,27 @@ contract WithdrawalsTest is BaseVaultTest {
     assertEq(asset.balanceOf(alice), previousBalance + withdrawalAmount);
   }
 
+  function test_executeWithdrawal_NullWithdrawalAmount(
+    uint128 userBalance,
+    uint128 withdrawalAmount
+  ) external {
+    userBalance = uint128(bound(userBalance, 2, DefaultMaximumSupply));
+    withdrawalAmount = uint128(bound(withdrawalAmount, 2, userBalance));
+    _deposit(alice, userBalance);
+    _requestWithdrawal(alice, withdrawalAmount);
+    uint256 expiry = block.timestamp + parameters.withdrawalBatchDuration;
+    fastForward(parameters.withdrawalBatchDuration);
+    VaultState memory state = pendingState();
+    updateState(state);
+    uint256 previousBalance = asset.balanceOf(alice);
+    uint256 withdrawalAmount = state.reservedAssets;
+    vm.prank(alice);
+    vault.executeWithdrawal(alice, uint32(expiry));
+    assertEq(asset.balanceOf(alice), previousBalance + withdrawalAmount);
+    vm.expectRevert(IVaultEventsAndErrors.NullWithdrawalAmount.selector);
+    vault.executeWithdrawal(alice, uint32(expiry));
+  }
+
   function test_executeWithdrawal_Sanctioned() external {
     _deposit(alice, 1e18);
     _requestWithdrawal(alice, 1e18);
