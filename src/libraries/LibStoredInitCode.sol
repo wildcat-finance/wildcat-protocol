@@ -2,20 +2,11 @@
 pragma solidity >=0.8.20;
 
 library LibStoredInitCode {
-  // Contract size limit is 24kb (24,576 bytes) as of Spurious Dragon
-  // Subtract one for the STOP prefix.
-  uint256 internal constant DeployableDataSizeLimit = 24_575;
-
-  error InitCodeExceedsSizeLimit();
+  error InitCodeDeploymentFailed();
 
   function deployInitCode(bytes memory data) internal returns (address initCodeStorage) {
     assembly {
       let size := mload(data)
-      // if (data.length > 24_575) revert InitCodeExceedsSizeLimit();
-      if gt(size, DeployableDataSizeLimit) {
-        mstore(0, 0xfa91252a)
-        revert(0x1c, 0x04)
-      }
       let createSize := add(size, 0x0b)
       // Prefix Code
       //
@@ -40,6 +31,11 @@ library LibStoredInitCode {
       mstore(data, or(shl(64, add(size, 1)), 0x6100005f81600a5f39f300))
       // Deploy the code storage
       initCodeStorage := create(0, add(data, 21), createSize)
+      // if (initCodeStorage == address(0)) revert InitCodeDeploymentFailed();
+      if iszero(initCodeStorage) {
+        mstore(0, 0xfa91252a)
+        revert(0x1c, 0x04)
+      }
       // Restore `data.length`
       mstore(data, size)
     }

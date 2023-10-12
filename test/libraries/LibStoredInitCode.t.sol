@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.20;
+pragma solidity >=0.8.19;
 
 import { Test } from 'forge-std/Test.sol';
 import './wrappers/LibStoredInitCodeExternal.sol';
@@ -16,7 +16,7 @@ contract LibStoredInitCodeTest is Test {
   function test_deployInitCode(bytes memory data) external {
     bool willRevert = data.length > 24_575;
     if (willRevert) {
-      vm.expectRevert(LibStoredInitCode.InitCodeExceedsSizeLimit.selector);
+      vm.expectRevert(LibStoredInitCode.InitCodeDeploymentFailed.selector);
     }
     address deployed = lib.deployInitCode(data);
     if (!willRevert) {
@@ -30,10 +30,10 @@ contract LibStoredInitCodeTest is Test {
     assertEq(deployed.codehash, keccak256(abi.encodePacked(uint8(0x00), data)));
   }
 
-  function test_deployInitCode_InitCodeExceedsSizeLimit() external {
+  function test_deployInitCode_InitCodeDeploymentFailed() external {
     bytes memory data = new bytes(24_576);
-    vm.expectRevert(LibStoredInitCode.InitCodeExceedsSizeLimit.selector);
-    lib.deployInitCode(data);
+    vm.expectRevert(LibStoredInitCode.InitCodeDeploymentFailed.selector);
+    lib.deployInitCode{ gas: 24_576 * 200 }(data);
   }
 
   // ===================================================================== //
