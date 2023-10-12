@@ -67,8 +67,16 @@ contract WildcatVaultControllerFactoryTest is Test {
     assertEq(parameters.archController, address(archController));
     assertEq(parameters.borrower, address(1), 'borrower');
     assertEq(parameters.sentinel, address(0), 'sentinel');
-    assertEq(parameters.vaultInitCodeStorage, controllerFactory.vaultInitCodeStorage(), 'vaultInitCodeStorage');
-    assertEq(parameters.vaultInitCodeHash, controllerFactory.vaultInitCodeHash(), 'vaultInitCodeHash');
+    assertEq(
+      parameters.vaultInitCodeStorage,
+      controllerFactory.vaultInitCodeStorage(),
+      'vaultInitCodeStorage'
+    );
+    assertEq(
+      parameters.vaultInitCodeHash,
+      controllerFactory.vaultInitCodeHash(),
+      'vaultInitCodeHash'
+    );
     assertEq(parameters.vaultInitCodeHash, uint256(keccak256(type(WildcatMarket).creationCode)));
     assertEq(
       controllerFactory.controllerInitCodeHash(),
@@ -76,15 +84,55 @@ contract WildcatVaultControllerFactoryTest is Test {
       'controllerInitCodeHash'
     );
 
-    assertEq(parameters.minimumDelinquencyGracePeriod, MinimumDelinquencyGracePeriod, 'minimumDelinquencyGracePeriod');
-    assertEq(parameters.maximumDelinquencyGracePeriod, MaximumDelinquencyGracePeriod, 'maximumDelinquencyGracePeriod');
-    assertEq(parameters.minimumLiquidityCoverageRatio, MinimumLiquidityCoverageRatio, 'minimumLiquidityCoverageRatio');
-    assertEq(parameters.maximumLiquidityCoverageRatio, MaximumLiquidityCoverageRatio, 'maximumLiquidityCoverageRatio');
-    assertEq(parameters.minimumDelinquencyFeeBips, MinimumDelinquencyFeeBips, 'minimumDelinquencyFeeBips');
-    assertEq(parameters.maximumDelinquencyFeeBips, MaximumDelinquencyFeeBips, 'maximumDelinquencyFeeBips');
-    assertEq(parameters.minimumWithdrawalBatchDuration, MinimumWithdrawalBatchDuration, 'minimumWithdrawalBatchDuration');
-    assertEq(parameters.maximumWithdrawalBatchDuration, MaximumWithdrawalBatchDuration, 'maximumWithdrawalBatchDuration');
-    assertEq(parameters.minimumAnnualInterestBips, MinimumAnnualInterestBips, 'minimumAnnualInterestBips');
-    assertEq(parameters.maximumAnnualInterestBips, MaximumAnnualInterestBips, 'maximumAnnualInterestBips');
+    assertEq(
+      parameters.minimumDelinquencyGracePeriod,
+      MinimumDelinquencyGracePeriod,
+      'minimumDelinquencyGracePeriod'
+    );
+    assertEq(
+      parameters.maximumDelinquencyGracePeriod,
+      MaximumDelinquencyGracePeriod,
+      'maximumDelinquencyGracePeriod'
+    );
+    assertEq(
+      parameters.minimumLiquidityCoverageRatio,
+      MinimumLiquidityCoverageRatio,
+      'minimumLiquidityCoverageRatio'
+    );
+    assertEq(
+      parameters.maximumLiquidityCoverageRatio,
+      MaximumLiquidityCoverageRatio,
+      'maximumLiquidityCoverageRatio'
+    );
+    assertEq(
+      parameters.minimumDelinquencyFeeBips,
+      MinimumDelinquencyFeeBips,
+      'minimumDelinquencyFeeBips'
+    );
+    assertEq(
+      parameters.maximumDelinquencyFeeBips,
+      MaximumDelinquencyFeeBips,
+      'maximumDelinquencyFeeBips'
+    );
+    assertEq(
+      parameters.minimumWithdrawalBatchDuration,
+      MinimumWithdrawalBatchDuration,
+      'minimumWithdrawalBatchDuration'
+    );
+    assertEq(
+      parameters.maximumWithdrawalBatchDuration,
+      MaximumWithdrawalBatchDuration,
+      'maximumWithdrawalBatchDuration'
+    );
+    assertEq(
+      parameters.minimumAnnualInterestBips,
+      MinimumAnnualInterestBips,
+      'minimumAnnualInterestBips'
+    );
+    assertEq(
+      parameters.maximumAnnualInterestBips,
+      MaximumAnnualInterestBips,
+      'maximumAnnualInterestBips'
+    );
   }
 }
