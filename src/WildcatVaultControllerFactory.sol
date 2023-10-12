@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { AddressSet } from 'sol-utils/types/EnumerableSet.sol';
+import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import './interfaces/WildcatStructsAndEnums.sol';
 import './interfaces/IWildcatVaultController.sol';
 import './interfaces/IWildcatArchController.sol';
-
 import './libraries/LibStoredInitCode.sol';
+import './libraries/MathUtils.sol';
 import './market/WildcatMarket.sol';
 import './WildcatVaultController.sol';
 
 contract WildcatVaultControllerFactory {
-  // using EnumerableSet for EnumerableSet.AddressSet;
+  using EnumerableSet for EnumerableSet.AddressSet;
 
   event NewController(address borrower, address controller, string namePrefix, string symbolPrefix);
   event UpdateProtocolFeeConfiguration(
@@ -60,8 +60,7 @@ contract WildcatVaultControllerFactory {
 
   ProtocolFeeConfiguration internal _protocolFeeConfiguration;
 
-  AddressSet internal _deployedControllers;
-  // EnumerableSet.AddressSet internal _deployedControllers;
+  EnumerableSet.AddressSet internal _deployedControllers;
 
   modifier onlyArchControllerOwner() {
     if (msg.sender != archController.owner()) {
@@ -139,8 +138,14 @@ contract WildcatVaultControllerFactory {
   function getDeployedControllers(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _deployedControllers.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _deployedControllers.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _deployedControllers.at(start + i);
+    }
   }
 
   /**

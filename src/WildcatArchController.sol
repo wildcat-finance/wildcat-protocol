@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { AddressSet } from 'sol-utils/types/EnumerableSet.sol';
+import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import 'solady/auth/Ownable.sol';
+import './libraries/MathUtils.sol';
 
 contract WildcatArchController is Ownable {
-  AddressSet internal _vaults;
-  AddressSet internal _controllerFactories;
-  AddressSet internal _borrowers;
-  AddressSet internal _controllers;
+  using EnumerableSet for EnumerableSet.AddressSet;
+
+  EnumerableSet.AddressSet internal _vaults;
+  EnumerableSet.AddressSet internal _controllerFactories;
+  EnumerableSet.AddressSet internal _borrowers;
+  EnumerableSet.AddressSet internal _controllers;
 
   error NotControllerFactory();
   error NotController();
@@ -82,8 +85,14 @@ contract WildcatArchController is Ownable {
   function getRegisteredBorrowers(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _borrowers.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _borrowers.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _borrowers.at(start + i);
+    }
   }
 
   function getRegisteredBorrowersCount() external view returns (uint256) {
@@ -119,8 +128,14 @@ contract WildcatArchController is Ownable {
   function getRegisteredControllerFactories(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _controllerFactories.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _controllerFactories.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _controllerFactories.at(start + i);
+    }
   }
 
   function getRegisteredControllerFactoriesCount() external view returns (uint256) {
@@ -156,8 +171,14 @@ contract WildcatArchController is Ownable {
   function getRegisteredControllers(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _controllers.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _controllers.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _controllers.at(start + i);
+    }
   }
 
   function getRegisteredControllersCount() external view returns (uint256) {
@@ -193,8 +214,14 @@ contract WildcatArchController is Ownable {
   function getRegisteredVaults(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory) {
-    return _vaults.slice(start, end);
+  ) external view returns (address[] memory arr) {
+    uint256 len = _vaults.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _vaults.at(start + i);
+    }
   }
 
   function getRegisteredVaultsCount() external view returns (uint256) {
