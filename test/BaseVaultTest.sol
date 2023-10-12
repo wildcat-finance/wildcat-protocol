@@ -38,13 +38,13 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
       scaledTotalSupply: 0,
       isDelinquent: false,
       timeDelinquent: 0,
-      liquidityCoverageRatio: parameters.liquidityCoverageRatio,
+      reserveRatioBips: parameters.reserveRatioBips,
       annualInterestBips: parameters.annualInterestBips,
       scaleFactor: uint112(RAY),
       lastInterestAccruedTimestamp: uint32(block.timestamp),
       scaledPendingWithdrawals: 0,
       pendingWithdrawalExpiry: 0,
-      reservedAssets: 0,
+      normalizedUnclaimedWithdrawals: 0,
       accruedProtocolFees: 0
     });
     lastTotalAssets = 0;

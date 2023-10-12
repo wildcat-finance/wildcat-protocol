@@ -21,7 +21,7 @@ contract WithdrawalTest is Test {
     uint128 totalAssets,
     uint104 scaledTotalPendingWithdrawals,
     uint104 scaledBatchAmount,
-    uint128 reservedAssets,
+    uint128 normalizedUnclaimedWithdrawals,
     uint96 scaleFactor,
     uint128 accruedProtocolFees
   ) external {
@@ -30,13 +30,13 @@ contract WithdrawalTest is Test {
     );
     scaledBatchAmount = uint104(bound(scaledBatchAmount, 1, scaledTotalPendingWithdrawals));
     VaultState memory state;
-    state.reservedAssets = reservedAssets;
+    state.normalizedUnclaimedWithdrawals = normalizedUnclaimedWithdrawals;
     state.accruedProtocolFees = accruedProtocolFees;
     state.scaleFactor = scaleFactor;
     state.scaledPendingWithdrawals = scaledTotalPendingWithdrawals;
     WithdrawalBatch memory batch;
     batch.scaledTotalAmount = scaledBatchAmount;
-    uint256 totalReserved = uint256(reservedAssets) +
+    uint256 totalReserved = uint256(normalizedUnclaimedWithdrawals) +
       uint256(accruedProtocolFees) +
       state.normalizeAmount(scaledTotalPendingWithdrawals - scaledBatchAmount);
     uint256 expected = totalAssets > totalReserved ? totalAssets - totalReserved : 0;

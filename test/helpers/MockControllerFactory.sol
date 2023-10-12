@@ -3,7 +3,7 @@ pragma solidity >=0.8.20;
 
 import 'src/WildcatVaultControllerFactory.sol';
 import './MockController.sol';
-import { MinimumDelinquencyGracePeriod as MinDelinquencyGracePeriod, MaximumDelinquencyGracePeriod as MaxDelinquencyGracePeriod, MinimumLiquidityCoverageRatio as MinLiquidityCoverageRatio, MaximumLiquidityCoverageRatio as MaxLiquidityCoverageRatio, MinimumDelinquencyFeeBips as MinDelinquencyFeeBips, MaximumDelinquencyFeeBips as MaxDelinquencyFeeBips, MinimumWithdrawalBatchDuration as MinWithdrawalBatchDuration, MaximumWithdrawalBatchDuration as MaxWithdrawalBatchDuration, MinimumAnnualInterestBips as MinAnnualInterestBips, MaximumAnnualInterestBips as MaxAnnualInterestBips } from '../shared/TestConstants.sol';
+import { MinimumDelinquencyGracePeriod as MinDelinquencyGracePeriod, MaximumDelinquencyGracePeriod as MaxDelinquencyGracePeriod, MinimumReserveRatioBips as MinReserveRatioBips, MaximumReserveRatioBips as MaxReserveRatioBips, MinimumDelinquencyFeeBips as MinDelinquencyFeeBips, MaximumDelinquencyFeeBips as MaxDelinquencyFeeBips, MinimumWithdrawalBatchDuration as MinWithdrawalBatchDuration, MaximumWithdrawalBatchDuration as MaxWithdrawalBatchDuration, MinimumAnnualInterestBips as MinAnnualInterestBips, MaximumAnnualInterestBips as MaxAnnualInterestBips } from '../shared/TestConstants.sol';
 
 contract MockControllerFactory is WildcatVaultControllerFactory {
   constructor(
@@ -16,8 +16,8 @@ contract MockControllerFactory is WildcatVaultControllerFactory {
       VaultParameterConstraints(
         MinDelinquencyGracePeriod,
         MaxDelinquencyGracePeriod,
-        MinLiquidityCoverageRatio,
-        MaxLiquidityCoverageRatio,
+        MinReserveRatioBips,
+        MaxReserveRatioBips,
         MinDelinquencyFeeBips,
         MaxDelinquencyFeeBips,
         MinWithdrawalBatchDuration,

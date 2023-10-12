@@ -23,7 +23,7 @@ struct VaultParameters {
   uint16 annualInterestBips;
   uint16 delinquencyFeeBips;
   uint32 withdrawalBatchDuration;
-  uint16 liquidityCoverageRatio;
+  uint16 reserveRatioBips;
   uint32 delinquencyGracePeriod;
 }
 
@@ -35,8 +35,8 @@ struct VaultControllerParameters {
   uint256 vaultInitCodeHash;
   uint32 minimumDelinquencyGracePeriod;
   uint32 maximumDelinquencyGracePeriod;
-  uint16 minimumLiquidityCoverageRatio;
-  uint16 maximumLiquidityCoverageRatio;
+  uint16 minimumReserveRatioBips;
+  uint16 maximumReserveRatioBips;
   uint16 minimumDelinquencyFeeBips;
   uint16 maximumDelinquencyFeeBips;
   uint32 minimumWithdrawalBatchDuration;
@@ -55,8 +55,8 @@ struct ProtocolFeeConfiguration {
 struct VaultParameterConstraints {
   uint32 minimumDelinquencyGracePeriod;
   uint32 maximumDelinquencyGracePeriod;
-  uint16 minimumLiquidityCoverageRatio;
-  uint16 maximumLiquidityCoverageRatio;
+  uint16 minimumReserveRatioBips;
+  uint16 maximumReserveRatioBips;
   uint16 minimumDelinquencyFeeBips;
   uint16 maximumDelinquencyFeeBips;
   uint32 minimumWithdrawalBatchDuration;

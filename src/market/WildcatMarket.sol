@@ -17,11 +17,28 @@ contract WildcatMarket is
   using SafeCastLib for uint256;
   using SafeTransferLib for address;
 
+  /**
+   * @dev Apply pending interest, delinquency fees and protocol fees
+   *      to the state and process the pending withdrawal batch if
+   *      one exists and has expired, then update the vault's
+   *      delinquency status.
+   */
   function updateState() external nonReentrant {
     VaultState memory state = _getUpdatedState();
     _writeState(state);
   }
 
+  /**
+   * @dev Deposit up to `amount` underlying assets and mint vault tokens
+   *      for `msg.sender`.
+   *
+   *      The actual deposit amount is limited by the vault's maximum deposit
+   *      amount, which is the configured `maxTotalSupply` minus the current
+   *      total supply.
+   *
+   *      Reverts if the vault is closed or if the scaled token amount
+   *      that would be minted for the deposit is zero.
+   */
   function depositUpTo(
     uint256 amount
   ) public virtual nonReentrant returns (uint256 /* actualAmount */) {
@@ -59,6 +76,13 @@ contract WildcatMarket is
     return amount;
   }
 
+  /**
+   * @dev Deposit exactly `amount` underlying assets and mint vault tokens
+   *      for `msg.sender`.
+   *
+   *     Reverts if the deposit amount would cause the vault to exceed the
+   *     configured `maxTotalSupply`.
+   */
   function deposit(uint256 amount) external virtual {
     uint256 actualAmount = depositUpTo(amount);
     if (amount != actualAmount) {
@@ -76,7 +100,7 @@ contract WildcatMarket is
     }
     uint128 withdrawableFees = state.withdrawableProtocolFees(totalAssets());
     if (withdrawableFees == 0) {
-      revert InsufficientCoverageForFeeWithdrawal();
+      revert InsufficientReservesForFeeWithdrawal();
     }
     state.accruedProtocolFees -= withdrawableFees;
     _writeState(state);
@@ -85,10 +109,12 @@ contract WildcatMarket is
   }
 
   /**
-   * @dev Withdraws funds from the vault to the borrower.
+   * @dev Withdraw funds from the vault to the borrower.
    *
    *      Can only withdraw up to the assets that are not required
    *      to meet the borrower's collateral obligations.
+   *
+   *      Reverts if the vault is closed.
    */
   function borrow(uint256 amount) external onlyBorrower nonReentrant {
     VaultState memory state = _getUpdatedState();
@@ -117,7 +143,7 @@ contract WildcatMarket is
     VaultState memory state = _getUpdatedState();
     state.annualInterestBips = 0;
     state.isClosed = true;
-    state.liquidityCoverageRatio = 0;
+    state.reserveRatioBips = 0;
     if (_withdrawalData.unpaidBatches.length() > 0) {
       revert CloseVaultWithUnpaidWithdrawals();
     }

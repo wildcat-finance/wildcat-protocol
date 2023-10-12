@@ -33,7 +33,7 @@ contract WildcatMarketConfigTest is BaseVaultTest {
     assertEq(vault.annualInterestBips(), 10000);
   }
 
-  function test_liquidityCoverageRatio() external returns (uint256) {}
+  function test_reserveRatioBips() external returns (uint256) {}
 
   // function test_revokeAccountAuthorization(
   //   address _account
@@ -204,27 +204,27 @@ contract WildcatMarketConfigTest is BaseVaultTest {
     vault.setAnnualInterestBips(_annualInterestBips);
   }
 
-  function test_setLiquidityCoverageRatio(
-    uint256 _liquidityCoverageRatio
+  function test_setReserveRatioBips(
+    uint256 _reserveRatioBips
   ) external asAccount(parameters.controller) {
-    _liquidityCoverageRatio = bound(_liquidityCoverageRatio, 0, 10000);
-    vault.setLiquidityCoverageRatio(uint16(_liquidityCoverageRatio));
-    assertEq(vault.liquidityCoverageRatio(), _liquidityCoverageRatio);
+    _reserveRatioBips = bound(_reserveRatioBips, 0, 10000);
+    vault.setReserveRatioBips(uint16(_reserveRatioBips));
+    assertEq(vault.reserveRatioBips(), _reserveRatioBips);
   }
 
-  /* 	function test_setLiquidityCoverageRatio_IncreaseWhileDelinquent(
-		uint256 _liquidityCoverageRatio
+  /* 	function test_setReserveRatioBips_IncreaseWhileDelinquent(
+		uint256 _reserveRatioBips
 	) external asAccount(parameters.controller) {
-		_liquidityCoverageRatio = bound(
-			_liquidityCoverageRatio,
-			parameters.liquidityCoverageRatio + 1,
+		_reserveRatioBips = bound(
+			_reserveRatioBips,
+			parameters.reserveRatioBips + 1,
 			10000
 		);
 		_induceDelinquency();
 		vm.expectEmit(address(vault));
-		emit LiquidityCoverageRatioUpdated(uint16(_liquidityCoverageRatio));
-		vault.setLiquidityCoverageRatio(uint16(_liquidityCoverageRatio));
-		assertEq(vault.liquidityCoverageRatio(), _liquidityCoverageRatio);
+		emit ReserveRatioBipsUpdated(uint16(_reserveRatioBips));
+		vault.setReserveRatioBips(uint16(_reserveRatioBips));
+		assertEq(vault.reserveRatioBips(), _reserveRatioBips);
 	} */
 
   function _induceDelinquency() internal {
@@ -233,36 +233,36 @@ contract WildcatMarketConfigTest is BaseVaultTest {
     _requestWithdrawal(alice, 9e17);
   }
 
-  function test_setLiquidityCoverageRatio_LiquidityCoverageRatioTooHigh()
+  function test_setReserveRatioBips_ReserveRatioBipsTooHigh()
     external
     asAccount(parameters.controller)
   {
-    vm.expectRevert(IVaultEventsAndErrors.LiquidityCoverageRatioTooHigh.selector);
-    vault.setLiquidityCoverageRatio(10001);
+    vm.expectRevert(IVaultEventsAndErrors.ReserveRatioBipsTooHigh.selector);
+    vault.setReserveRatioBips(10001);
   }
 
   // Vault already deliquent, LCR set to lower value
-  function test_setLiquidityCoverageRatio_InsufficientCoverageForOldLiquidityRatio()
+  function test_setReserveRatioBips_InsufficientReservesForOldLiquidityRatio()
     external
     asAccount(parameters.controller)
   {
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
-    vm.expectRevert(IVaultEventsAndErrors.InsufficientCoverageForOldLiquidityRatio.selector);
-    vault.setLiquidityCoverageRatio(1000);
+    vm.expectRevert(IVaultEventsAndErrors.InsufficientReservesForOldLiquidityRatio.selector);
+    vault.setReserveRatioBips(1000);
   }
 
-  function test_setLiquidityCoverageRatio_InsufficientCoverageForNewLiquidityRatio()
+  function test_setReserveRatioBips_InsufficientReservesForNewLiquidityRatio()
     external
     asAccount(parameters.controller)
   {
     _deposit(alice, 1e18);
     _borrow(7e17);
-    vm.expectRevert(IVaultEventsAndErrors.InsufficientCoverageForNewLiquidityRatio.selector);
-    vault.setLiquidityCoverageRatio(3001);
+    vm.expectRevert(IVaultEventsAndErrors.InsufficientReservesForNewLiquidityRatio.selector);
+    vault.setReserveRatioBips(3001);
   }
 
-  function test_setLiquidityCoverageRatio_NotController(uint16 _liquidityCoverageRatio) external {
+  function test_setReserveRatioBips_NotController(uint16 _reserveRatioBips) external {
     vm.expectRevert(IVaultEventsAndErrors.NotController.selector);
-    vault.setLiquidityCoverageRatio(_liquidityCoverageRatio);
+    vault.setReserveRatioBips(_reserveRatioBips);
   }
 }

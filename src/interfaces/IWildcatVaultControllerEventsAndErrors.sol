@@ -7,7 +7,7 @@ interface IWildcatVaultControllerEventsAndErrors {
   /* -------------------------------------------------------------------------- */
 
   error DelinquencyGracePeriodOutOfBounds();
-  error LiquidityCoverageRatioOutOfBounds();
+  error ReserveRatioBipsOutOfBounds();
   error DelinquencyFeeBipsOutOfBounds();
   error WithdrawalBatchDurationOutOfBounds();
   error AnnualInterestBipsOutOfBounds();
@@ -29,7 +29,7 @@ interface IWildcatVaultControllerEventsAndErrors {
 
   error VaultAlreadyDeployed();
 
-  error ExcessLiquidityCoverageStillActive();
+  error ExcessReserveRatioStillActive();
   error AprChangeNotPending();
 
   /* -------------------------------------------------------------------------- */

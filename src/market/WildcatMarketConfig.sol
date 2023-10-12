@@ -39,33 +39,13 @@ contract WildcatMarketConfig is WildcatMarketBase {
     return _state.annualInterestBips;
   }
 
-  function liquidityCoverageRatio() external view returns (uint256) {
-    return _state.liquidityCoverageRatio;
+  function reserveRatioBips() external view returns (uint256) {
+    return _state.reserveRatioBips;
   }
 
-  // =====================================================================//
-  //                        External Config Setters                       //
-  // =====================================================================//
-
-  /**
-   * @dev Updates an account's authorization status based on whether the controller
-   *      has it marked as approved.
-   */
-  function updateAccountAuthorization(
-    address _account,
-    bool _isAuthorized
-  ) external onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
-    Account memory account = _getAccount(_account);
-    if (_isAuthorized) {
-      account.approval = AuthRole.DepositAndWithdraw;
-    } else {
-      account.approval = AuthRole.WithdrawOnly;
-    }
-    _accounts[_account] = account;
-    _writeState(state);
-    emit AuthorizationStatusUpdated(_account, account.approval);
-  }
+  /* -------------------------------------------------------------------------- */
+  /*                                  Sanctions                                 */
+  /* -------------------------------------------------------------------------- */
 
   /// @dev Block a sanctioned account from interacting with the market
   ///      and transfer its balance to an escrow contract.
@@ -121,9 +101,29 @@ contract WildcatMarketConfig is WildcatMarketBase {
     _accounts[accountAddress] = account;
   }
 
-  // /*//////////////////////////////////////////////////////////////
-  //                       Management Actions
-  // //////////////////////////////////////////////////////////////*/
+  /* -------------------------------------------------------------------------- */
+  /*                           External Config Setters                          */
+  /* -------------------------------------------------------------------------- */
+
+  /**
+   * @dev Updates an account's authorization status based on whether the controller
+   *      has it marked as approved.
+   */
+  function updateAccountAuthorization(
+    address _account,
+    bool _isAuthorized
+  ) external onlyController nonReentrant {
+    VaultState memory state = _getUpdatedState();
+    Account memory account = _getAccount(_account);
+    if (_isAuthorized) {
+      account.approval = AuthRole.DepositAndWithdraw;
+    } else {
+      account.approval = AuthRole.WithdrawOnly;
+    }
+    _accounts[_account] = account;
+    _writeState(state);
+    emit AuthorizationStatusUpdated(_account, account.approval);
+  }
 
   /**
    * @dev Sets the maximum total supply - this only limits deposits and
@@ -159,7 +159,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
   }
 
   /**
-   * @dev Adjust the vault's liquidity coverage ratio.
+   * @dev Adjust the vault's reserve ratio.
    *
    *      If the new ratio is lower than the old ratio,
    *      asserts that the vault is not currently delinquent.
@@ -168,29 +168,27 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      asserts that the vault will not become delinquent
    *      because of the change.
    */
-  function setLiquidityCoverageRatio(
-    uint16 _liquidityCoverageRatio
-  ) public onlyController nonReentrant {
-    if (_liquidityCoverageRatio > BIP) {
-      revert LiquidityCoverageRatioTooHigh();
+  function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant {
+    if (_reserveRatioBips > BIP) {
+      revert ReserveRatioBipsTooHigh();
     }
 
     VaultState memory state = _getUpdatedState();
 
-    uint256 initialLiquidityCoverageRatio = state.liquidityCoverageRatio;
+    uint256 initialReserveRatioBips = state.reserveRatioBips;
 
-    if (_liquidityCoverageRatio < initialLiquidityCoverageRatio) {
+    if (_reserveRatioBips < initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientCoverageForOldLiquidityRatio();
+        revert InsufficientReservesForOldLiquidityRatio();
       }
     }
-    state.liquidityCoverageRatio = _liquidityCoverageRatio;
-    if (_liquidityCoverageRatio > initialLiquidityCoverageRatio) {
+    state.reserveRatioBips = _reserveRatioBips;
+    if (_reserveRatioBips > initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientCoverageForNewLiquidityRatio();
+        revert InsufficientReservesForNewLiquidityRatio();
       }
     }
     _writeState(state);
-    emit LiquidityCoverageRatioUpdated(_liquidityCoverageRatio);
+    emit ReserveRatioBipsUpdated(_reserveRatioBips);
   }
 }

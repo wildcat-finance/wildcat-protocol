@@ -30,7 +30,7 @@ contract MockController is WildcatVaultController {
     uint16 annualInterestBips,
     uint16 delinquencyFeeBips,
     uint32 withdrawalBatchDuration,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
   ) internal view virtual override {
     if (!DISABLE_PARAMETER_CHECKS) {
@@ -40,7 +40,7 @@ contract MockController is WildcatVaultController {
         annualInterestBips,
         delinquencyFeeBips,
         withdrawalBatchDuration,
-        liquidityCoverageRatio,
+        reserveRatioBips,
         delinquencyGracePeriod
       );
     }

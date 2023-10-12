@@ -23,8 +23,8 @@ interface IVaultEventsAndErrors {
   /// @notice Error thrown when new maxTotalSupply lower than totalSupply
   error NewMaxSupplyTooLow();
 
-  /// @notice Error thrown when liquidity coverage ratio set higher than 100%
-  error LiquidityCoverageRatioTooHigh();
+  /// @notice Error thrown when reserve ratio set higher than 100%
+  error ReserveRatioBipsTooHigh();
 
   /// @notice Error thrown when interest rate set higher than 100%
   error InterestRateTooHigh();
@@ -50,12 +50,9 @@ interface IVaultEventsAndErrors {
 
   error FeeSetWithoutRecipient();
 
-  error InsufficientCoverageForFeeWithdrawal();
+  error InsufficientReservesForFeeWithdrawal();
 
   error WithdrawalBatchNotExpired();
-
-  /// @notice Error thrown when liquidity coverage ratio set to value
-  ///         the vault currently would not meet.
 
   error NullMintAmount();
 
@@ -65,15 +62,19 @@ interface IVaultEventsAndErrors {
 
   error NullTransferAmount();
 
+  error NullWithdrawalAmount();
+
   error DepositToClosedVault();
 
   error BorrowFromClosedVault();
 
   error CloseVaultWithUnpaidWithdrawals();
 
-  error InsufficientCoverageForNewLiquidityRatio();
+  /// @notice Error thrown when reserve ratio set to value
+  ///         the vault currently would not meet.
+  error InsufficientReservesForNewLiquidityRatio();
 
-  error InsufficientCoverageForOldLiquidityRatio();
+  error InsufficientReservesForOldLiquidityRatio();
 
   event Transfer(address indexed from, address indexed to, uint256 value);
 
@@ -83,7 +84,7 @@ interface IVaultEventsAndErrors {
 
   event AnnualInterestBipsUpdated(uint256 annualInterestBipsUpdated);
 
-  event LiquidityCoverageRatioUpdated(uint256 liquidityCoverageRatioUpdated);
+  event ReserveRatioBipsUpdated(uint256 reserveRatioBipsUpdated);
 
   event SanctionedAccountAssetsSentToEscrow(address account, address escrow, uint256 amount);
 

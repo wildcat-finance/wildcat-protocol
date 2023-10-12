@@ -46,8 +46,8 @@ contract WildcatVaultControllerFactory {
   uint32 internal immutable MinimumDelinquencyGracePeriod;
   uint32 internal immutable MaximumDelinquencyGracePeriod;
 
-  uint16 internal immutable MinimumLiquidityCoverageRatio;
-  uint16 internal immutable MaximumLiquidityCoverageRatio;
+  uint16 internal immutable MinimumReserveRatioBips;
+  uint16 internal immutable MaximumReserveRatioBips;
 
   uint16 internal immutable MinimumDelinquencyFeeBips;
   uint16 internal immutable MaximumDelinquencyFeeBips;
@@ -81,8 +81,8 @@ contract WildcatVaultControllerFactory {
       constraints.maximumAnnualInterestBips > 10000 ||
       constraints.minimumDelinquencyFeeBips > constraints.maximumDelinquencyFeeBips ||
       constraints.maximumDelinquencyFeeBips > 10000 ||
-      constraints.minimumLiquidityCoverageRatio > constraints.maximumLiquidityCoverageRatio ||
-      constraints.maximumLiquidityCoverageRatio > 10000 ||
+      constraints.minimumReserveRatioBips > constraints.maximumReserveRatioBips ||
+      constraints.maximumReserveRatioBips > 10000 ||
       constraints.minimumDelinquencyGracePeriod > constraints.maximumDelinquencyGracePeriod ||
       constraints.minimumWithdrawalBatchDuration > constraints.maximumWithdrawalBatchDuration
     ) {
@@ -90,8 +90,8 @@ contract WildcatVaultControllerFactory {
     }
     MinimumDelinquencyGracePeriod = constraints.minimumDelinquencyGracePeriod;
     MaximumDelinquencyGracePeriod = constraints.maximumDelinquencyGracePeriod;
-    MinimumLiquidityCoverageRatio = constraints.minimumLiquidityCoverageRatio;
-    MaximumLiquidityCoverageRatio = constraints.maximumLiquidityCoverageRatio;
+    MinimumReserveRatioBips = constraints.minimumReserveRatioBips;
+    MaximumReserveRatioBips = constraints.maximumReserveRatioBips;
     MinimumDelinquencyFeeBips = constraints.minimumDelinquencyFeeBips;
     MaximumDelinquencyFeeBips = constraints.maximumDelinquencyFeeBips;
     MinimumWithdrawalBatchDuration = constraints.minimumWithdrawalBatchDuration;
@@ -227,8 +227,8 @@ contract WildcatVaultControllerFactory {
   {
     constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
     constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
-    constraints.minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
-    constraints.maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
+    constraints.minimumReserveRatioBips = MinimumReserveRatioBips;
+    constraints.maximumReserveRatioBips = MaximumReserveRatioBips;
     constraints.minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
     constraints.maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
     constraints.minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
@@ -256,8 +256,8 @@ contract WildcatVaultControllerFactory {
     parameters.vaultInitCodeHash = vaultInitCodeHash;
     parameters.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
     parameters.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
-    parameters.minimumLiquidityCoverageRatio = MinimumLiquidityCoverageRatio;
-    parameters.maximumLiquidityCoverageRatio = MaximumLiquidityCoverageRatio;
+    parameters.minimumReserveRatioBips = MinimumReserveRatioBips;
+    parameters.maximumReserveRatioBips = MaximumReserveRatioBips;
     parameters.minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
     parameters.maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
     parameters.minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
@@ -322,7 +322,7 @@ contract WildcatVaultControllerFactory {
     uint16 annualInterestBips,
     uint16 delinquencyFeeBips,
     uint32 withdrawalBatchDuration,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
   ) external returns (address controller, address vault) {
     controller = deployController();
@@ -334,7 +334,7 @@ contract WildcatVaultControllerFactory {
       annualInterestBips,
       delinquencyFeeBips,
       withdrawalBatchDuration,
-      liquidityCoverageRatio,
+      reserveRatioBips,
       delinquencyGracePeriod
     );
   }

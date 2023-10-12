@@ -79,29 +79,29 @@ contract VaultStateTest is Test {
   function test_liquidityRequired(
     uint104 scaledPendingWithdrawals,
     uint104 scaledTotalSupply,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint128 accruedProtocolFees,
-    uint128 reservedAssets
+    uint128 normalizedUnclaimedWithdrawals
   ) external {
-    liquidityCoverageRatio = uint16(bound(liquidityCoverageRatio, 1, 10000));
+    reserveRatioBips = uint16(bound(reserveRatioBips, 1, 10000));
     scaledPendingWithdrawals = uint104(bound(scaledPendingWithdrawals, 0, scaledTotalSupply));
 
     VaultState memory state;
     state.scaledPendingWithdrawals = scaledPendingWithdrawals;
     state.scaledTotalSupply = scaledTotalSupply;
-    state.liquidityCoverageRatio = liquidityCoverageRatio;
+    state.reserveRatioBips = reserveRatioBips;
     state.accruedProtocolFees = accruedProtocolFees;
-    state.reservedAssets = reservedAssets;
+    state.normalizedUnclaimedWithdrawals = normalizedUnclaimedWithdrawals;
 
-    uint256 scaledCoverageLiquidity = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
-      uint256(liquidityCoverageRatio)) / uint256(10000);
+    uint256 scaledRequiredReserves = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
+      uint256(reserveRatioBips)) / uint256(10000);
     uint256 collateralForOutstanding = state.$normalizeAmount(
-      scaledCoverageLiquidity + scaledPendingWithdrawals
+      scaledRequiredReserves + scaledPendingWithdrawals
     );
 
     assertEq(
       state.$liquidityRequired(),
-      collateralForOutstanding + state.reservedAssets + uint256(accruedProtocolFees)
+      collateralForOutstanding + state.normalizedUnclaimedWithdrawals + uint256(accruedProtocolFees)
     );
   }
 
@@ -119,30 +119,30 @@ contract VaultStateTest is Test {
   function test_borrowableAssets(
     uint104 scaledPendingWithdrawals,
     uint104 scaledTotalSupply,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint128 accruedProtocolFees,
-    uint128 reservedAssets,
+    uint128 normalizedUnclaimedWithdrawals,
     uint128 totalAssets
   ) external {
-    liquidityCoverageRatio = uint16(bound(liquidityCoverageRatio, 1, 10000));
+    reserveRatioBips = uint16(bound(reserveRatioBips, 1, 10000));
     scaledPendingWithdrawals = uint104(bound(scaledPendingWithdrawals, 0, scaledTotalSupply));
 
     VaultState memory state;
     state.scaledPendingWithdrawals = scaledPendingWithdrawals;
     state.scaledTotalSupply = scaledTotalSupply;
-    state.liquidityCoverageRatio = liquidityCoverageRatio;
+    state.reserveRatioBips = reserveRatioBips;
     state.accruedProtocolFees = accruedProtocolFees;
-    state.reservedAssets = reservedAssets;
+    state.normalizedUnclaimedWithdrawals = normalizedUnclaimedWithdrawals;
 
-    uint256 scaledCoverageLiquidity = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
-      uint256(liquidityCoverageRatio)) / uint256(10000);
+    uint256 scaledRequiredReserves = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
+      uint256(reserveRatioBips)) / uint256(10000);
     uint256 collateralForOutstanding = state.$normalizeAmount(
-      scaledCoverageLiquidity + scaledPendingWithdrawals
+      scaledRequiredReserves + scaledPendingWithdrawals
     );
 
     assertEq(
       state.$liquidityRequired(),
-      collateralForOutstanding + state.reservedAssets + uint256(accruedProtocolFees)
+      collateralForOutstanding + state.normalizedUnclaimedWithdrawals + uint256(accruedProtocolFees)
     );
     assertEq(
       state.$borrowableAssets(totalAssets),
@@ -152,16 +152,16 @@ contract VaultStateTest is Test {
 
   function test_withdrawableProtocolFees(
     uint256 accruedProtocolFees,
-    uint256 reservedAssets,
+    uint256 normalizedUnclaimedWithdrawals,
     uint256 totalAssets
   ) external {
     accruedProtocolFees = bound(accruedProtocolFees, 0, type(uint128).max);
-    reservedAssets = bound(reservedAssets, 0, type(uint128).max);
-    totalAssets = bound(totalAssets, reservedAssets, type(uint128).max);
+    normalizedUnclaimedWithdrawals = bound(normalizedUnclaimedWithdrawals, 0, type(uint128).max);
+    totalAssets = bound(totalAssets, normalizedUnclaimedWithdrawals, type(uint128).max);
     VaultState memory state;
     state.accruedProtocolFees = uint128(accruedProtocolFees);
-    state.reservedAssets = uint128(reservedAssets);
-    uint256 availableAssets = totalAssets - reservedAssets;
+    state.normalizedUnclaimedWithdrawals = uint128(normalizedUnclaimedWithdrawals);
+    uint256 availableAssets = totalAssets - normalizedUnclaimedWithdrawals;
     uint256 expectedWithdrawable = accruedProtocolFees > availableAssets
       ? availableAssets
       : accruedProtocolFees;

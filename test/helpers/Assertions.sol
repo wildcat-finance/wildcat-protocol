@@ -18,7 +18,11 @@ contract Assertions is StdAssertions {
       expected.accruedProtocolFees,
       string.concat(key, '.accruedProtocolFees')
     );
-    assertEq(actual.reservedAssets, expected.reservedAssets, string.concat(key, '.reservedAssets'));
+    assertEq(
+      actual.normalizedUnclaimedWithdrawals,
+      expected.normalizedUnclaimedWithdrawals,
+      string.concat(key, '.normalizedUnclaimedWithdrawals')
+    );
     assertEq(
       actual.scaledTotalSupply,
       expected.scaledTotalSupply,
@@ -42,9 +46,9 @@ contract Assertions is StdAssertions {
       string.concat(key, '.annualInterestBips')
     );
     assertEq(
-      actual.liquidityCoverageRatio,
-      expected.liquidityCoverageRatio,
-      string.concat(key, '.liquidityCoverageRatio')
+      actual.reserveRatioBips,
+      expected.reserveRatioBips,
+      string.concat(key, '.reserveRatioBips')
     );
     assertEq(actual.scaleFactor, expected.scaleFactor, string.concat(key, '.scaleFactor'));
     assertEq(

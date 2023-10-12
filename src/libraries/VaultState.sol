@@ -14,8 +14,9 @@ struct VaultState {
   bool isClosed;
   uint128 maxTotalSupply;
   uint128 accruedProtocolFees;
-  // Underlying assets reserved for protocol fees and withdrawals
-  uint128 reservedAssets;
+  // Underlying assets reserved for withdrawals which have been paid
+  // by the borrower but not yet executed.
+  uint128 normalizedUnclaimedWithdrawals;
   // Scaled token supply (divided by scaleFactor)
   uint104 scaledTotalSupply;
   // Scaled token amount in withdrawal batches that have not been
@@ -44,22 +45,24 @@ library VaultStateLib {
   using MathUtils for uint256;
   using SafeCastLib for uint256;
 
-  // =====================================================================//
-  //                            Read Methods                              //
-  // =====================================================================//
-
-  /// @dev Returns the normalized total supply of the vault.
+  /**
+   * @dev Returns the normalized total supply of the vault.
+   */
   function totalSupply(VaultState memory state) internal pure returns (uint256) {
     return state.normalizeAmount(state.scaledTotalSupply);
   }
 
-  /// @dev Returns the maximum amount of tokens that can be deposited without
-  ///      reaching the maximum total supply.
+  /**
+   * @dev Returns the maximum amount of tokens that can be deposited without
+   *      reaching the maximum total supply.
+   */
   function maximumDeposit(VaultState memory state) internal pure returns (uint256) {
     return uint256(state.maxTotalSupply).satSub(state.totalSupply());
   }
 
-  /// @dev Normalize an amount of scaled tokens using the current scale factor.
+  /**
+   * @dev Normalize an amount of scaled tokens using the current scale factor.
+   */
   function normalizeAmount(
     VaultState memory state,
     uint256 amount
@@ -67,7 +70,9 @@ library VaultStateLib {
     return amount.rayMul(state.scaleFactor);
   }
 
-  /// @dev Scale an amount of normalized tokens using the current scale factor.
+  /**
+   * @dev Scale an amount of normalized tokens using the current scale factor.
+   */
   function scaleAmount(VaultState memory state, uint256 amount) internal pure returns (uint256) {
     return amount.rayDiv(state.scaleFactor);
   }
@@ -86,7 +91,7 @@ library VaultStateLib {
     return
       state.normalizeAmount(scaledCoverageLiquidity) +
       state.accruedProtocolFees +
-      state.reservedAssets;
+      state.normalizedUnclaimedWithdrawals;
   }
 
   /**
@@ -98,7 +103,7 @@ library VaultStateLib {
     VaultState memory state,
     uint256 totalAssets
   ) internal pure returns (uint128) {
-    uint256 totalAvailableAssets = totalAssets - state.reservedAssets;
+    uint256 totalAvailableAssets = totalAssets - state.normalizedUnclaimedWithdrawals;
     return uint128(MathUtils.min(totalAvailableAssets, state.accruedProtocolFees));
   }
 
@@ -130,7 +135,7 @@ library VaultStateLib {
   function totalDebts(VaultState memory state) internal pure returns (uint256) {
     return
       state.normalizeAmount(state.scaledTotalSupply) +
-      state.reservedAssets +
+      state.normalizedUnclaimedWithdrawals +
       state.accruedProtocolFees;
   }
 }

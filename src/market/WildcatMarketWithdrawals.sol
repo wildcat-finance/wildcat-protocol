@@ -14,6 +14,10 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   using SafeCastLib for uint256;
   using BoolUtils for bool;
 
+  /* -------------------------------------------------------------------------- */
+  /*                             Withdrawal Queries                             */
+  /* -------------------------------------------------------------------------- */
+
   /**
    * @dev Returns the expiry timestamp of every unpaid withdrawal batch.
    */
@@ -62,6 +66,10 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     );
     return newTotalWithdrawn - previousTotalWithdrawn;
   }
+
+  /* -------------------------------------------------------------------------- */
+  /*                             Withdrawal Actions                             */
+  /* -------------------------------------------------------------------------- */
 
   /**
    * @dev Create a withdrawal request for a lender.
@@ -113,7 +121,18 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   }
 
   /**
-   * @dev Execute a pending withdrawal request.
+   * @dev Execute a pending withdrawal request for a batch that has expired.
+   *
+   *      Withdraws the proportional amount of the paid batch owed to
+   *      `accountAddress` which has not already been withdrawn.
+   *
+   *      If `accountAddress` is sanctioned, transfers the owed amount to
+   *      an escrow contract specific to the account and blocks the account.
+   *
+   *      Reverts if:
+   *      - `expiry > block.timestamp`
+   *      -  `expiry` does not correspond to an existing withdrawal batch
+   *      - `accountAddress` has already withdrawn the full amount owed
    */
   function executeWithdrawal(
     address accountAddress,
@@ -136,7 +155,11 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     uint128 normalizedAmountWithdrawn = newTotalWithdrawn - status.normalizedAmountWithdrawn;
 
     status.normalizedAmountWithdrawn = newTotalWithdrawn;
-    state.reservedAssets -= normalizedAmountWithdrawn;
+    state.normalizedUnclaimedWithdrawals -= normalizedAmountWithdrawn;
+
+    if (normalizedAmountWithdrawn == 0) {
+      revert NullWithdrawalAmount();
+    }
 
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       _blockAccount(state, accountAddress);
@@ -174,7 +197,8 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
     // Calculate assets available to process the batch
-    uint256 availableLiquidity = totalAssets() - (state.reservedAssets + state.accruedProtocolFees);
+    uint256 availableLiquidity = totalAssets() -
+      (state.normalizedUnclaimedWithdrawals + state.accruedProtocolFees);
 
     _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
 

@@ -93,7 +93,7 @@ contract Test is ForgeTest, Prankster {
         parameters.annualInterestBips,
         parameters.delinquencyFeeBips,
         parameters.withdrawalBatchDuration,
-        parameters.liquidityCoverageRatio,
+        parameters.reserveRatioBips,
         parameters.delinquencyGracePeriod
       )
     );
