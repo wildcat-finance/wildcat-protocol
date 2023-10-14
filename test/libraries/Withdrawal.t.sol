@@ -29,7 +29,7 @@ contract WithdrawalTest is Test {
       bound(scaledTotalPendingWithdrawals, 1, type(uint104).max)
     );
     scaledBatchAmount = uint104(bound(scaledBatchAmount, 1, scaledTotalPendingWithdrawals));
-    VaultState memory state;
+    MarketState memory state;
     state.normalizedUnclaimedWithdrawals = normalizedUnclaimedWithdrawals;
     state.accruedProtocolFees = accruedProtocolFees;
     state.scaleFactor = scaleFactor;

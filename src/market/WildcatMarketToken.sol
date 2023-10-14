@@ -14,13 +14,13 @@ contract WildcatMarketToken is WildcatMarketBase {
 
   /// @notice Returns the normalized balance of `account` with interest.
   function balanceOf(address account) public view virtual nonReentrantView returns (uint256) {
-    (VaultState memory state, , ) = _calculateCurrentState();
+    (MarketState memory state, , ) = _calculateCurrentState();
     return state.normalizeAmount(_accounts[account].scaledBalance);
   }
 
   /// @notice Returns the normalized total supply with interest.
   function totalSupply() external view virtual nonReentrantView returns (uint256) {
-    (VaultState memory state, , ) = _calculateCurrentState();
+    (MarketState memory state, , ) = _calculateCurrentState();
     return state.totalSupply();
   }
 
@@ -62,7 +62,7 @@ contract WildcatMarketToken is WildcatMarketBase {
   }
 
   function _transfer(address from, address to, uint256 amount) internal virtual {
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 
     if (scaledAmount == 0) {

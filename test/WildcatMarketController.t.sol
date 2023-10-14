@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: NONE
 pragma solidity >=0.8.20;
 
-import './BaseVaultTest.sol';
-import 'src/interfaces/IVaultEventsAndErrors.sol';
+import './BaseMarketTest.sol';
+import 'src/interfaces/IMarketEventsAndErrors.sol';
 import 'src/libraries/MathUtils.sol';
 import 'src/libraries/SafeCastLib.sol';
-import 'src/libraries/VaultState.sol';
+import 'src/libraries/MarketState.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
-contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEventsAndErrors {
+contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketControllerEventsAndErrors {
   function _check(
     uint256 apr,
     uint256 reserveRatio,
@@ -16,18 +16,18 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     uint256 tmpExpiry
   ) internal {
     (uint256 reserveRatioBips, uint256 expiry) = controller.temporaryExcessReserveRatio(
-      address(vault)
+      address(market)
     );
 
-    assertEq(vault.annualInterestBips(), apr, 'APR');
-    assertEq(vault.reserveRatioBips(), reserveRatio, 'reserve ratio');
+    assertEq(market.annualInterestBips(), apr, 'APR');
+    assertEq(market.reserveRatioBips(), reserveRatio, 'reserve ratio');
 
     assertEq(reserveRatioBips, cachedReserveRatio, 'Previous reserve ratio');
     assertEq(expiry, tmpExpiry, 'Temporary reserve ratio expiry');
   }
 
   function test_getParameterConstraints() public {
-    VaultParameterConstraints memory constraints = controller.getParameterConstraints();
+    MarketParameterConstraints memory constraints = controller.getParameterConstraints();
     assertEq(
       constraints.minimumDelinquencyGracePeriod,
       MinimumDelinquencyGracePeriod,
@@ -133,8 +133,8 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     assertEq(controller.getAuthorizedLendersCount(), 0, 'getAuthorizedLendersCount');
   }
 
-  function _callDeployVault(address from) internal asAccount(from) returns (address vaultAddress) {
-    vaultAddress = controller.deployVault(
+  function _callDeployMarket(address from) internal asAccount(from) returns (address marketAddress) {
+    marketAddress = controller.deployMarket(
       parameters.asset,
       parameters.namePrefix,
       parameters.symbolPrefix,
@@ -145,46 +145,46 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
       parameters.reserveRatioBips,
       parameters.delinquencyGracePeriod
     );
-    if (vaultAddress != address(0)) {
-      assertTrue(controller.isControlledVault(vaultAddress), 'controller does not recognize vault');
+    if (marketAddress != address(0)) {
+      assertTrue(controller.isControlledMarket(marketAddress), 'controller does not recognize market');
       assertTrue(
-        archController.isRegisteredVault(vaultAddress),
-        'arch controller does not recognize vault'
+        archController.isRegisteredMarket(marketAddress),
+        'arch controller does not recognize market'
       );
     }
   }
 
-  function test_VaultSet() external {
+  function test_MarketSet() external {
     address asset2 = address(new MockERC20('nam', 'sym', 18));
 
-    address[] memory vaults = new address[](2);
-    vaults[0] = address(vault);
-    vaults[1] = controller.computeVaultAddress(
+    address[] memory markets = new address[](2);
+    markets[0] = address(market);
+    markets[1] = controller.computeMarketAddress(
       asset2,
       parameters.namePrefix,
       parameters.symbolPrefix
     );
     parameters.asset = asset2;
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
 
-    assertEq(controller.getControlledVaults(), vaults, 'getControlledVaults');
-    address[] memory vaultSlice = new address[](1);
+    assertEq(controller.getControlledMarkets(), markets, 'getControlledMarkets');
+    address[] memory marketSlice = new address[](1);
 
-    vaultSlice[0] = vaults[0];
-    assertEq(controller.getControlledVaults(0, 1), vaultSlice, 'getControlledVaults(start, end)');
+    marketSlice[0] = markets[0];
+    assertEq(controller.getControlledMarkets(0, 1), marketSlice, 'getControlledMarkets(start, end)');
 
-    vaultSlice[0] = vaults[1];
-    assertEq(controller.getControlledVaults(1, 2), vaultSlice, 'getControlledVaults(start, end)');
+    marketSlice[0] = markets[1];
+    assertEq(controller.getControlledMarkets(1, 2), marketSlice, 'getControlledMarkets(start, end)');
 
-    assertTrue(controller.isControlledVault(vaults[0]), 'isControlledVault');
-    assertTrue(controller.isControlledVault(vaults[1]), 'isControlledVault');
+    assertTrue(controller.isControlledMarket(markets[0]), 'isControlledMarket');
+    assertTrue(controller.isControlledMarket(markets[1]), 'isControlledMarket');
 
-    assertEq(controller.getControlledVaultsCount(), 2, 'getControlledVaultsCount');
+    assertEq(controller.getControlledMarketsCount(), 2, 'getControlledMarketsCount');
 
-    assertEq(archController.getRegisteredVaults(), vaults, 'getRegisteredVaults');
+    assertEq(archController.getRegisteredMarkets(), markets, 'getRegisteredMarkets');
   }
 
-  function test_deployVault_OriginationFee() external {
+  function test_deployMarket_OriginationFee() external {
     MockERC20 feeAsset = new MockERC20('', '', 18);
     feeAsset.mint(borrower, 10e18);
     startPrank(borrower);
@@ -199,66 +199,66 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     parameters.asset = address(asset = new MockERC20('Token', 'TKN', 18));
     vm.expectEmit(address(feeAsset));
     emit Transfer(borrower, feeRecipient, 10e18);
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
   }
 
-  function test_deployVault_AnnualInterestBipsOutOfBounds() external {
+  function test_deployMarket_AnnualInterestBipsOutOfBounds() external {
     parameters.annualInterestBips = MaximumAnnualInterestBips + 1;
     vm.expectRevert(AnnualInterestBipsOutOfBounds.selector);
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
   }
 
-  function test_deployVault_DelinquencyFeeBipsOutOfBounds() external {
+  function test_deployMarket_DelinquencyFeeBipsOutOfBounds() external {
     parameters.delinquencyFeeBips = MaximumDelinquencyFeeBips + 1;
     vm.expectRevert(DelinquencyFeeBipsOutOfBounds.selector);
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
   }
 
-  function test_deployVault_WithdrawalBatchDurationOutOfBounds() external {
+  function test_deployMarket_WithdrawalBatchDurationOutOfBounds() external {
     parameters.withdrawalBatchDuration = MaximumWithdrawalBatchDuration + 1;
     vm.expectRevert(WithdrawalBatchDurationOutOfBounds.selector);
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
   }
 
-  function test_deployVault_ReserveRatioBipsOutOfBounds() external {
+  function test_deployMarket_ReserveRatioBipsOutOfBounds() external {
     parameters.reserveRatioBips = MaximumReserveRatioBips + 1;
     vm.expectRevert(ReserveRatioBipsOutOfBounds.selector);
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
   }
 
-  function test_deployVault_DelinquencyGracePeriodOutOfBounds() external {
+  function test_deployMarket_DelinquencyGracePeriodOutOfBounds() external {
     parameters.delinquencyGracePeriod = MaximumDelinquencyGracePeriod + 1;
     vm.expectRevert(DelinquencyGracePeriodOutOfBounds.selector);
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
   }
 
-  function test_deployVault_EmptyString() external {
+  function test_deployMarket_EmptyString() external {
     parameters.namePrefix = '';
     vm.expectRevert(EmptyString.selector);
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
     parameters.namePrefix = 'Wildcat ';
     parameters.symbolPrefix = '';
     vm.expectRevert(EmptyString.selector);
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
   }
 
-  function test_deployVault_CallerNotBorrowerOrControllerFactory() external {
+  function test_deployMarket_CallerNotBorrowerOrControllerFactory() external {
     vm.expectRevert(CallerNotBorrowerOrControllerFactory.selector);
-    _callDeployVault(address(this));
+    _callDeployMarket(address(this));
   }
 
-  function test_deployVault_NotRegisteredBorrower() external {
+  function test_deployMarket_NotRegisteredBorrower() external {
     archController.removeBorrower(borrower);
     vm.expectRevert(NotRegisteredBorrower.selector);
-    _callDeployVault(borrower);
+    _callDeployMarket(borrower);
   }
 
-  function test_deployVault_BorrowerNotCheckedWhenCalledByFactory() external {
+  function test_deployMarket_BorrowerNotCheckedWhenCalledByFactory() external {
     archController.removeBorrower(borrower);
     parameters.asset = address(new MockERC20('Token', 'TKN', 18));
     assertEq(
-      _callDeployVault(address(controllerFactory)),
-      controller.computeVaultAddress(
+      _callDeployMarket(address(controllerFactory)),
+      controller.computeMarketAddress(
         parameters.asset,
         parameters.namePrefix,
         parameters.symbolPrefix
@@ -266,58 +266,58 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
     );
   }
 
-  function test_deployVault_VaultAlreadyDeployed() external {
-    vm.expectRevert(VaultAlreadyDeployed.selector);
-    _callDeployVault(borrower);
+  function test_deployMarket_MarketAlreadyDeployed() external {
+    vm.expectRevert(MarketAlreadyDeployed.selector);
+    _callDeployMarket(borrower);
   }
 
   /* -------------------------------------------------------------------------- */
-  /*                             Vault Control Tests                            */
+  /*                             Market Control Tests                            */
   /* -------------------------------------------------------------------------- */
 
-  function test_setAnnualInterestBips_NotControlledVault() public {
+  function test_setAnnualInterestBips_NotControlledMarket() public {
     vm.prank(borrower);
-    vm.expectRevert(NotControlledVault.selector);
+    vm.expectRevert(NotControlledMarket.selector);
     controller.setAnnualInterestBips(address(1), DefaultInterest + 1);
   }
 
   function test_setAnnualInterestBips_CallerNotBorrower() public {
     vm.expectRevert(CallerNotBorrower.selector);
-    controller.setAnnualInterestBips(address(vault), DefaultInterest + 1);
+    controller.setAnnualInterestBips(address(market), DefaultInterest + 1);
   }
 
   function test_setAnnualInterestBips_Decrease() public {
     vm.prank(borrower);
-    controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
+    controller.setAnnualInterestBips(address(market), DefaultInterest - 1);
     _check(DefaultInterest - 1, 9000, DefaultReserveRatio, block.timestamp + 2 weeks);
   }
 
   function test_setAnnualInterestBips_Decrease_AlreadyPending() public {
     vm.prank(borrower);
-    controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
+    controller.setAnnualInterestBips(address(market), DefaultInterest - 1);
 
     uint256 expiry = block.timestamp + 2 weeks;
     _check(DefaultInterest - 1, 9000, DefaultReserveRatio, expiry);
 
     fastForward(2 weeks);
     vm.prank(borrower);
-    controller.setAnnualInterestBips(address(vault), DefaultInterest - 2);
+    controller.setAnnualInterestBips(address(market), DefaultInterest - 2);
     _check(DefaultInterest - 2, 9000, DefaultReserveRatio, expiry + 2 weeks);
   }
 
   function test_setAnnualInterestBips_Decrease_Undercollateralized() public {
     _deposit(alice, 50_000e18);
     vm.prank(borrower);
-    vault.borrow(5_000e18 + 1);
+    market.borrow(5_000e18 + 1);
 
     vm.startPrank(borrower);
-    vm.expectRevert(IVaultEventsAndErrors.InsufficientReservesForNewLiquidityRatio.selector);
-    controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
+    vm.expectRevert(IMarketEventsAndErrors.InsufficientReservesForNewLiquidityRatio.selector);
+    controller.setAnnualInterestBips(address(market), DefaultInterest - 1);
   }
 
   function test_setAnnualInterestBips_Increase() public {
     vm.prank(borrower);
-    controller.setAnnualInterestBips(address(vault), DefaultInterest + 1);
+    controller.setAnnualInterestBips(address(market), DefaultInterest + 1);
 
     _check(DefaultInterest + 1, DefaultReserveRatio, 0, 0);
   }
@@ -325,33 +325,33 @@ contract WildcatVaultControllerTest is BaseVaultTest, IWildcatVaultControllerEve
   function test_setAnnualInterestBips_Increase_Undercollateralized() public {
     _deposit(alice, 50_000e18);
     vm.prank(borrower);
-    vault.borrow(5_000e18 + 1);
+    market.borrow(5_000e18 + 1);
 
     vm.prank(borrower);
-    controller.setAnnualInterestBips(address(vault), DefaultInterest + 1);
+    controller.setAnnualInterestBips(address(market), DefaultInterest + 1);
   }
 
   function test_resetReserveRatio_NotPending() public {
     vm.expectRevert(AprChangeNotPending.selector);
-    controller.resetReserveRatio(address(vault));
+    controller.resetReserveRatio(address(market));
   }
 
   function test_resetReserveRatio_StillActive() public {
     vm.prank(borrower);
-    controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
+    controller.setAnnualInterestBips(address(market), DefaultInterest - 1);
 
     vm.expectRevert(ExcessReserveRatioStillActive.selector);
-    controller.resetReserveRatio(address(vault));
+    controller.resetReserveRatio(address(market));
   }
 
   function test_resetReserveRatio() public {
     vm.prank(borrower);
-    controller.setAnnualInterestBips(address(vault), DefaultInterest - 1);
+    controller.setAnnualInterestBips(address(market), DefaultInterest - 1);
 
     fastForward(2 weeks);
-    controller.resetReserveRatio(address(vault));
+    controller.resetReserveRatio(address(market));
 
-    assertEq(vault.reserveRatioBips(), DefaultReserveRatio, 'reserve ratio not reset');
+    assertEq(market.reserveRatioBips(), DefaultReserveRatio, 'reserve ratio not reset');
 
     _check(DefaultInterest - 1, DefaultReserveRatio, 0, 0);
   }

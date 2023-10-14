@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.20;
 
-import 'src/WildcatVaultController.sol';
+import 'src/WildcatMarketController.sol';
 
-contract MockController is WildcatVaultController {
+contract MockController is WildcatMarketController {
   using EnumerableSet for EnumerableSet.AddressSet;
 
   bool public AUTH_ALL;

@@ -2,7 +2,7 @@
 pragma solidity >=0.8.20;
 
 import 'src/libraries/MathUtils.sol';
-import { VaultState } from 'src/libraries/VaultState.sol';
+import { MarketState } from 'src/libraries/MarketState.sol';
 import './TestConstants.sol';
 import { bound } from '../helpers/VmUtils.sol';
 
@@ -26,7 +26,7 @@ struct StateFuzzInputs {
   uint32 lastInterestAccruedTimestamp;
 }
 
-// Used for fuzzing vault deployment parameters
+// Used for fuzzing market deployment parameters
 struct ConfigFuzzInputs {
   uint128 maxTotalSupply;
   uint16 protocolFeeBips;
@@ -95,7 +95,7 @@ library FuzzInputsLib {
     );
   }
 
-  function toState(StateFuzzInputs memory inputs) internal pure returns (VaultState memory state) {
+  function toState(StateFuzzInputs memory inputs) internal pure returns (MarketState memory state) {
     state.maxTotalSupply = inputs.maxTotalSupply;
     state.accruedProtocolFees = inputs.accruedProtocolFees;
     state.normalizedUnclaimedWithdrawals = inputs.normalizedUnclaimedWithdrawals;

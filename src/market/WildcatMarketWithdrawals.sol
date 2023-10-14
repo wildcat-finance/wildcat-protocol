@@ -2,7 +2,7 @@
 pragma solidity >=0.8.20;
 
 import './WildcatMarketBase.sol';
-import '../libraries/VaultState.sol';
+import '../libraries/MarketState.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/FIFOQueue.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
@@ -75,7 +75,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
    * @dev Create a withdrawal request for a lender.
    */
   function queueWithdrawal(uint256 amount) external nonReentrant {
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
 
     // Cache account data and revert if not authorized to withdraw.
     Account memory account = _getAccountWithRole(msg.sender, AuthRole.WithdrawOnly);
@@ -100,7 +100,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
-    // Add scaled withdrawal amount to account withdrawal status, withdrawal batch and vault state.
+    // Add scaled withdrawal amount to account withdrawal status, withdrawal batch and market state.
     _withdrawalData.accountStatuses[expiry][msg.sender].scaledAmount += scaledAmount;
     batch.scaledTotalAmount += scaledAmount;
     state.scaledPendingWithdrawals += scaledAmount;
@@ -141,7 +141,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     if (expiry > block.timestamp) {
       revert WithdrawalBatchNotExpired();
     }
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
 
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
     AccountWithdrawalStatus storage status = _withdrawalData.accountStatuses[expiry][
@@ -188,7 +188,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   }
 
   function processUnpaidWithdrawalBatch() external nonReentrant {
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
 
     // Get the next unpaid batch timestamp from storage (reverts if none)
     uint32 expiry = _withdrawalData.unpaidBatches.first();

@@ -6,8 +6,8 @@ import 'sol-utils/test/Prankster.sol';
 import 'src/WildcatArchController.sol';
 
 contract WildcatArchControllerTest is Test, Prankster {
-  event VaultAdded(address indexed controller, address vault);
-  event VaultRemoved(address vault);
+  event MarketAdded(address indexed controller, address market);
+  event MarketRemoved(address market);
 
   event ControllerFactoryAdded(address controllerFactory);
   event ControllerFactoryRemoved(address controllerFactory);
@@ -22,12 +22,12 @@ contract WildcatArchControllerTest is Test, Prankster {
   address internal constant controllerFactory = address(1);
   address internal constant controller = address(2);
   address internal constant borrower = address(3);
-  address internal constant vault = address(4);
+  address internal constant market = address(4);
 
   address internal constant controllerFactory2 = address(5);
   address internal constant controller2 = address(6);
   address internal constant borrower2 = address(7);
-  address internal constant vault2 = address(8);
+  address internal constant market2 = address(8);
 
   function setUp() external {
     archController = new WildcatArchController();
@@ -41,16 +41,16 @@ contract WildcatArchControllerTest is Test, Prankster {
     archController.registerController(_controller);
   }
 
-  function _registerVault(
+  function _registerMarket(
     address _controllerFactory,
     address _controller,
-    address _vault
+    address _market
   ) internal {
     if (!archController.isRegisteredController(_controller)) {
       _registerController(_controllerFactory, _controller);
     }
     vm.prank(_controller);
-    archController.registerVault(_vault);
+    archController.registerMarket(_market);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -126,77 +126,77 @@ contract WildcatArchControllerTest is Test, Prankster {
   }
 
   /* -------------------------------------------------------------------------- */
-  /*                                    Vault                                   */
+  /*                                    Market                                   */
   /* -------------------------------------------------------------------------- */
 
-  function test_registerVault() external {
+  function test_registerMarket() external {
     _registerController(controllerFactory, controller);
 
     vm.expectEmit(address(archController));
-    emit VaultAdded(controller, vault);
+    emit MarketAdded(controller, market);
 
     vm.prank(controller);
-    archController.registerVault(vault);
+    archController.registerMarket(market);
   }
 
-  function test_registerVault_NotController(address controller) external {
+  function test_registerMarket_NotController(address controller) external {
     vm.expectRevert(WildcatArchController.NotController.selector);
-    archController.registerVault(controller);
+    archController.registerMarket(controller);
   }
 
-  function test_registerVault_VaultAlreadyExists() external {
-    _registerVault(controllerFactory, controller, vault);
-    vm.expectRevert(WildcatArchController.VaultAlreadyExists.selector);
+  function test_registerMarket_MarketAlreadyExists() external {
+    _registerMarket(controllerFactory, controller, market);
+    vm.expectRevert(WildcatArchController.MarketAlreadyExists.selector);
     vm.prank(controller);
-    archController.registerVault(vault);
+    archController.registerMarket(market);
   }
 
-  function test_removeVault() external {
-    _registerVault(controllerFactory, controller, vault);
+  function test_removeMarket() external {
+    _registerMarket(controllerFactory, controller, market);
     vm.expectEmit(address(archController));
-    emit VaultRemoved(vault);
-    archController.removeVault(vault);
+    emit MarketRemoved(market);
+    archController.removeMarket(market);
   }
 
-  function test_removeVault_VaultDoesNotExist() external {
-    vm.expectRevert(WildcatArchController.VaultDoesNotExist.selector);
-    archController.removeVault(vault);
+  function test_removeMarket_MarketDoesNotExist() external {
+    vm.expectRevert(WildcatArchController.MarketDoesNotExist.selector);
+    archController.removeMarket(market);
   }
 
-  function test_removeVault_Unauthorized() external {
+  function test_removeMarket_Unauthorized() external {
     vm.expectRevert(Ownable.Unauthorized.selector);
     vm.prank(controllerFactory);
-    archController.removeVault(vault);
+    archController.removeMarket(market);
   }
 
-  function test_isRegisteredVault() external returns (bool) {
-    assertFalse(archController.isRegisteredVault(vault));
-    _registerVault(controllerFactory, controller, vault);
-    assertTrue(archController.isRegisteredVault(vault));
-    archController.removeVault(vault);
-    assertFalse(archController.isRegisteredVault(vault));
+  function test_isRegisteredMarket() external returns (bool) {
+    assertFalse(archController.isRegisteredMarket(market));
+    _registerMarket(controllerFactory, controller, market);
+    assertTrue(archController.isRegisteredMarket(market));
+    archController.removeMarket(market);
+    assertFalse(archController.isRegisteredMarket(market));
   }
 
-  function test_getRegisteredVaults() external returns (address[] memory) {
-    _registerVault(controllerFactory, controller, vault);
-    _registerVault(controllerFactory, controller, vault2);
-    address[] memory vaults = archController.getRegisteredVaults();
-    assertEq(vaults.length, 2);
-    assertEq(vaults[0], vault);
-    assertEq(vaults[1], vault2);
-    vaults = archController.getRegisteredVaults(0, 3);
-    assertEq(vaults.length, 2);
-    assertEq(vaults[0], vault);
-    assertEq(vaults[1], vault2);
-    vaults = archController.getRegisteredVaults(1, 2);
-    assertEq(vaults.length, 1);
-    assertEq(vaults[0], vault2);
-    assertEq(archController.getRegisteredVaultsCount(), 2);
-    archController.removeVault(vault);
-    vaults = archController.getRegisteredVaults();
-    assertEq(vaults.length, 1);
-    assertEq(vaults[0], vault2);
-    assertEq(archController.getRegisteredVaultsCount(), 1);
+  function test_getRegisteredMarkets() external returns (address[] memory) {
+    _registerMarket(controllerFactory, controller, market);
+    _registerMarket(controllerFactory, controller, market2);
+    address[] memory markets = archController.getRegisteredMarkets();
+    assertEq(markets.length, 2);
+    assertEq(markets[0], market);
+    assertEq(markets[1], market2);
+    markets = archController.getRegisteredMarkets(0, 3);
+    assertEq(markets.length, 2);
+    assertEq(markets[0], market);
+    assertEq(markets[1], market2);
+    markets = archController.getRegisteredMarkets(1, 2);
+    assertEq(markets.length, 1);
+    assertEq(markets[0], market2);
+    assertEq(archController.getRegisteredMarketsCount(), 2);
+    archController.removeMarket(market);
+    markets = archController.getRegisteredMarkets();
+    assertEq(markets.length, 1);
+    assertEq(markets[0], market2);
+    assertEq(archController.getRegisteredMarketsCount(), 1);
   }
 
   /* -------------------------------------------------------------------------- */

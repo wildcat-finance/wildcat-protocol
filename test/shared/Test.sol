@@ -14,9 +14,9 @@ import { deployMockChainalysis } from '../helpers/MockChainalysis.sol';
 
 contract Test is ForgeTest, Prankster {
   WildcatArchController internal archController;
-  WildcatVaultControllerFactory internal controllerFactory;
-  WildcatVaultController internal controller;
-  WildcatMarket internal vault;
+  WildcatMarketControllerFactory internal controllerFactory;
+  WildcatMarketController internal controller;
+  WildcatMarket internal market;
   MockSanctionsSentinel internal sanctionsSentinel;
 
   modifier asSelf() {
@@ -73,7 +73,7 @@ contract Test is ForgeTest, Prankster {
     controller = _controller;
   }
 
-  function updateFeeConfiguration(VaultParameters memory parameters) internal asSelf {
+  function updateFeeConfiguration(MarketParameters memory parameters) internal asSelf {
     controllerFactory.setProtocolFeeConfiguration(
       parameters.feeRecipient,
       address(0),
@@ -82,10 +82,10 @@ contract Test is ForgeTest, Prankster {
     );
   }
 
-  function deployVault(VaultParameters memory parameters) internal asAccount(parameters.borrower) {
+  function deployMarket(MarketParameters memory parameters) internal asAccount(parameters.borrower) {
     updateFeeConfiguration(parameters);
-    vault = WildcatMarket(
-      controller.deployVault(
+    market = WildcatMarket(
+      controller.deployMarket(
         parameters.asset,
         parameters.namePrefix,
         parameters.symbolPrefix,
@@ -98,23 +98,23 @@ contract Test is ForgeTest, Prankster {
       )
     );
     assertTrue(
-      controller.isControlledVault(address(vault)),
-      'deployed vault is not recognized by the controller'
+      controller.isControlledMarket(address(market)),
+      'deployed market is not recognized by the controller'
     );
     assertTrue(
-      archController.isRegisteredVault(address(vault)),
-      'deployed vault is not recognized by the arch controller'
+      archController.isRegisteredMarket(address(market)),
+      'deployed market is not recognized by the arch controller'
     );
   }
 
-  function deployControllerAndVault(
-    VaultParameters memory parameters,
+  function deployControllerAndMarket(
+    MarketParameters memory parameters,
     bool authorizeAll,
     bool disableConstraints
   ) internal {
     deployController(parameters.borrower, authorizeAll, disableConstraints);
 
-    deployVault(parameters);
+    deployMarket(parameters);
   }
 
   function bound(

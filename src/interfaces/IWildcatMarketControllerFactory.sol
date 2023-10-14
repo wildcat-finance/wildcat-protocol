@@ -3,7 +3,7 @@ pragma solidity >=0.8.20;
 
 import './WildcatStructsAndEnums.sol';
 
-interface IWildcatVaultControllerFactory {
+interface IWildcatMarketControllerFactory {
   event NewController(address borrower, address controller, string namePrefix, string symbolPrefix);
   event UpdateProtocolFeeConfiguration(
     address feeRecipient,
@@ -21,8 +21,8 @@ interface IWildcatVaultControllerFactory {
   // Returns immutable arch-controller
   function archController() external view returns (address);
 
-  // Returns vault factory used by controller
-  function vaultFactory() external view returns (address);
+  // Returns market factory used by controller
+  function marketFactory() external view returns (address);
 
   // Returns sentinel used by controller
   function sentinel() external view returns (address);
@@ -39,18 +39,18 @@ interface IWildcatVaultControllerFactory {
   ) external view returns (address[] memory);
 
   /**
-   * @dev Returns protocol fee configuration for new vaults.
+   * @dev Returns protocol fee configuration for new markets.
    *
    *      These can be updated by the arch-controller owner but
    *      `protocolFeeBips` and `feeRecipient` are immutable once
-   *      a vault is deployed.
+   *      a market is deployed.
    *
-   * @return feeRecipient         feeRecipient to use in new vaults
-   * @return originationFeeAsset  Asset used to pay fees for new vault
+   * @return feeRecipient         feeRecipient to use in new markets
+   * @return originationFeeAsset  Asset used to pay fees for new market
    *                              deployments
    * @return originationFeeAmount Amount of originationFeeAsset paid
-   *                              for new vault deployments
-   * @return protocolFeeBips      protocolFeeBips to use in new vaults
+   *                              for new market deployments
+   * @return protocolFeeBips      protocolFeeBips to use in new markets
    */
   function getProtocolFeeConfiguration()
     external
@@ -63,7 +63,7 @@ interface IWildcatVaultControllerFactory {
     );
 
   /**
-   * @dev Sets protocol fee configuration for new vault deployments via
+   * @dev Sets protocol fee configuration for new market deployments via
    *      controllers deployed by this factory.
    *
    *      If caller is not `archController.owner()`, reverts with
@@ -82,15 +82,15 @@ interface IWildcatVaultControllerFactory {
   ) external;
 
   /**
-   * @dev Returns immutable constraints on vault parameters that
+   * @dev Returns immutable constraints on market parameters that
    *      the controller variant will enforce.
    */
   function getParameterConstraints()
     external
     view
-    returns (VaultParameterConstraints memory constraints);
+    returns (MarketParameterConstraints memory constraints);
 
-  function getVaultControllerParameters() external view returns (VaultControllerParameters memory);
+  function getMarketControllerParameters() external view returns (MarketControllerParameters memory);
 
   /**
    * @dev Deploys a new instance of the wildcat controller variant
@@ -108,9 +108,9 @@ interface IWildcatVaultControllerFactory {
   function deployController() external returns (address controller);
 
   /**
-   * @dev Deploys a create2 deployment of `WildcatVaultController`
+   * @dev Deploys a create2 deployment of `WildcatMarketController`
    *      unique to the borrower and registers it with the arch-controller,
-   *      then deploys a new vault through the controller.
+   *      then deploys a new market through the controller.
    *
    *      If a controller is already deployed for the borrower
    *
@@ -120,7 +120,7 @@ interface IWildcatVaultControllerFactory {
    *      Calls `archController.registerController(controller)` and emits
    * 	    `NewController(borrower, controller, namePrefix, symbolPrefix)`.
    */
-  function deployControllerAndVault(
+  function deployControllerAndMarket(
     string memory namePrefix,
     string memory symbolPrefix,
     address asset,
@@ -130,5 +130,5 @@ interface IWildcatVaultControllerFactory {
     uint32 withdrawalBatchDuration,
     uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
-  ) external returns (address controller, address vault);
+  ) external returns (address controller, address market);
 }

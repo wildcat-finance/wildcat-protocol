@@ -1,7 +1,7 @@
 pragma solidity ^0.8.20;
 
 import { FeeMath } from 'src/libraries/FeeMath.sol';
-import { VaultState } from 'src/libraries/VaultState.sol';
+import { MarketState } from 'src/libraries/MarketState.sol';
 
 library FeeMathExternal {
   function $calculateLinearInterestFromBips(
@@ -12,27 +12,27 @@ library FeeMathExternal {
   }
 
   function $calculateBaseInterest(
-    VaultState memory state,
+    MarketState memory state,
     uint256 timestamp
   ) external pure returns (uint256 baseInterestRay) {
     return FeeMath.calculateBaseInterest(state, timestamp);
   }
 
   function $applyProtocolFee(
-    VaultState memory state,
+    MarketState memory state,
     uint256 baseInterestRay,
     uint256 protocolFeeBips
-  ) external pure returns (VaultState memory newState, uint256 protocolFee) {
+  ) external pure returns (MarketState memory newState, uint256 protocolFee) {
     protocolFee = FeeMath.applyProtocolFee(state, baseInterestRay, protocolFeeBips);
     newState = state;
   }
 
   function $updateDelinquency(
-    VaultState memory state,
+    MarketState memory state,
     uint256 timestamp,
     uint256 delinquencyFeeBips,
     uint256 delinquencyGracePeriod
-  ) external pure returns (VaultState memory newState, uint256 delinquencyFeeRay) {
+  ) external pure returns (MarketState memory newState, uint256 delinquencyFeeRay) {
     newState = state;
     delinquencyFeeRay = FeeMath.updateDelinquency(
       state,
@@ -43,10 +43,10 @@ library FeeMathExternal {
   }
 
   function $updateTimeDelinquentAndGetPenaltyTime(
-    VaultState memory state,
+    MarketState memory state,
     uint256 delinquencyGracePeriod,
     uint256 timeDelta
-  ) external pure returns (VaultState memory newState, uint256 timeWithPenalty) {
+  ) external pure returns (MarketState memory newState, uint256 timeWithPenalty) {
     newState = state;
     timeWithPenalty = FeeMath.updateTimeDelinquentAndGetPenaltyTime(
       state,
@@ -56,7 +56,7 @@ library FeeMathExternal {
   }
 
   function $updateScaleFactorAndFees(
-    VaultState memory state,
+    MarketState memory state,
     uint256 protocolFeeBips,
     uint256 delinquencyFeeBips,
     uint256 delinquencyGracePeriod,
@@ -65,7 +65,7 @@ library FeeMathExternal {
     external
     pure
     returns (
-      VaultState memory newState,
+      MarketState memory newState,
       uint256 baseInterestRay,
       uint256 delinquencyFeeRay,
       uint256 protocolFee

@@ -97,8 +97,8 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
     address account,
     address asset
   ) public override returns (address escrowContract) {
-    if (!IWildcatArchController(archController).isRegisteredVault(msg.sender)) {
-      revert NotRegisteredVault();
+    if (!IWildcatArchController(archController).isRegisteredMarket(msg.sender)) {
+      revert NotRegisteredMarket();
     }
 
     escrowContract = getEscrowAddress(borrower, account, asset);

@@ -3,18 +3,18 @@ pragma solidity >=0.8.20;
 
 import 'forge-std/Test.sol';
 import 'src/WildcatArchController.sol';
-import 'src/WildcatVaultControllerFactory.sol';
+import 'src/WildcatMarketControllerFactory.sol';
 import { MinimumDelinquencyGracePeriod, MaximumDelinquencyGracePeriod, MinimumReserveRatioBips, MaximumReserveRatioBips, MinimumDelinquencyFeeBips, MaximumDelinquencyFeeBips, MinimumWithdrawalBatchDuration, MaximumWithdrawalBatchDuration, MinimumAnnualInterestBips, MaximumAnnualInterestBips } from './shared/TestConstants.sol';
 
-contract WildcatVaultControllerFactoryTest is Test {
+contract WildcatMarketControllerFactoryTest is Test {
   WildcatArchController internal archController;
-  WildcatVaultControllerFactory internal controllerFactory;
-  VaultParameterConstraints internal constraints;
+  WildcatMarketControllerFactory internal controllerFactory;
+  MarketParameterConstraints internal constraints;
 
   function setUp() external {
     archController = new WildcatArchController();
     _resetConstraints();
-    controllerFactory = new WildcatVaultControllerFactory(
+    controllerFactory = new WildcatMarketControllerFactory(
       address(archController),
       address(0),
       constraints
@@ -22,7 +22,7 @@ contract WildcatVaultControllerFactoryTest is Test {
   }
 
   function _resetConstraints() internal {
-    constraints = VaultParameterConstraints({
+    constraints = MarketParameterConstraints({
       minimumDelinquencyGracePeriod: MinimumDelinquencyGracePeriod,
       maximumDelinquencyGracePeriod: MaximumDelinquencyGracePeriod,
       minimumReserveRatioBips: MinimumReserveRatioBips,
@@ -37,8 +37,8 @@ contract WildcatVaultControllerFactoryTest is Test {
   }
 
   function _expectRevertInvalidConstraints() internal {
-    vm.expectRevert(WildcatVaultControllerFactory.InvalidConstraints.selector);
-    new WildcatVaultControllerFactory(address(archController), address(0), constraints);
+    vm.expectRevert(WildcatMarketControllerFactory.InvalidConstraints.selector);
+    new WildcatMarketControllerFactory(address(archController), address(0), constraints);
     _resetConstraints();
   }
 
@@ -62,25 +62,25 @@ contract WildcatVaultControllerFactoryTest is Test {
     _expectRevertInvalidConstraints();
   }
 
-  function test_getVaultControllerParameters() external {
-    VaultControllerParameters memory parameters = controllerFactory.getVaultControllerParameters();
+  function test_getMarketControllerParameters() external {
+    MarketControllerParameters memory parameters = controllerFactory.getMarketControllerParameters();
     assertEq(parameters.archController, address(archController));
     assertEq(parameters.borrower, address(1), 'borrower');
     assertEq(parameters.sentinel, address(0), 'sentinel');
     assertEq(
-      parameters.vaultInitCodeStorage,
-      controllerFactory.vaultInitCodeStorage(),
-      'vaultInitCodeStorage'
+      parameters.marketInitCodeStorage,
+      controllerFactory.marketInitCodeStorage(),
+      'marketInitCodeStorage'
     );
     assertEq(
-      parameters.vaultInitCodeHash,
-      controllerFactory.vaultInitCodeHash(),
-      'vaultInitCodeHash'
+      parameters.marketInitCodeHash,
+      controllerFactory.marketInitCodeHash(),
+      'marketInitCodeHash'
     );
-    assertEq(parameters.vaultInitCodeHash, uint256(keccak256(type(WildcatMarket).creationCode)));
+    assertEq(parameters.marketInitCodeHash, uint256(keccak256(type(WildcatMarket).creationCode)));
     assertEq(
       controllerFactory.controllerInitCodeHash(),
-      uint256(keccak256(type(WildcatVaultController).creationCode)),
+      uint256(keccak256(type(WildcatMarketController).creationCode)),
       'controllerInitCodeHash'
     );
 

@@ -10,10 +10,10 @@ import { MockERC20 } from './helpers/MockERC20.sol';
 
 // -- TEMP START --
 contract MockWildcatArchController {
-  mapping(address vault => bool) public isRegisteredVault;
+  mapping(address market => bool) public isRegisteredMarket;
 
-  function setIsRegsiteredVault(address vault, bool isRegistered) external {
-    isRegisteredVault[vault] = isRegistered;
+  function setIsRegsiteredMarket(address market, bool isRegistered) external {
+    isRegisteredMarket[market] = isRegistered;
   }
 }
 
@@ -29,7 +29,7 @@ contract EscrowTest is Test {
     deployMockChainalysis();
     archController = new MockWildcatArchController();
     sentinel = new WildcatSanctionsSentinel(address(archController), address(SanctionsList));
-    archController.setIsRegsiteredVault(address(this), true);
+    archController.setIsRegsiteredMarket(address(this), true);
   }
 
   function testImmutables() public {

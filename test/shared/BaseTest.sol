@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
-import { FeeMath, MathUtils, SafeCastLib, VaultState, HALF_RAY, RAY } from 'src/libraries/FeeMath.sol';
+import { FeeMath, MathUtils, SafeCastLib, MarketState, HALF_RAY, RAY } from 'src/libraries/FeeMath.sol';
 import 'solmate/test/utils/mocks/MockERC20.sol';
-import { WildcatVaultController } from 'src/WildcatVaultController.sol';
-import { WildcatMarket, VaultParameters } from 'src/market/WildcatMarket.sol';
+import { WildcatMarketController } from 'src/WildcatMarketController.sol';
+import { WildcatMarket, MarketParameters } from 'src/market/WildcatMarket.sol';
 import { MockController } from '../helpers/MockController.sol';
 import { ConfigFuzzInputs, StateFuzzInputs } from './FuzzInputs.sol';
 import './TestConstants.sol';
@@ -20,7 +20,7 @@ struct FuzzInput {
 }
 
 struct FuzzContext {
-  VaultState state;
+  MarketState state;
   uint256 reserveRatioBips;
   uint256 protocolFeeBips;
   uint256 delinquencyFeeBips;
@@ -34,18 +34,18 @@ contract BaseTest is Test {
 
   MockERC20 internal asset;
 
-  function deployVault(ConfigFuzzInputs memory inputs) internal returns (WildcatMarket vault) {
+  function deployMarket(ConfigFuzzInputs memory inputs) internal returns (WildcatMarket market) {
     asset = new MockERC20('Token', 'TKN', 18);
-    VaultParameters memory parameters = getVaultParameters(inputs);
+    MarketParameters memory parameters = getMarketParameters(inputs);
 
-    deployControllerAndVault(parameters, true, false);
+    deployControllerAndMarket(parameters, true, false);
   }
 
-  function getVaultParameters(
+  function getMarketParameters(
     ConfigFuzzInputs memory inputs
-  ) internal view returns (VaultParameters memory parameters) {
+  ) internal view returns (MarketParameters memory parameters) {
     inputs.constrain();
-    parameters = VaultParameters({
+    parameters = MarketParameters({
       asset: address(asset),
       namePrefix: 'Wildcat ',
       symbolPrefix: 'WC',
@@ -63,9 +63,9 @@ contract BaseTest is Test {
     });
   }
 
-  function getVaultState(
+  function getMarketState(
     StateFuzzInputs memory inputs
-  ) internal view returns (VaultState memory state) {
+  ) internal view returns (MarketState memory state) {
     inputs.constrain();
     return inputs.toState();
   }
@@ -76,7 +76,7 @@ contract BaseTest is Test {
   }
 
   function getFuzzContext(FuzzInput calldata input) internal returns (FuzzContext memory context) {
-    context.state = getVaultState(input.state);
+    context.state = getMarketState(input.state);
     context.reserveRatioBips = bound(input.reserveRatioBips, 1, 1e4).toUint16();
     context.protocolFeeBips = bound(input.protocolFeeBips, 1, 1e4).toUint16();
     context.delinquencyFeeBips = bound(input.delinquencyFeeBips, 1, 1e4).toUint16();

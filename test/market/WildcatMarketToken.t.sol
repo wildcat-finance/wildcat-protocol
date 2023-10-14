@@ -9,10 +9,10 @@ import '../shared/Test.sol';
 bytes32 constant DaiSalt = bytes32(uint256(1));
 
 contract WildcatMarketTokenTest is BaseERC20Test, Test {
-  using VaultStateLib for VaultState;
+  using MarketStateLib for MarketState;
 
-  // WildcatVaultFactory internal factory;
-  // WildcatVaultController internal controller;
+  // WildcatMarketFactory internal factory;
+  // WildcatMarketController internal controller;
   MockERC20 internal asset;
   address internal feeRecipient = address(0xfee);
   address internal borrower = address(this);
@@ -49,7 +49,7 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
   function setUp() public override {
     asset = new MockERC20('Token', 'TKN', 18);
 
-    VaultParameters memory vaultParameters = VaultParameters({
+    MarketParameters memory marketParameters = MarketParameters({
       asset: address(asset),
       namePrefix: 'Wildcat ',
       symbolPrefix: 'WC',
@@ -65,8 +65,8 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
       delinquencyGracePeriod: DefaultGracePeriod,
       reserveRatioBips: DefaultReserveRatio
     });
-    deployControllerAndVault(vaultParameters, true, true);
-    token = IERC20Metadata(address(vault));
+    deployControllerAndMarket(marketParameters, true, true);
+    token = IERC20Metadata(address(market));
     _name = 'Wildcat Token';
     _symbol = 'WCTKN';
     _decimals = 18;
@@ -86,7 +86,7 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
       uint256(keccak256(type(MockController).creationCode)),
       'bad init code hash'
     );
-    console2.log(vault.name());
+    console2.log(market.name());
   }
 
   // function _assertTokenAmountEq(uint256 expected, uint256 actual) internal virtual override {
@@ -112,12 +112,12 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
   }
 
   function testTransferNullAmount() external {
-    vm.expectRevert(IVaultEventsAndErrors.NullTransferAmount.selector);
+    vm.expectRevert(IMarketEventsAndErrors.NullTransferAmount.selector);
     token.transfer(address(1), 0);
   }
 
   function testTransferFromNullAmount() external {
-    vm.expectRevert(IVaultEventsAndErrors.NullTransferAmount.selector);
+    vm.expectRevert(IMarketEventsAndErrors.NullTransferAmount.selector);
     token.transferFrom(address(0), address(1), 0);
   }
 }

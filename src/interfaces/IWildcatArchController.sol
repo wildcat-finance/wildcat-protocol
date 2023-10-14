@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 interface IWildcatArchController {
-  error NotVaultFactory();
+  error NotMarketFactory();
 
   error NotControllerFactory();
 
@@ -78,22 +78,22 @@ interface IWildcatArchController {
   function removeBorrower(address borrower) external;
 
   /* -------------------------------------------------------------------------- */
-  /*                               Vaults Registry                              */
+  /*                               Markets Registry                              */
   /* -------------------------------------------------------------------------- */
 
-  event VaultAdded(address, address);
+  event MarketAdded(address, address);
 
-  event VaultRemoved(address);
+  event MarketRemoved(address);
 
-  function getRegisteredVaults() external view returns (address[] memory);
+  function getRegisteredMarkets() external view returns (address[] memory);
 
-  function getRegisteredVaults(uint256 start, uint256 end) external view returns (address[] memory);
+  function getRegisteredMarkets(uint256 start, uint256 end) external view returns (address[] memory);
 
-  function getRegisteredVaultsCount() external view returns (uint256);
+  function getRegisteredMarketsCount() external view returns (uint256);
 
-  function isRegisteredVault(address vault) external view returns (bool);
+  function isRegisteredMarket(address market) external view returns (bool);
 
-  function registerVault(address vault) external;
+  function registerMarket(address market) external;
 
-  function removeVault(address vault) external;
+  function removeMarket(address market) external;
 }

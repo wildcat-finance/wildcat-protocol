@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
-import { FeeMath, MathUtils, SafeCastLib, VaultState } from 'src/libraries/FeeMath.sol';
+import { FeeMath, MathUtils, SafeCastLib, MarketState } from 'src/libraries/FeeMath.sol';
 import '../shared/BaseTest.sol';
 import './wrappers/FeeMathExternal.sol';
 
@@ -17,10 +17,10 @@ function maxRayMulRhs(uint256 left) pure returns (uint256 maxRight) {
 contract FeeMathTest is BaseTest {
   using MathUtils for uint256;
   using SafeCastLib for uint256;
-  using FeeMathExternal for VaultState;
+  using FeeMathExternal for MarketState;
 
   function test_updateScaleFactorAndFees_WithFees() external {
-    VaultState memory state;
+    MarketState memory state;
     state.timeDelinquent = 1000;
     state.isDelinquent = true;
     uint256 delinquencyGracePeriod = 0;
@@ -41,7 +41,7 @@ contract FeeMathTest is BaseTest {
   }
 
   function test_updateScaleFactorAndFees_WithoutFeesWithPenalties() external {
-    VaultState memory state;
+    MarketState memory state;
     state.timeDelinquent = 1000;
     state.isDelinquent = true;
     uint256 delinquencyGracePeriod = 0;
@@ -62,7 +62,7 @@ contract FeeMathTest is BaseTest {
   }
 
   function test_updateScaleFactorAndFees_WithFeesAndPenalties() external {
-    VaultState memory state;
+    MarketState memory state;
     state.timeDelinquent = 1000;
     state.isDelinquent = true;
     uint256 delinquencyGracePeriod = 0;
@@ -89,7 +89,7 @@ contract FeeMathTest is BaseTest {
   }
 
   function test_updateScaleFactorAndFees_WithoutFeesOrPenalties() external {
-    VaultState memory state;
+    MarketState memory state;
     state.timeDelinquent = 1000;
     state.isDelinquent = true;
     uint256 delinquencyGracePeriod = 0;
@@ -112,8 +112,8 @@ contract FeeMathTest is BaseTest {
     ConfigFuzzInputs calldata configInputs,
     StateFuzzInputs calldata stateInputs
   ) external {
-    VaultParameters memory parameters = getVaultParameters(configInputs);
-    VaultState memory state = getVaultState(stateInputs);
+    MarketParameters memory parameters = getMarketParameters(configInputs);
+    MarketState memory state = getMarketState(stateInputs);
     bytes32 stateHash = keccak256(abi.encode(state));
     uint256 baseInterestRay;
     uint256 delinquencyFeeRay;
@@ -136,7 +136,7 @@ contract FeeMathTest is BaseTest {
     uint32 timeDelta,
     uint32 delinquencyGracePeriod
   ) external {
-    VaultState memory state;
+    MarketState memory state;
     state.isDelinquent = isCurrentlyDelinquent;
     previousTimeDelinquent = uint32(bound(previousTimeDelinquent, 0, type(uint32).max - timeDelta));
     state.timeDelinquent = previousTimeDelinquent;
@@ -202,7 +202,7 @@ contract FeeMathTest is BaseTest {
   }
 
   function testUpdateTimeDelinquentAndGetPenaltyTime() external {
-    VaultState memory state;
+    MarketState memory state;
     uint256 timeWithPenalty;
     // Within grace period, no penalty
     state.timeDelinquent = 50;

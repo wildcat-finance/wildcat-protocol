@@ -3,14 +3,14 @@ pragma solidity >=0.8.20;
 
 import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import './interfaces/WildcatStructsAndEnums.sol';
-import './interfaces/IWildcatVaultController.sol';
+import './interfaces/IWildcatMarketController.sol';
 import './interfaces/IWildcatArchController.sol';
 import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 import './market/WildcatMarket.sol';
-import './WildcatVaultController.sol';
+import './WildcatMarketController.sol';
 
-contract WildcatVaultControllerFactory {
+contract WildcatMarketControllerFactory {
   using EnumerableSet for EnumerableSet.AddressSet;
 
   event NewController(address borrower, address controller, string namePrefix, string symbolPrefix);
@@ -33,9 +33,9 @@ contract WildcatVaultControllerFactory {
   // Returns sentinel used by controller
   address public immutable sentinel;
 
-  address public immutable vaultInitCodeStorage;
+  address public immutable marketInitCodeStorage;
 
-  uint256 public immutable vaultInitCodeHash;
+  uint256 public immutable marketInitCodeHash;
 
   address public immutable controllerInitCodeStorage;
 
@@ -72,7 +72,7 @@ contract WildcatVaultControllerFactory {
   constructor(
     address _archController,
     address _sentinel,
-    VaultParameterConstraints memory constraints
+    MarketParameterConstraints memory constraints
   ) {
     archController = IWildcatArchController(_archController);
     sentinel = _sentinel;
@@ -100,7 +100,7 @@ contract WildcatVaultControllerFactory {
     MaximumAnnualInterestBips = constraints.maximumAnnualInterestBips;
 
     (controllerInitCodeStorage, controllerInitCodeHash) = _storeControllerInitCode();
-    (vaultInitCodeStorage, vaultInitCodeHash) = _storeVaultInitCode();
+    (marketInitCodeStorage, marketInitCodeHash) = _storeMarketInitCode();
   }
 
   function _storeControllerInitCode()
@@ -108,19 +108,19 @@ contract WildcatVaultControllerFactory {
     virtual
     returns (address initCodeStorage, uint256 initCodeHash)
   {
-    bytes memory controllerInitCode = type(WildcatVaultController).creationCode;
+    bytes memory controllerInitCode = type(WildcatMarketController).creationCode;
     initCodeHash = uint256(keccak256(controllerInitCode));
     initCodeStorage = LibStoredInitCode.deployInitCode(controllerInitCode);
   }
 
-  function _storeVaultInitCode()
+  function _storeMarketInitCode()
     internal
     virtual
     returns (address initCodeStorage, uint256 initCodeHash)
   {
-    bytes memory vaultInitCode = type(WildcatMarket).creationCode;
-    initCodeHash = uint256(keccak256(vaultInitCode));
-    initCodeStorage = LibStoredInitCode.deployInitCode(vaultInitCode);
+    bytes memory marketInitCode = type(WildcatMarket).creationCode;
+    initCodeHash = uint256(keccak256(marketInitCode));
+    initCodeStorage = LibStoredInitCode.deployInitCode(marketInitCode);
   }
 
   function isDeployedController(address controller) external view returns (bool) {
@@ -149,18 +149,18 @@ contract WildcatVaultControllerFactory {
   }
 
   /**
-   * @dev Returns protocol fee configuration for new vaults.
+   * @dev Returns protocol fee configuration for new markets.
    *
    *      These can be updated by the arch-controller owner but
    *      `protocolFeeBips` and `feeRecipient` are immutable once
-   *      a vault is deployed.
+   *      a market is deployed.
    *
-   * @return feeRecipient         feeRecipient to use in new vaults
-   * @return originationFeeAsset  Asset used to pay fees for new vault
+   * @return feeRecipient         feeRecipient to use in new markets
+   * @return originationFeeAsset  Asset used to pay fees for new market
    *                              deployments
    * @return originationFeeAmount Amount of originationFeeAsset paid
-   *                              for new vault deployments
-   * @return protocolFeeBips      protocolFeeBips to use in new vaults
+   *                              for new market deployments
+   * @return protocolFeeBips      protocolFeeBips to use in new markets
    */
   function getProtocolFeeConfiguration()
     external
@@ -181,7 +181,7 @@ contract WildcatVaultControllerFactory {
   }
 
   /**
-   * @dev Sets protocol fee configuration for new vault deployments via
+   * @dev Sets protocol fee configuration for new market deployments via
    *      controllers deployed by this factory.
    *
    *      If caller is not `archController.owner()`, reverts with
@@ -217,13 +217,13 @@ contract WildcatVaultControllerFactory {
   }
 
   /**
-   * @dev Returns immutable constraints on vault parameters that
+   * @dev Returns immutable constraints on market parameters that
    *      the controller variant will enforce.
    */
   function getParameterConstraints()
     external
     view
-    returns (VaultParameterConstraints memory constraints)
+    returns (MarketParameterConstraints memory constraints)
   {
     constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
     constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
@@ -241,19 +241,19 @@ contract WildcatVaultControllerFactory {
   /*                            Controller Deployment                           */
   /* -------------------------------------------------------------------------- */
 
-  address internal _tmpVaultBorrowerParameter = address(1);
+  address internal _tmpMarketBorrowerParameter = address(1);
 
-  function getVaultControllerParameters()
+  function getMarketControllerParameters()
     external
     view
     virtual
-    returns (VaultControllerParameters memory parameters)
+    returns (MarketControllerParameters memory parameters)
   {
     parameters.archController = address(archController);
-    parameters.borrower = _tmpVaultBorrowerParameter;
+    parameters.borrower = _tmpMarketBorrowerParameter;
     parameters.sentinel = sentinel;
-    parameters.vaultInitCodeStorage = vaultInitCodeStorage;
-    parameters.vaultInitCodeHash = vaultInitCodeHash;
+    parameters.marketInitCodeStorage = marketInitCodeStorage;
+    parameters.marketInitCodeHash = marketInitCodeHash;
     parameters.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
     parameters.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
     parameters.minimumReserveRatioBips = MinimumReserveRatioBips;
@@ -267,7 +267,7 @@ contract WildcatVaultControllerFactory {
   }
 
   /**
-   * @dev Deploys a create2 deployment of `WildcatVaultController`
+   * @dev Deploys a create2 deployment of `WildcatMarketController`
    *      unique to the borrower and registers it with the arch-controller.
    *
    *      If a controller is already deployed for the borrower, reverts
@@ -283,7 +283,7 @@ contract WildcatVaultControllerFactory {
     if (!archController.isRegisteredBorrower(msg.sender)) {
       revert NotRegisteredBorrower();
     }
-    _tmpVaultBorrowerParameter = msg.sender;
+    _tmpMarketBorrowerParameter = msg.sender;
     // Salt is borrower address
     bytes32 salt = bytes32(uint256(uint160(msg.sender)));
     controller = LibStoredInitCode.calculateCreate2Address(
@@ -295,15 +295,15 @@ contract WildcatVaultControllerFactory {
       revert ControllerAlreadyDeployed();
     }
     LibStoredInitCode.create2WithStoredInitCode(controllerInitCodeStorage, salt);
-    _tmpVaultBorrowerParameter = address(1);
+    _tmpMarketBorrowerParameter = address(1);
     archController.registerController(controller);
     _deployedControllers.add(controller);
   }
 
   /**
-   * @dev Deploys a create2 deployment of `WildcatVaultController`
+   * @dev Deploys a create2 deployment of `WildcatMarketController`
    *      unique to the borrower and registers it with the arch-controller,
-   *      then deploys a new vault through the controller.
+   *      then deploys a new market through the controller.
    *
    *      If a controller is already deployed for the borrower, reverts
    *      with `ControllerAlreadyDeployed`.
@@ -314,7 +314,7 @@ contract WildcatVaultControllerFactory {
    *      Calls `archController.registerController(controller)` and emits
    * 	  `NewController(borrower, controller, namePrefix, symbolPrefix)`.
    */
-  function deployControllerAndVault(
+  function deployControllerAndMarket(
     string memory namePrefix,
     string memory symbolPrefix,
     address asset,
@@ -324,9 +324,9 @@ contract WildcatVaultControllerFactory {
     uint32 withdrawalBatchDuration,
     uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
-  ) external returns (address controller, address vault) {
+  ) external returns (address controller, address market) {
     controller = deployController();
-    vault = IWildcatVaultController(controller).deployVault(
+    market = IWildcatMarketController(controller).deployMarket(
       asset,
       namePrefix,
       symbolPrefix,
