@@ -6,11 +6,11 @@ import './MathUtils.sol';
 import './SafeCastLib.sol';
 import './FeeMath.sol';
 
-using VaultStateLib for VaultState global;
-using VaultStateLib for Account global;
-using FeeMath for VaultState global;
+using MarketStateLib for MarketState global;
+using MarketStateLib for Account global;
+using FeeMath for MarketState global;
 
-struct VaultState {
+struct MarketState {
   bool isClosed;
   uint128 maxTotalSupply;
   uint128 accruedProtocolFees;
@@ -23,7 +23,7 @@ struct VaultState {
   // paid by borrower yet.
   uint104 scaledPendingWithdrawals;
   uint32 pendingWithdrawalExpiry;
-  // Whether vault is currently delinquent (liquidity under requirement)
+  // Whether market is currently delinquent (liquidity under requirement)
   bool isDelinquent;
   // Seconds borrower has been delinquent
   uint32 timeDelinquent;
@@ -41,14 +41,14 @@ struct Account {
   uint104 scaledBalance;
 }
 
-library VaultStateLib {
+library MarketStateLib {
   using MathUtils for uint256;
   using SafeCastLib for uint256;
 
   /**
-   * @dev Returns the normalized total supply of the vault.
+   * @dev Returns the normalized total supply of the market.
    */
-  function totalSupply(VaultState memory state) internal pure returns (uint256) {
+  function totalSupply(MarketState memory state) internal pure returns (uint256) {
     return state.normalizeAmount(state.scaledTotalSupply);
   }
 
@@ -56,7 +56,7 @@ library VaultStateLib {
    * @dev Returns the maximum amount of tokens that can be deposited without
    *      reaching the maximum total supply.
    */
-  function maximumDeposit(VaultState memory state) internal pure returns (uint256) {
+  function maximumDeposit(MarketState memory state) internal pure returns (uint256) {
     return uint256(state.maxTotalSupply).satSub(state.totalSupply());
   }
 
@@ -64,7 +64,7 @@ library VaultStateLib {
    * @dev Normalize an amount of scaled tokens using the current scale factor.
    */
   function normalizeAmount(
-    VaultState memory state,
+    MarketState memory state,
     uint256 amount
   ) internal pure returns (uint256) {
     return amount.rayMul(state.scaleFactor);
@@ -73,7 +73,7 @@ library VaultStateLib {
   /**
    * @dev Scale an amount of normalized tokens using the current scale factor.
    */
-  function scaleAmount(VaultState memory state, uint256 amount) internal pure returns (uint256) {
+  function scaleAmount(MarketState memory state, uint256 amount) internal pure returns (uint256) {
     return amount.rayDiv(state.scaleFactor);
   }
 
@@ -85,7 +85,7 @@ library VaultStateLib {
    *      - accrued protocol fees
    */
   function liquidityRequired(
-    VaultState memory state
+    MarketState memory state
   ) internal pure returns (uint256 _liquidityRequired) {
     uint256 scaledWithdrawals = state.scaledPendingWithdrawals;
     uint256 scaledRequiredReserves = (state.scaledTotalSupply - scaledWithdrawals).bipMul(
@@ -103,7 +103,7 @@ library VaultStateLib {
    *      processed withdrawals that have not been executed.
    */
   function withdrawableProtocolFees(
-    VaultState memory state,
+    MarketState memory state,
     uint256 totalAssets
   ) internal pure returns (uint128) {
     uint256 totalAvailableAssets = totalAssets - state.normalizedUnclaimedWithdrawals;
@@ -113,7 +113,7 @@ library VaultStateLib {
   /**
    * @dev Returns the amount of underlying assets that can be borrowed.
    *
-   *      The borrower must maintain sufficient assets in the vault to
+   *      The borrower must maintain sufficient assets in the market to
    *      cover 100% of pending withdrawals, 100% of previously processed
    *      withdrawals (before they are executed), and the reserve ratio
    *      times the outstanding debt (deposits not pending withdrawal).
@@ -121,13 +121,13 @@ library VaultStateLib {
    *      Any underlying assets in the market above this amount can be borrowed.
    */
   function borrowableAssets(
-    VaultState memory state,
+    MarketState memory state,
     uint256 totalAssets
   ) internal pure returns (uint256) {
     return totalAssets.satSub(state.liquidityRequired());
   }
 
-  function hasPendingExpiredBatch(VaultState memory state) internal view returns (bool result) {
+  function hasPendingExpiredBatch(MarketState memory state) internal view returns (bool result) {
     uint256 expiry = state.pendingWithdrawalExpiry;
     assembly {
       // Equivalent to expiry > 0 && expiry <= block.timestamp
@@ -135,7 +135,7 @@ library VaultStateLib {
     }
   }
 
-  function totalDebts(VaultState memory state) internal pure returns (uint256) {
+  function totalDebts(MarketState memory state) internal pure returns (uint256) {
     return
       state.normalizeAmount(state.scaledTotalSupply) +
       state.normalizedUnclaimedWithdrawals +

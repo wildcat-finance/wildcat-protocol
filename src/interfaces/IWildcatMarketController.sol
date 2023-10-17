@@ -2,14 +2,14 @@
 pragma solidity >=0.8.20;
 
 import './WildcatStructsAndEnums.sol';
-import './IWildcatVaultControllerEventsAndErrors.sol';
+import './IWildcatMarketControllerEventsAndErrors.sol';
 
-interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
+interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   // Returns immutable controller factory
   function controllerFactory() external view returns (address);
 
-  // Returns immutable vault factory
-  function vaultFactory() external view returns (address);
+  // Returns immutable market factory
+  function marketFactory() external view returns (address);
 
   // Returns immutable arch-controller
   function archController() external view returns (address);
@@ -18,15 +18,15 @@ interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   function borrower() external view returns (address);
 
   /**
-   * @dev Returns immutable protocol fee configuration for new vaults.
+   * @dev Returns immutable protocol fee configuration for new markets.
    *      Queried from the controller factory.
    *
-   * @return feeRecipient         feeRecipient to use in new vaults
-   * @return protocolFeeBips      protocolFeeBips to use in new vaults
-   * @return originationFeeAsset  Asset used to pay fees for new vault
+   * @return feeRecipient         feeRecipient to use in new markets
+   * @return protocolFeeBips      protocolFeeBips to use in new markets
+   * @return originationFeeAsset  Asset used to pay fees for new market
    *                              deployments
    * @return originationFeeAmount Amount of originationFeeAsset paid
-   *                              for new vault deployments
+   *                              for new market deployments
    */
   function getProtocolFeeConfiguration()
     external
@@ -39,13 +39,13 @@ interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     );
 
   /**
-   * @dev Returns immutable constraints on vault parameters that
+   * @dev Returns immutable constraints on market parameters that
    *      the controller will enforce.
    */
   function getParameterConstraints()
     external
     view
-    returns (VaultParameterConstraints memory constraints);
+    returns (MarketParameterConstraints memory constraints);
 
   /* -------------------------------------------------------------------------- */
   /*                               Lender Registry                              */
@@ -67,7 +67,7 @@ interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
    *
    *      Note: Only updates the internal set of approved lenders.
    *      Must call `updateLenderAuthorization` to apply changes
-   *      to existing vault accounts
+   *      to existing market accounts
    */
   function authorizeLenders(address[] memory lenders) external;
 
@@ -76,39 +76,39 @@ interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
    *
    *      Note: Only updates the internal set of approved lenders.
    *      Must call `updateLenderAuthorization` to apply changes
-   *      to existing vault accounts
+   *      to existing market accounts
    */
   function deauthorizeLenders(address[] memory lenders) external;
 
   /**
-   * @dev Update lender authorization for a set of vaults to the current
+   * @dev Update lender authorization for a set of markets to the current
    *      status.
    */
-  function updateLenderAuthorization(address lender, address[] memory vaults) external;
+  function updateLenderAuthorization(address lender, address[] memory markets) external;
 
   /* -------------------------------------------------------------------------- */
-  /*                               Vault Controls                               */
+  /*                               Market Controls                               */
   /* -------------------------------------------------------------------------- */
 
   /**
-   * @dev Modify the interest rate for a vault.
+   * @dev Modify the interest rate for a market.
    * If the new interest rate is lower than the current interest rate,
    * the reserve ratio is set to 90% for the next two weeks.
    */
-  function setAnnualInterestBips(address vault, uint16 annualInterestBips) external;
+  function setAnnualInterestBips(address market, uint16 annualInterestBips) external;
 
   /**
    * @dev Reset the reserve ratio to the value it had prior to
    *      a call to `setAnnualInterestBips`.
    */
-  function resetReserveRatio(address vault) external;
+  function resetReserveRatio(address market) external;
 
   function temporaryExcessReserveRatio(
     address
   ) external view returns (uint128 reserveRatioBips, uint128 expiry);
 
   /**
-   * @dev Deploys a new instance of the vault through the vault factory
+   * @dev Deploys a new instance of the market through the market factory
    *      and registers it with the arch-controller.
    *
    *      If `msg.sender` is not `borrower` or `controllerFactory`,
@@ -123,7 +123,7 @@ interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
    *      transfers `originationFeeAmount` of `originationFeeAsset` from
    *      `msg.sender` to `feeRecipient`.
    */
-  function deployVault(
+  function deployMarket(
     address asset,
     string memory namePrefix,
     string memory symbolPrefix,
@@ -135,5 +135,5 @@ interface IWildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     uint32 delinquencyGracePeriod
   ) external returns (address);
 
-  function getVaultParameters() external view returns (VaultParameters memory);
+  function getMarketParameters() external view returns (MarketParameters memory);
 }

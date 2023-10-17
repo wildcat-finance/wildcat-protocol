@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { VaultState } from '../libraries/VaultState.sol';
+import { MarketState } from '../libraries/MarketState.sol';
 
 enum AuthRole {
   Null,
@@ -10,7 +10,7 @@ enum AuthRole {
   DepositAndWithdraw
 }
 
-struct VaultParameters {
+struct MarketParameters {
   address asset;
   string namePrefix;
   string symbolPrefix;
@@ -27,12 +27,12 @@ struct VaultParameters {
   uint32 delinquencyGracePeriod;
 }
 
-struct VaultControllerParameters {
+struct MarketControllerParameters {
   address archController;
   address borrower;
   address sentinel;
-  address vaultInitCodeStorage;
-  uint256 vaultInitCodeHash;
+  address marketInitCodeStorage;
+  uint256 marketInitCodeHash;
   uint32 minimumDelinquencyGracePeriod;
   uint32 maximumDelinquencyGracePeriod;
   uint16 minimumReserveRatioBips;
@@ -52,7 +52,7 @@ struct ProtocolFeeConfiguration {
   uint16 protocolFeeBips;
 }
 
-struct VaultParameterConstraints {
+struct MarketParameterConstraints {
   uint32 minimumDelinquencyGracePeriod;
   uint32 maximumDelinquencyGracePeriod;
   uint16 minimumReserveRatioBips;

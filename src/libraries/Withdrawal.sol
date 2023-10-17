@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import './VaultState.sol';
+import './MarketState.sol';
 import './FIFOQueue.sol';
 
 using MathUtils for uint256;
@@ -11,7 +11,7 @@ using WithdrawalLib for WithdrawalData global;
 
 /**
  * Withdrawals are grouped together in batches with a fixed expiry.
- * Until a withdrawal is paid out, the tokens are not burned from the vault
+ * Until a withdrawal is paid out, the tokens are not burned from the market
  * and continue to accumulate interest.
  */
 struct WithdrawalBatch {
@@ -46,7 +46,7 @@ library WithdrawalLib {
    */
   function availableLiquidityForPendingBatch(
     WithdrawalBatch memory batch,
-    VaultState memory state,
+    MarketState memory state,
     uint256 totalAssets
   ) internal pure returns (uint256) {
     // Subtract normalized value of pending scaled withdrawals, processed

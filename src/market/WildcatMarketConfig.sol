@@ -19,7 +19,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      currently be deposited to the market.
    */
   function maximumDeposit() external view returns (uint256) {
-    VaultState memory state = currentState();
+    MarketState memory state = currentState();
     return state.maximumDeposit();
   }
 
@@ -75,7 +75,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
     if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       revert BadLaunchCode();
     }
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
     _blockAccount(state, accountAddress);
     _writeState(state);
   }
@@ -113,7 +113,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
     address _account,
     bool _isAuthorized
   ) external onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
     Account memory account = _getAccount(_account);
     if (_isAuthorized) {
       account.approval = AuthRole.DepositAndWithdraw;
@@ -132,7 +132,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      Can not be set lower than current total supply.
    */
   function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
 
     if (_maxTotalSupply < state.totalSupply()) {
       revert NewMaxSupplyTooLow();
@@ -147,7 +147,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    * @dev Sets the annual interest rate earned by lenders in bips.
    */
   function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
 
     if (_annualInterestBips > BIP) {
       revert InterestRateTooHigh();
@@ -159,13 +159,13 @@ contract WildcatMarketConfig is WildcatMarketBase {
   }
 
   /**
-   * @dev Adjust the vault's reserve ratio.
+   * @dev Adjust the market's reserve ratio.
    *
    *      If the new ratio is lower than the old ratio,
-   *      asserts that the vault is not currently delinquent.
+   *      asserts that the market is not currently delinquent.
    *
    *      If the new ratio is higher than the old ratio,
-   *      asserts that the vault will not become delinquent
+   *      asserts that the market will not become delinquent
    *      because of the change.
    */
   function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant {
@@ -173,7 +173,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
       revert ReserveRatioBipsTooHigh();
     }
 
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
 
     uint256 initialReserveRatioBips = state.reserveRatioBips;
 

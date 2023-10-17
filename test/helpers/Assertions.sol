@@ -1,6 +1,6 @@
 pragma solidity ^0.8.20;
 
-import 'src/libraries/VaultState.sol';
+import 'src/libraries/MarketState.sol';
 import { StdAssertions } from 'forge-std/StdAssertions.sol';
 import { LibString } from 'solady/utils/LibString.sol';
 
@@ -8,8 +8,8 @@ using LibString for uint256;
 
 contract Assertions is StdAssertions {
   function assertEq(
-    VaultState memory actual,
-    VaultState memory expected,
+    MarketState memory actual,
+    MarketState memory expected,
     string memory key
   ) internal {
     assertEq(actual.maxTotalSupply, expected.maxTotalSupply, string.concat(key, '.maxTotalSupply'));
@@ -58,7 +58,7 @@ contract Assertions is StdAssertions {
     );
   }
 
-  function assertEq(VaultState memory actual, VaultState memory expected) internal {
-    assertEq(actual, expected, 'VaultState');
+  function assertEq(MarketState memory actual, MarketState memory expected) internal {
+    assertEq(actual, expected, 'MarketState');
   }
 }

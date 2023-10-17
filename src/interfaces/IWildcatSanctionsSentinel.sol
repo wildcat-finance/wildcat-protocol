@@ -12,7 +12,7 @@ interface IWildcatSanctionsSentinel {
 
   event SanctionOverrideRemoved(address indexed borrower, address indexed account);
 
-  error NotRegisteredVault();
+  error NotRegisteredMarket();
 
   struct TmpEscrowParams {
     address borrower;
@@ -62,8 +62,8 @@ interface IWildcatSanctionsSentinel {
    *      Emits `NewSanctionsEscrow(borrower, account, asset)` if a new contract
    *      is deployed.
    *
-   *      If `archController.isRegisteredVault(msg.sender)` returns false,
-   *      reverts with `NotRegisteredVault`.
+   *      If `archController.isRegisteredMarket(msg.sender)` returns false,
+   *      reverts with `NotRegisteredMarket`.
    *
    *      The sanctions escrow contract is used to hold assets until either the
    *      sanctioned status is lifted or the assets are released by the borrower.

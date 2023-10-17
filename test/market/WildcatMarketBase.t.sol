@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../BaseVaultTest.sol';
+import '../BaseMarketTest.sol';
 
-contract WildcatMarketBaseTest is BaseVaultTest {
+contract WildcatMarketBaseTest is BaseMarketTest {
   // ===================================================================== //
   //                          coverageLiquidity()                          //
   // ===================================================================== //
 
   function test_coverageLiquidity() external {
-    vault.coverageLiquidity();
+    market.coverageLiquidity();
   }
 
   // ===================================================================== //
@@ -17,27 +17,27 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_scaleFactor() external {
-    assertEq(vault.scaleFactor(), 1e27, 'scaleFactor should be 1 ray');
+    assertEq(market.scaleFactor(), 1e27, 'scaleFactor should be 1 ray');
     fastForward(365 days);
-    assertEq(vault.scaleFactor(), 1.1e27, 'scaleFactor should grow by 10% from APR');
+    assertEq(market.scaleFactor(), 1.1e27, 'scaleFactor should grow by 10% from APR');
     // updateState(pendingState());
     // Deposit one token
     _deposit(alice, 1e18);
-    // Borrow 80% of vault assets
+    // Borrow 80% of market assets
     _borrow(8e17);
-    assertEq(vault.currentState().isDelinquent, false);
+    assertEq(market.currentState().isDelinquent, false);
     // Withdraw 100% of deposits
     _requestWithdrawal(alice, 1e18);
-    assertEq(vault.scaleFactor(), 1.1e27);
+    assertEq(market.scaleFactor(), 1.1e27);
     // Fast forward to delinquency grace period
     fastForward(2000);
-    VaultState memory state = previousState;
+    MarketState memory state = previousState;
     uint256 scaleFactorAtGracePeriodExpiry = uint(1.1e27) +
       MathUtils.rayMul(
         1.1e27,
         FeeMath.calculateLinearInterestFromBips(parameters.annualInterestBips, 2_000)
       );
-    assertEq(vault.scaleFactor(), scaleFactorAtGracePeriodExpiry);
+    assertEq(market.scaleFactor(), scaleFactorAtGracePeriodExpiry);
     // uint256 dayOneInterest = FeeMath.calculateLinearInterestFromBips(
     // 	1000,
     // 	86_400
@@ -47,7 +47,7 @@ contract WildcatMarketBaseTest is BaseVaultTest {
     // 	MathUtils.rayMul(scaleFactorDayOne, FeeMath.calculateLinearInterestFromBips(2000, 364 days));
 
     // assertEq(
-    // 	vault.scaleFactor(),
+    // 	market.scaleFactor(),
     // 	scaleFactor,
     // 	'scaleFactor should grow by 20% with delinquency fees'
     // );
@@ -58,7 +58,7 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_totalAssets() external {
-    vault.totalAssets();
+    market.totalAssets();
   }
 
   // ===================================================================== //
@@ -66,11 +66,11 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_borrowableAssets() external {
-    assertEq(vault.borrowableAssets(), 0, 'borrowable should be 0');
+    assertEq(market.borrowableAssets(), 0, 'borrowable should be 0');
 
     _deposit(alice, 50_000e18);
-    assertEq(vault.borrowableAssets(), 40_000e18, 'borrowable should be 40k');
-    // vault.borrowableAssets();
+    assertEq(market.borrowableAssets(), 40_000e18, 'borrowable should be 40k');
+    // market.borrowableAssets();
   }
 
   // ===================================================================== //
@@ -78,7 +78,7 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_accruedProtocolFees() external {
-    vault.accruedProtocolFees();
+    market.accruedProtocolFees();
   }
 
   // ===================================================================== //
@@ -86,7 +86,7 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_previousState() external {
-    vault.previousState();
+    market.previousState();
   }
 
   // ===================================================================== //
@@ -94,7 +94,7 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_currentState() external {
-    vault.currentState();
+    market.currentState();
   }
 
   // ===================================================================== //
@@ -102,7 +102,7 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_scaledTotalSupply() external {
-    vault.scaledTotalSupply();
+    market.scaledTotalSupply();
   }
 
   // ===================================================================== //
@@ -110,12 +110,12 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_scaledBalanceOf(address account) external {
-    vault.scaledBalanceOf(account);
+    market.scaledBalanceOf(account);
   }
 
   function test_scaledBalanceOf() external {
     address account;
-    vault.scaledBalanceOf(account);
+    market.scaledBalanceOf(account);
   }
 
   // ===================================================================== //
@@ -123,13 +123,13 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_effectiveBorrowerAPR() external {
-    assertEq(vault.effectiveBorrowerAPR(), 1.1e26);
+    assertEq(market.effectiveBorrowerAPR(), 1.1e26);
     _deposit(alice, 1e18);
     _borrow(8e17);
     _requestWithdrawal(alice, 1e18);
-    assertEq(vault.effectiveBorrowerAPR(), 1.1e26);
+    assertEq(market.effectiveBorrowerAPR(), 1.1e26);
     fastForward(2_001);
-    assertEq(vault.effectiveBorrowerAPR(), 2.1e26);
+    assertEq(market.effectiveBorrowerAPR(), 2.1e26);
   }
 
   // ===================================================================== //
@@ -137,13 +137,13 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_effectiveLenderAPR() external {
-    assertEq(vault.effectiveLenderAPR(), 1e26);
+    assertEq(market.effectiveLenderAPR(), 1e26);
     _deposit(alice, 1e18);
     _borrow(8e17);
     _requestWithdrawal(alice, 1e18);
-    assertEq(vault.effectiveLenderAPR(), 1e26);
+    assertEq(market.effectiveLenderAPR(), 1e26);
     fastForward(2_001);
-    assertEq(vault.effectiveLenderAPR(), 2e26);
+    assertEq(market.effectiveLenderAPR(), 2e26);
   }
 
   // ===================================================================== //
@@ -151,20 +151,20 @@ contract WildcatMarketBaseTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_withdrawableProtocolFees() external {
-    assertEq(vault.withdrawableProtocolFees(), 0);
+    assertEq(market.withdrawableProtocolFees(), 0);
     _deposit(alice, 1e18);
     fastForward(365 days);
-    assertEq(vault.withdrawableProtocolFees(), 1e16);
+    assertEq(market.withdrawableProtocolFees(), 1e16);
   }
 
   function test_withdrawableProtocolFees_LessNormalizedUnclaimedWithdrawals() external {
-    assertEq(vault.withdrawableProtocolFees(), 0);
+    assertEq(market.withdrawableProtocolFees(), 0);
     _deposit(alice, 1e18);
     _borrow(8e17);
     fastForward(365 days);
     _requestWithdrawal(alice, 1e18);
-    assertEq(vault.withdrawableProtocolFees(), 1e16);
-    asset.mint(address(vault), 8e17 + 1);
-    assertEq(vault.withdrawableProtocolFees(), 1e16);
+    assertEq(market.withdrawableProtocolFees(), 1e16);
+    asset.mint(address(market), 8e17 + 1);
+    assertEq(market.withdrawableProtocolFees(), 1e16);
   }
 }

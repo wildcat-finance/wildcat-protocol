@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-interface IWildcatVaultControllerEventsAndErrors {
+interface IWildcatMarketControllerEventsAndErrors {
   /* -------------------------------------------------------------------------- */
   /*                                   Errors                                   */
   /* -------------------------------------------------------------------------- */
@@ -15,19 +15,19 @@ interface IWildcatVaultControllerEventsAndErrors {
   // Error thrown when a borrower-only method is called by another account.
   error CallerNotBorrower();
 
-  // Error thrown when `deployVault` called by an account other than `borrower` or
+  // Error thrown when `deployMarket` called by an account other than `borrower` or
   // `controllerFactory`.
   error CallerNotBorrowerOrControllerFactory();
 
-  // Error thrown if borrower calls `deployVault` and is no longer
+  // Error thrown if borrower calls `deployMarket` and is no longer
   // registered with the arch-controller.
   error NotRegisteredBorrower();
 
   error EmptyString();
 
-  error NotControlledVault();
+  error NotControlledMarket();
 
-  error VaultAlreadyDeployed();
+  error MarketAlreadyDeployed();
 
   error ExcessReserveRatioStillActive();
   error AprChangeNotPending();
@@ -40,5 +40,5 @@ interface IWildcatVaultControllerEventsAndErrors {
 
   event LenderDeauthorized(address);
 
-  event VaultDeployed(address indexed vault);
+  event MarketDeployed(address indexed market);
 }

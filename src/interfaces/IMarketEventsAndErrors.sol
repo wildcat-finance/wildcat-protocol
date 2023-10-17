@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { VaultState } from '../libraries/VaultState.sol';
+import { MarketState } from '../libraries/MarketState.sol';
 import { AuthRole } from './WildcatStructsAndEnums.sol';
 
-interface IVaultEventsAndErrors {
+interface IMarketEventsAndErrors {
   /// @notice Error thrown when deposit exceeds maxTotalSupply
   error MaxSupplyExceeded();
 
   /// @notice Error thrown when non-borrower tries accessing borrower-only actions
   error NotApprovedBorrower();
 
-  /// @notice Error thrown when non-approved lender tries lending to the vault
+  /// @notice Error thrown when non-approved lender tries lending to the market
   error NotApprovedLender();
 
   /// @notice Error thrown when non-controller tries accessing controller-only actions
@@ -64,14 +64,14 @@ interface IVaultEventsAndErrors {
 
   error NullWithdrawalAmount();
 
-  error DepositToClosedVault();
+  error DepositToClosedMarket();
 
-  error BorrowFromClosedVault();
+  error BorrowFromClosedMarket();
 
-  error CloseVaultWithUnpaidWithdrawals();
+  error CloseMarketWithUnpaidWithdrawals();
 
   /// @notice Error thrown when reserve ratio set to value
-  ///         the vault currently would not meet.
+  ///         the market currently would not meet.
   error InsufficientReservesForNewLiquidityRatio();
 
   error InsufficientReservesForOldLiquidityRatio();
@@ -92,7 +92,7 @@ interface IVaultEventsAndErrors {
 
   event Borrow(uint256 assetAmount);
 
-  event VaultClosed(uint256 timestamp);
+  event MarketClosed(uint256 timestamp);
 
   event FeesCollected(uint256 assets);
 

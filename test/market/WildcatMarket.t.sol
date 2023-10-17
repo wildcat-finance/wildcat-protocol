@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../BaseVaultTest.sol';
-import 'src/interfaces/IVaultEventsAndErrors.sol';
+import '../BaseMarketTest.sol';
+import 'src/interfaces/IMarketEventsAndErrors.sol';
 import 'src/libraries/MathUtils.sol';
 import 'src/libraries/SafeCastLib.sol';
-import 'src/libraries/VaultState.sol';
+import 'src/libraries/MarketState.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
-contract WildcatMarketTest is BaseVaultTest {
+contract WildcatMarketTest is BaseMarketTest {
   using stdStorage for StdStorage;
   // using WadRayMath for uint256;
   using MathUtils for int256;
@@ -21,19 +21,19 @@ contract WildcatMarketTest is BaseVaultTest {
   function test_updateState() external {
     _deposit(alice, 1e18);
     fastForward(365 days);
-    VaultState memory state = pendingState();
+    MarketState memory state = pendingState();
     updateState(state);
-    vault.updateState();
-    assertEq(vault.previousState(), state);
+    market.updateState();
+    assertEq(market.previousState(), state);
   }
 
   function test_updateState_NoChange() external {
     _deposit(alice, 1e18);
-    VaultState memory state = pendingState();
+    MarketState memory state = pendingState();
     bytes32 stateHash = keccak256(abi.encode(state));
-    vault.updateState();
-    assertEq(keccak256(abi.encode(vault.previousState())), stateHash);
-    assertEq(keccak256(abi.encode(vault.currentState())), stateHash);
+    market.updateState();
+    assertEq(keccak256(abi.encode(market.previousState())), stateHash);
+    assertEq(keccak256(abi.encode(market.currentState())), stateHash);
   }
 
   function test_updateState_HasPendingExpiredBatch() external {
@@ -43,16 +43,16 @@ contract WildcatMarketTest is BaseVaultTest {
     _requestWithdrawal(alice, 1e18);
     uint32 expiry = previousState.pendingWithdrawalExpiry;
     fastForward(1 days);
-    VaultState memory state = pendingState();
-    vm.expectEmit(address(vault));
+    MarketState memory state = pendingState();
+    vm.expectEmit(address(market));
     emit ScaleFactorUpdated(1.001e27, 1e24, 0, 0);
-    vm.expectEmit(address(vault));
+    vm.expectEmit(address(market));
     emit WithdrawalBatchExpired(expiry, 1e18, 1e18, 1e18);
-    vm.expectEmit(address(vault));
+    vm.expectEmit(address(market));
     emit WithdrawalBatchClosed(expiry);
-    vm.expectEmit(address(vault));
+    vm.expectEmit(address(market));
     emit StateUpdated(1.001e27, false);
-    vault.updateState();
+    market.updateState();
   }
 
   function test_updateState_HasPendingExpiredBatch_SameBlock() external {
@@ -61,14 +61,14 @@ contract WildcatMarketTest is BaseVaultTest {
     setUp();
     _deposit(alice, 1e18);
     _requestWithdrawal(alice, 1e18);
-    VaultState memory state = pendingState();
-    vm.expectEmit(address(vault));
+    MarketState memory state = pendingState();
+    vm.expectEmit(address(market));
     emit WithdrawalBatchExpired(block.timestamp, 1e18, 1e18, 1e18);
-    vm.expectEmit(address(vault));
+    vm.expectEmit(address(market));
     emit WithdrawalBatchClosed(block.timestamp);
-    vm.expectEmit(address(vault));
+    vm.expectEmit(address(market));
     emit StateUpdated(1e27, false);
-    vault.updateState();
+    market.updateState();
   }
 
   // ===================================================================== //
@@ -77,50 +77,50 @@ contract WildcatMarketTest is BaseVaultTest {
 
   function test_depositUpTo() external asAccount(alice) {
     _deposit(alice, 50_000e18);
-    assertEq(vault.totalSupply(), 50_000e18);
-    assertEq(vault.balanceOf(alice), 50_000e18);
+    assertEq(market.totalSupply(), 50_000e18);
+    assertEq(market.balanceOf(alice), 50_000e18);
   }
 
   function test_depositUpTo(uint256 amount) external asAccount(alice) {
     amount = bound(amount, 1, DefaultMaximumSupply);
-    vault.depositUpTo(amount);
+    market.depositUpTo(amount);
   }
 
   function test_depositUpTo_ApprovedOnController() public asAccount(bob) {
     _authorizeLender(bob);
-    vm.expectEmit(address(vault));
+    vm.expectEmit(address(market));
     emit AuthorizationStatusUpdated(bob, AuthRole.DepositAndWithdraw);
-    vault.depositUpTo(1e18);
-    assertEq(uint(vault.getAccountRole(bob)), uint(AuthRole.DepositAndWithdraw));
+    market.depositUpTo(1e18);
+    assertEq(uint(market.getAccountRole(bob)), uint(AuthRole.DepositAndWithdraw));
   }
 
   function test_depositUpTo_NullMintAmount() external asAccount(alice) {
-    vm.expectRevert(IVaultEventsAndErrors.NullMintAmount.selector);
-    vault.depositUpTo(0);
+    vm.expectRevert(IMarketEventsAndErrors.NullMintAmount.selector);
+    market.depositUpTo(0);
   }
 
   function testDepositUpTo_MaxSupplyExceeded() public asAccount(bob) {
     _authorizeLender(bob);
     asset.transfer(address(1), type(uint128).max);
     asset.mint(bob, DefaultMaximumSupply);
-    asset.approve(address(vault), DefaultMaximumSupply);
-    vault.depositUpTo(DefaultMaximumSupply - 1);
-    vault.depositUpTo(2);
-    assertEq(vault.balanceOf(bob), DefaultMaximumSupply);
+    asset.approve(address(market), DefaultMaximumSupply);
+    market.depositUpTo(DefaultMaximumSupply - 1);
+    market.depositUpTo(2);
+    assertEq(market.balanceOf(bob), DefaultMaximumSupply);
     assertEq(asset.balanceOf(bob), 0);
   }
 
   function testDepositUpTo_NotApprovedLender() public asAccount(bob) {
     asset.mint(bob, 1e18);
-    asset.approve(address(vault), 1e18);
-    vm.expectRevert(IVaultEventsAndErrors.NotApprovedLender.selector);
-    vault.depositUpTo(1e18);
+    asset.approve(address(market), 1e18);
+    vm.expectRevert(IMarketEventsAndErrors.NotApprovedLender.selector);
+    market.depositUpTo(1e18);
   }
 
   function testDepositUpTo_TransferFail() public asAccount(alice) {
-    asset.approve(address(vault), 0);
+    asset.approve(address(market), 0);
     vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-    vault.depositUpTo(50_000e18);
+    market.depositUpTo(50_000e18);
   }
 
   // ===================================================================== //
@@ -129,18 +129,18 @@ contract WildcatMarketTest is BaseVaultTest {
 
   function test_deposit(uint256 amount) external asAccount(alice) {
     amount = bound(amount, 1, DefaultMaximumSupply);
-    vault.deposit(amount);
+    market.deposit(amount);
   }
 
   function testDeposit_NotApprovedLender() public asAccount(bob) {
-    vm.expectRevert(IVaultEventsAndErrors.NotApprovedLender.selector);
-    vault.deposit(1e18);
+    vm.expectRevert(IMarketEventsAndErrors.NotApprovedLender.selector);
+    market.deposit(1e18);
   }
 
   function testDeposit_MaxSupplyExceeded() public asAccount(alice) {
-    vault.deposit(DefaultMaximumSupply - 1);
-    vm.expectRevert(IVaultEventsAndErrors.MaxSupplyExceeded.selector);
-    vault.deposit(2);
+    market.deposit(DefaultMaximumSupply - 1);
+    vm.expectRevert(IMarketEventsAndErrors.MaxSupplyExceeded.selector);
+    market.deposit(2);
   }
 
   // ===================================================================== //
@@ -148,26 +148,26 @@ contract WildcatMarketTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_collectFees_NoFeesAccrued() external {
-    vm.expectRevert(IVaultEventsAndErrors.NullFeeAmount.selector);
-    vault.collectFees();
+    vm.expectRevert(IMarketEventsAndErrors.NullFeeAmount.selector);
+    market.collectFees();
   }
 
   function test_collectFees() external {
     _deposit(alice, 1e18);
     fastForward(365 days);
     vm.expectEmit(address(asset));
-    emit Transfer(address(vault), feeRecipient, 1e16);
-    vm.expectEmit(address(vault));
+    emit Transfer(address(market), feeRecipient, 1e16);
+    vm.expectEmit(address(market));
     emit FeesCollected(1e16);
-    vault.collectFees();
+    market.collectFees();
   }
 
   function test_collectFees_InsufficientReservesForFeeWithdrawal() external {
     _deposit(alice, 1e18);
     fastForward(1);
-    asset.burn(address(vault), 1e18);
-    vm.expectRevert(IVaultEventsAndErrors.InsufficientReservesForFeeWithdrawal.selector);
-    vault.collectFees();
+    asset.burn(address(market), 1e18);
+    vm.expectRevert(IMarketEventsAndErrors.InsufficientReservesForFeeWithdrawal.selector);
+    market.collectFees();
   }
 
   // ===================================================================== //
@@ -175,72 +175,72 @@ contract WildcatMarketTest is BaseVaultTest {
   // ===================================================================== //
 
   function test_borrow(uint256 amount) external {
-    uint256 availableCollateral = vault.borrowableAssets();
+    uint256 availableCollateral = market.borrowableAssets();
     assertEq(availableCollateral, 0, 'borrowable should be 0');
 
     vm.prank(alice);
-    vault.depositUpTo(50_000e18);
-    assertEq(vault.borrowableAssets(), 40_000e18, 'borrowable should be 40k');
+    market.depositUpTo(50_000e18);
+    assertEq(market.borrowableAssets(), 40_000e18, 'borrowable should be 40k');
     vm.prank(borrower);
-    vault.borrow(40_000e18);
+    market.borrow(40_000e18);
     assertEq(asset.balanceOf(borrower), 40_000e18);
   }
 
   function test_borrow_BorrowAmountTooHigh() external {
     vm.prank(alice);
-    vault.depositUpTo(50_000e18);
+    market.depositUpTo(50_000e18);
 
     vm.startPrank(borrower);
-    vm.expectRevert(IVaultEventsAndErrors.BorrowAmountTooHigh.selector);
-    vault.borrow(40_000e18 + 1);
+    vm.expectRevert(IMarketEventsAndErrors.BorrowAmountTooHigh.selector);
+    market.borrow(40_000e18 + 1);
   }
 
   // ===================================================================== //
-  //                             closeVault()                              //
+  //                             closeMarket()                              //
   // ===================================================================== //
 
-  function test_closeVault_TransferRemainingDebt() external asAccount(address(controller)) {
+  function test_closeMarket_TransferRemainingDebt() external asAccount(address(controller)) {
     // Borrow 80% of deposits then request withdrawal of 100% of deposits
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
     startPrank(borrower);
-    asset.approve(address(vault), 8e17);
+    asset.approve(address(market), 8e17);
     stopPrank();
     vm.expectEmit(address(asset));
-    emit Transfer(borrower, address(vault), 8e17);
-    vault.closeVault();
+    emit Transfer(borrower, address(market), 8e17);
+    market.closeMarket();
   }
 
-  function test_closeVault_TransferExcessAssets() external asAccount(address(controller)) {
+  function test_closeMarket_TransferExcessAssets() external asAccount(address(controller)) {
     // Borrow 80% of deposits then request withdrawal of 100% of deposits
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
-    asset.mint(address(vault), 1e18);
+    asset.mint(address(market), 1e18);
     vm.expectEmit(address(asset));
-    emit Transfer(address(vault), borrower, 2e17);
-    vault.closeVault();
+    emit Transfer(address(market), borrower, 2e17);
+    market.closeMarket();
   }
 
-  function test_closeVault_FailTransferRemainingDebt() external asAccount(address(controller)) {
+  function test_closeMarket_FailTransferRemainingDebt() external asAccount(address(controller)) {
     // Borrow 80% of deposits then request withdrawal of 100% of deposits
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
     vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-    vault.closeVault();
+    market.closeMarket();
   }
 
-  function test_closeVault_NotController() external {
-    vm.expectRevert(IVaultEventsAndErrors.NotController.selector);
-    vault.closeVault();
+  function test_closeMarket_NotController() external {
+    vm.expectRevert(IMarketEventsAndErrors.NotController.selector);
+    market.closeMarket();
   }
 
-  function test_closeVault_CloseVaultWithUnpaidWithdrawals()
+  function test_closeMarket_CloseMarketWithUnpaidWithdrawals()
     external
     asAccount(address(controller))
   {
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
     fastForward(parameters.withdrawalBatchDuration);
-    vault.updateState();
-    uint32[] memory unpaidBatches = vault.getUnpaidBatchExpiries();
+    market.updateState();
+    uint32[] memory unpaidBatches = market.getUnpaidBatchExpiries();
     assertEq(unpaidBatches.length, 1);
-    vm.expectRevert(IVaultEventsAndErrors.CloseVaultWithUnpaidWithdrawals.selector);
-    vault.closeVault();
+    vm.expectRevert(IMarketEventsAndErrors.CloseMarketWithUnpaidWithdrawals.selector);
+    market.closeMarket();
   }
 }

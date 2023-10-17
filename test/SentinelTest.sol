@@ -10,10 +10,10 @@ import { Test } from 'forge-std/Test.sol';
 
 // -- TEMP START --
 contract MockWildcatArchController {
-  mapping(address vault => bool) public isRegisteredVault;
+  mapping(address market => bool) public isRegisteredMarket;
 
-  function setIsRegsiteredVault(address vault, bool isRegistered) external {
-    isRegisteredVault[vault] = isRegistered;
+  function setIsRegsiteredMarket(address market, bool isRegistered) external {
+    isRegisteredMarket[market] = isRegistered;
   }
 }
 
@@ -158,7 +158,7 @@ contract SentinelTest is Test {
     address asset = address(new MockERC20());
     uint256 amount = 1;
 
-    archController.setIsRegsiteredVault(address(this), true);
+    archController.setIsRegsiteredMarket(address(this), true);
     address expectedEscrowAddress = sentinel.getEscrowAddress(borrower, account, asset);
 
     vm.expectEmit(true, true, true, true, address(sentinel));
@@ -198,7 +198,7 @@ contract SentinelTest is Test {
   ) public {
     address asset = address(new MockERC20{ salt: assetSalt }());
 
-    archController.setIsRegsiteredVault(address(this), true);
+    archController.setIsRegsiteredMarket(address(this), true);
     if (sanctioned) MockChainalysis(address(SanctionsList)).sanction(account);
 
     vm.expectEmit(true, true, true, true, address(sentinel));
@@ -222,21 +222,21 @@ contract SentinelTest is Test {
     assertEq(escrowedAmount, amount);
   }
 
-  function testCreateEscrowNotRegisteredVault() public {
+  function testCreateEscrowNotRegisteredMarket() public {
     address borrower = address(1);
     address account = address(2);
     address asset = address(3);
 
-    vm.expectRevert(IWildcatSanctionsSentinel.NotRegisteredVault.selector);
+    vm.expectRevert(IWildcatSanctionsSentinel.NotRegisteredMarket.selector);
     sentinel.createEscrow(borrower, account, asset);
   }
 
-  function testFuzzCreateEscrowNotRegisteredVault(
+  function testFuzzCreateEscrowNotRegisteredMarket(
     address borrower,
     address account,
     address asset
   ) public {
-    vm.expectRevert(IWildcatSanctionsSentinel.NotRegisteredVault.selector);
+    vm.expectRevert(IWildcatSanctionsSentinel.NotRegisteredMarket.selector);
     sentinel.createEscrow(borrower, account, asset);
   }
 }

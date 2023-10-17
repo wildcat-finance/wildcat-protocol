@@ -8,7 +8,7 @@ import './libraries/MathUtils.sol';
 contract WildcatArchController is Ownable {
   using EnumerableSet for EnumerableSet.AddressSet;
 
-  EnumerableSet.AddressSet internal _vaults;
+  EnumerableSet.AddressSet internal _markets;
   EnumerableSet.AddressSet internal _controllerFactories;
   EnumerableSet.AddressSet internal _borrowers;
   EnumerableSet.AddressSet internal _controllers;
@@ -19,15 +19,15 @@ contract WildcatArchController is Ownable {
   error BorrowerAlreadyExists();
   error ControllerFactoryAlreadyExists();
   error ControllerAlreadyExists();
-  error VaultAlreadyExists();
+  error MarketAlreadyExists();
 
   error BorrowerDoesNotExist();
   error ControllerFactoryDoesNotExist();
   error ControllerDoesNotExist();
-  error VaultDoesNotExist();
+  error MarketDoesNotExist();
 
-  event VaultAdded(address indexed controller, address vault);
-  event VaultRemoved(address vault);
+  event MarketAdded(address indexed controller, address market);
+  event MarketRemoved(address market);
 
   event ControllerFactoryAdded(address controllerFactory);
   event ControllerFactoryRemoved(address controllerFactory);
@@ -186,45 +186,45 @@ contract WildcatArchController is Ownable {
   }
 
   /* ========================================================================== */
-  /*                                   Vaults                                   */
+  /*                                   Markets                                   */
   /* ========================================================================== */
 
-  function registerVault(address vault) external onlyController {
-    if (!_vaults.add(vault)) {
-      revert VaultAlreadyExists();
+  function registerMarket(address market) external onlyController {
+    if (!_markets.add(market)) {
+      revert MarketAlreadyExists();
     }
-    emit VaultAdded(msg.sender, vault);
+    emit MarketAdded(msg.sender, market);
   }
 
-  function removeVault(address vault) external onlyOwner {
-    if (!_vaults.remove(vault)) {
-      revert VaultDoesNotExist();
+  function removeMarket(address market) external onlyOwner {
+    if (!_markets.remove(market)) {
+      revert MarketDoesNotExist();
     }
-    emit VaultRemoved(vault);
+    emit MarketRemoved(market);
   }
 
-  function isRegisteredVault(address vault) external view returns (bool) {
-    return _vaults.contains(vault);
+  function isRegisteredMarket(address market) external view returns (bool) {
+    return _markets.contains(market);
   }
 
-  function getRegisteredVaults() external view returns (address[] memory) {
-    return _vaults.values();
+  function getRegisteredMarkets() external view returns (address[] memory) {
+    return _markets.values();
   }
 
-  function getRegisteredVaults(
+  function getRegisteredMarkets(
     uint256 start,
     uint256 end
   ) external view returns (address[] memory arr) {
-    uint256 len = _vaults.length();
+    uint256 len = _markets.length();
     end = MathUtils.min(end, len);
     uint256 count = end - start;
     arr = new address[](count);
     for (uint256 i = 0; i < count; i++) {
-      arr[i] = _vaults.at(start + i);
+      arr[i] = _markets.at(start + i);
     }
   }
 
-  function getRegisteredVaultsCount() external view returns (uint256) {
-    return _vaults.length();
+  function getRegisteredMarketsCount() external view returns (uint256) {
+    return _markets.length();
   }
 }

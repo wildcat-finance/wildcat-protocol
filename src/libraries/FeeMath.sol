@@ -3,7 +3,7 @@ pragma solidity >=0.8.20;
 
 import './MathUtils.sol';
 import './SafeCastLib.sol';
-import './VaultState.sol';
+import './MarketState.sol';
 
 using SafeCastLib for uint256;
 using MathUtils for uint256;
@@ -28,7 +28,7 @@ library FeeMath {
   }
 
   function calculateBaseInterest(
-    VaultState memory state,
+    MarketState memory state,
     uint256 timestamp
   ) internal pure returns (uint256 baseInterestRay) {
     baseInterestRay = MathUtils.calculateLinearInterestFromBips(
@@ -38,7 +38,7 @@ library FeeMath {
   }
 
   function applyProtocolFee(
-    VaultState memory state,
+    MarketState memory state,
     uint256 baseInterestRay,
     uint256 protocolFeeBips
   ) internal pure returns (uint256 protocolFee) {
@@ -51,7 +51,7 @@ library FeeMath {
   }
 
   function updateDelinquency(
-    VaultState memory state,
+    MarketState memory state,
     uint256 timestamp,
     uint256 delinquencyFeeBips,
     uint256 delinquencyGracePeriod
@@ -71,7 +71,7 @@ library FeeMath {
   }
 
   /**
-   * @notice  Calculate the number of seconds that the vault has been in
+   * @notice  Calculate the number of seconds that the market has been in
    *          penalized delinquency since the last update, and update
    *          `timeDelinquent` in state.
    *
@@ -84,10 +84,10 @@ library FeeMath {
    * @param delinquencyGracePeriod Seconds in delinquency before penalties apply
    * @param timeDelta Seconds since the last update
    * @param `timeWithPenalty` Number of seconds since the last update where
-   *        the vault was in delinquency outside of the grace period.
+   *        the market was in delinquency outside of the grace period.
    */
   function updateTimeDelinquentAndGetPenaltyTime(
-    VaultState memory state,
+    MarketState memory state,
     uint256 delinquencyGracePeriod,
     uint256 timeDelta
   ) internal pure returns (uint256 /* timeWithPenalty */) {
@@ -105,7 +105,7 @@ library FeeMath {
         previousTimeDelinquent
       );
 
-      // Penalties apply for the number of seconds the vault spent in
+      // Penalties apply for the number of seconds the market spent in
       // delinquency outside of the grace period since the last update.
       return timeDelta.satSub(secondsRemainingWithoutPenalty);
     }
@@ -130,7 +130,7 @@ library FeeMath {
    *      Takes `timestamp` as input to allow separate calculation of interest
    *      before and after withdrawal batch expiry.
    *
-   * @param state Vault scale parameters
+   * @param state Market scale parameters
    * @param protocolFeeBips Protocol fee rate (in bips)
    * @param delinquencyFeeBips Delinquency fee rate (in bips)
    * @param delinquencyGracePeriod Grace period (in seconds) before delinquency fees apply
@@ -140,7 +140,7 @@ library FeeMath {
    * @return protocolFee Protocol fee charged on interest (normalized token amount).
    */
   function updateScaleFactorAndFees(
-    VaultState memory state,
+    MarketState memory state,
     uint256 protocolFeeBips,
     uint256 delinquencyFeeBips,
     uint256 delinquencyGracePeriod,

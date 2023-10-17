@@ -4,21 +4,21 @@ pragma solidity >=0.8.20;
 import '../libraries/FeeMath.sol';
 import '../libraries/Withdrawal.sol';
 import { queryName, querySymbol } from '../libraries/StringQuery.sol';
-import '../interfaces/IVaultEventsAndErrors.sol';
-import '../interfaces/IWildcatVaultController.sol';
+import '../interfaces/IMarketEventsAndErrors.sol';
+import '../interfaces/IWildcatMarketController.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
 import { IERC20, IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
 import '../libraries/BoolUtils.sol';
 
-contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
-  using WithdrawalLib for VaultState;
+contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
+  using WithdrawalLib for MarketState;
   using SafeCastLib for uint256;
   using MathUtils for uint256;
   using BoolUtils for bool;
 
   // ==================================================================== //
-  //                       Vault Config (immutable)                       //
+  //                       Market Config (immutable)                       //
   // ==================================================================== //
 
   string public constant version = '1.0';
@@ -26,7 +26,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   /// @dev Account with blacklist control, used for blocking sanctioned addresses.
   address public immutable sentinel;
 
-  /// @dev Account with authority to borrow assets from the vault.
+  /// @dev Account with authority to borrow assets from the market.
   address public immutable borrower;
 
   /// @dev Account that receives protocol fees.
@@ -41,7 +41,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   /// @dev Time after which delinquency incurs penalty fee.
   uint256 public immutable delinquencyGracePeriod;
 
-  /// @dev Address of the Vault Controller.
+  /// @dev Address of the Market Controller.
   address public immutable controller;
 
   /// @dev Address of the underlying asset.
@@ -60,10 +60,10 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   string public symbol;
 
   // ===================================================================== //
-  //                             Vault State                               //
+  //                             Market State                               //
   // ===================================================================== //
 
-  VaultState internal _state;
+  MarketState internal _state;
 
   mapping(address => Account) internal _accounts;
 
@@ -74,7 +74,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   // ===================================================================== //
 
   constructor() {
-    VaultParameters memory parameters = IWildcatVaultController(msg.sender).getVaultParameters();
+    MarketParameters memory parameters = IWildcatMarketController(msg.sender).getMarketParameters();
 
     if ((parameters.protocolFeeBips > 0).and(parameters.feeRecipient == address(0))) {
       revert FeeSetWithoutRecipient();
@@ -98,7 +98,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     symbol = string.concat(parameters.symbolPrefix, querySymbol(parameters.asset));
     decimals = IERC20Metadata(parameters.asset).decimals();
 
-    _state = VaultState({
+    _state = MarketState({
       isClosed: false,
       maxTotalSupply: parameters.maxTotalSupply,
       accruedProtocolFees: 0,
@@ -155,12 +155,12 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   }
 
   /**
-   * @dev Block an account and transfer its balance of vault tokens
+   * @dev Block an account and transfer its balance of market tokens
    *      to an escrow contract.
    *
    *      If the account is already blocked, this function does nothing.
    */
-  function _blockAccount(VaultState memory state, address accountAddress) internal {
+  function _blockAccount(MarketState memory state, address accountAddress) internal {
     Account memory account = _accounts[accountAddress];
     if (account.approval != AuthRole.Blocked) {
       uint104 scaledBalance = account.scaledBalance;
@@ -201,7 +201,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     account = _getAccount(accountAddress);
     // If account role is null, see if it is authorized on controller.
     if (account.approval == AuthRole.Null) {
-      if (IWildcatVaultController(controller).isAuthorizedLender(accountAddress)) {
+      if (IWildcatMarketController(controller).isAuthorizedLender(accountAddress)) {
         account.approval = AuthRole.DepositAndWithdraw;
         emit AuthorizationStatusUpdated(accountAddress, AuthRole.DepositAndWithdraw);
       }
@@ -218,7 +218,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 
   /**
    * @dev Returns the amount of underlying assets the borrower is obligated
-   *      to maintain in the vault to avoid delinquency.
+   *      to maintain in the market to avoid delinquency.
    */
   function coverageLiquidity() external view nonReentrantView returns (uint256) {
     return currentState().liquidityRequired();
@@ -262,25 +262,25 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   }
 
   /**
-   * @dev Returns the state of the vault as of the last update.
+   * @dev Returns the state of the market as of the last update.
    */
-  function previousState() external view returns (VaultState memory) {
+  function previousState() external view returns (MarketState memory) {
     return _state;
   }
 
   /**
-   * @dev Return the state the vault would have at the current block after applying
+   * @dev Return the state the market would have at the current block after applying
    *      interest and fees accrued since the last update and processing the pending
    *      withdrawal batch if it is expired.
    */
-  function currentState() public view nonReentrantView returns (VaultState memory state) {
+  function currentState() public view nonReentrantView returns (MarketState memory state) {
     (state, , ) = _calculateCurrentState();
   }
 
   /**
    * @dev Returns the scaled total supply the vaut would have at the current block
    *      after applying interest and fees accrued since the last update and burning
-   *      vault tokens for the pending withdrawal batch if it is expired.
+   *      market tokens for the pending withdrawal batch if it is expired.
    */
   function scaledTotalSupply() external view nonReentrantView returns (uint256) {
     return currentState().scaledTotalSupply;
@@ -316,7 +316,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
    * @return apr paid by borrower in ray
    */
   function effectiveBorrowerAPR() external view returns (uint256) {
-    VaultState memory state = currentState();
+    MarketState memory state = currentState();
     // apr + (apr * protocolFee)
     uint256 apr = MathUtils.bipToRay(state.annualInterestBips).bipMul(BIP + protocolFeeBips);
     if (state.timeDelinquent > delinquencyGracePeriod) {
@@ -332,7 +332,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
    * @return apr earned by lender in ray
    */
   function effectiveLenderAPR() external view returns (uint256) {
-    VaultState memory state = currentState();
+    MarketState memory state = currentState();
     uint256 apr = state.annualInterestBips;
     if (state.timeDelinquent > delinquencyGracePeriod) {
       apr += delinquencyFeeBips;
@@ -345,7 +345,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   // //////////////////////////////////////////////////////////////*/
 
   /**
-   * @dev Returns cached VaultState after accruing interest and delinquency / protocol fees
+   * @dev Returns cached MarketState after accruing interest and delinquency / protocol fees
    *      and processing expired withdrawal batch, if any.
    *
    *      Used by functions that make additional changes to `state`.
@@ -353,9 +353,9 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
    *      NOTE: Returned `state` does not match `_state` if interest is accrued
    *            Calling function must update `_state` or revert.
    *
-   * @return state Vault state after interest is accrued.
+   * @return state Market state after interest is accrued.
    */
-  function _getUpdatedState() internal returns (VaultState memory state) {
+  function _getUpdatedState() internal returns (MarketState memory state) {
     state = _state;
     // Handle expired withdrawal batch
     if (state.hasPendingExpiredBatch()) {
@@ -390,7 +390,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   /**
    * @dev Calculate the current state, applying fees and interest accrued since
    *      the last state update as well as the effects of withdrawal batch expiry
-   *      on the vault state.
+   *      on the market state.
    *      Identical to _getUpdatedState() except it does not modify storage or
    *      or emit events.
    *      Returns expired batch data, if any, so queries against batches have
@@ -400,7 +400,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     internal
     view
     returns (
-      VaultState memory state,
+      MarketState memory state,
       uint32 expiredBatchExpiry,
       WithdrawalBatch memory expiredBatch
     )
@@ -442,10 +442,10 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   }
 
   /**
-   * @dev Writes the cached VaultState to storage and emits an event.
+   * @dev Writes the cached MarketState to storage and emits an event.
    *      Used at the end of all functions which modify `state`.
    */
-  function _writeState(VaultState memory state) internal {
+  function _writeState(MarketState memory state) internal {
     bool isDelinquent = state.liquidityRequired() > totalAssets();
     state.isDelinquent = isDelinquent;
     _state = state;
@@ -463,7 +463,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
    *        amount of scaled tokens is burned, ensuring borrowers do not continue paying interest
    *        on withdrawn assets.
    */
-  function _processExpiredWithdrawalBatch(VaultState memory state) internal {
+  function _processExpiredWithdrawalBatch(MarketState memory state) internal {
     uint32 expiry = state.pendingWithdrawalExpiry;
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
@@ -492,12 +492,12 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
   }
 
   /**
-   * @dev Process withdrawal payment, burning vault tokens and reserving
+   * @dev Process withdrawal payment, burning market tokens and reserving
    *      underlying assets so they are only available for withdrawals.
    */
   function _applyWithdrawalBatchPayment(
     WithdrawalBatch memory batch,
-    VaultState memory state,
+    MarketState memory state,
     uint32 expiry,
     uint256 availableLiquidity
   ) internal {
@@ -517,7 +517,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     // Update normalizedUnclaimedWithdrawals so the tokens are only accessible for withdrawals.
     state.normalizedUnclaimedWithdrawals += normalizedAmountPaid;
 
-    // Burn vault tokens to stop interest accrual upon withdrawal payment.
+    // Burn market tokens to stop interest accrual upon withdrawal payment.
     state.scaledTotalSupply -= scaledAmountBurned;
 
     // Emit transfer for external trackers to indicate burn.
@@ -527,7 +527,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
 
   function _applyWithdrawalBatchPaymentView(
     WithdrawalBatch memory batch,
-    VaultState memory state,
+    MarketState memory state,
     uint256 availableLiquidity
   ) internal pure {
     uint104 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity).toUint104();
@@ -546,7 +546,7 @@ contract WildcatMarketBase is ReentrancyGuard, IVaultEventsAndErrors {
     // Update normalizedUnclaimedWithdrawals so the tokens are only accessible for withdrawals.
     state.normalizedUnclaimedWithdrawals += normalizedAmountPaid;
 
-    // Burn vault tokens to stop interest accrual upon withdrawal payment.
+    // Burn market tokens to stop interest accrual upon withdrawal payment.
     state.scaledTotalSupply -= scaledAmountBurned;
   }
 }

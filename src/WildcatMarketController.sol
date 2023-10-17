@@ -5,8 +5,8 @@ import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSe
 import 'solady/utils/SafeTransferLib.sol';
 import './market/WildcatMarket.sol';
 import './interfaces/IWildcatArchController.sol';
-import './interfaces/IWildcatVaultControllerEventsAndErrors.sol';
-import './interfaces/IWildcatVaultControllerFactory.sol';
+import './interfaces/IWildcatMarketControllerEventsAndErrors.sol';
+import './interfaces/IWildcatMarketControllerFactory.sol';
 import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 
@@ -15,7 +15,7 @@ struct TemporaryReserveRatio {
   uint128 expiry;
 }
 
-struct TmpVaultParameterStorage {
+struct TmpMarketParameterStorage {
   address asset;
   string namePrefix;
   string symbolPrefix;
@@ -29,7 +29,7 @@ struct TmpVaultParameterStorage {
   uint32 delinquencyGracePeriod;
 }
 
-contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
+contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   using EnumerableSet for EnumerableSet.AddressSet;
   using SafeCastLib for uint256;
   using SafeTransferLib for address;
@@ -40,15 +40,15 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
 
   IWildcatArchController public immutable archController;
 
-  IWildcatVaultControllerFactory public immutable controllerFactory;
+  IWildcatMarketControllerFactory public immutable controllerFactory;
 
   address public immutable borrower;
 
   address public immutable sentinel;
 
-  address public immutable vaultInitCodeStorage;
+  address public immutable marketInitCodeStorage;
 
-  uint256 public immutable vaultInitCodeHash;
+  uint256 public immutable marketInitCodeHash;
 
   uint256 internal immutable ownCreate2Prefix = LibStoredInitCode.getCreate2Prefix(address(this));
 
@@ -68,14 +68,14 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   uint16 internal immutable MaximumAnnualInterestBips;
 
   EnumerableSet.AddressSet internal _authorizedLenders;
-  EnumerableSet.AddressSet internal _controlledVaults;
+  EnumerableSet.AddressSet internal _controlledMarkets;
 
-  /// @dev Temporary storage for vault parameters, used during vault deployment
-  TmpVaultParameterStorage internal _tmpVaultParameters;
+  /// @dev Temporary storage for market parameters, used during market deployment
+  TmpMarketParameterStorage internal _tmpMarketParameters;
 
   mapping(address => TemporaryReserveRatio) public temporaryExcessReserveRatio;
 
-  // VaultParameterConstraints internal immutable constraints
+  // MarketParameterConstraints internal immutable constraints
 
   modifier onlyBorrower() {
     if (msg.sender != borrower) {
@@ -84,21 +84,21 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     _;
   }
 
-  modifier onlyControlledVault(address vault) {
-    if (!_controlledVaults.contains(vault)) {
-      revert NotControlledVault();
+  modifier onlyControlledMarket(address market) {
+    if (!_controlledMarkets.contains(market)) {
+      revert NotControlledMarket();
     }
     _;
   }
 
   constructor() {
-    controllerFactory = IWildcatVaultControllerFactory(msg.sender);
-    VaultControllerParameters memory parameters = controllerFactory.getVaultControllerParameters();
+    controllerFactory = IWildcatMarketControllerFactory(msg.sender);
+    MarketControllerParameters memory parameters = controllerFactory.getMarketControllerParameters();
     archController = IWildcatArchController(parameters.archController);
     borrower = parameters.borrower;
     sentinel = parameters.sentinel;
-    vaultInitCodeStorage = parameters.vaultInitCodeStorage;
-    vaultInitCodeHash = parameters.vaultInitCodeHash;
+    marketInitCodeStorage = parameters.marketInitCodeStorage;
+    marketInitCodeHash = parameters.marketInitCodeHash;
     MinimumDelinquencyGracePeriod = parameters.minimumDelinquencyGracePeriod;
     MaximumDelinquencyGracePeriod = parameters.maximumDelinquencyGracePeriod;
     MinimumReserveRatioBips = parameters.minimumReserveRatioBips;
@@ -148,7 +148,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
    *
    *      Note: Only updates the internal set of approved lenders.
    *      Must call `updateLenderAuthorization` to apply changes
-   *      to existing vault accounts
+   *      to existing market accounts
    */
   function authorizeLenders(address[] memory lenders) external onlyBorrower {
     for (uint256 i = 0; i < lenders.length; i++) {
@@ -164,7 +164,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
    *
    *      Note: Only updates the internal set of approved lenders.
    *      Must call `updateLenderAuthorization` to apply changes
-   *      to existing vault accounts
+   *      to existing market accounts
    */
   function deauthorizeLenders(address[] memory lenders) external onlyBorrower {
     for (uint256 i = 0; i < lenders.length; i++) {
@@ -176,94 +176,94 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   }
 
   /**
-   * @dev Update lender authorization for a set of vaults to the current
+   * @dev Update lender authorization for a set of markets to the current
    *      status.
    */
-  function updateLenderAuthorization(address lender, address[] memory vaults) external {
-    for (uint256 i; i < vaults.length; i++) {
-      address vault = vaults[i];
-      if (!_controlledVaults.contains(vault)) {
-        revert NotControlledVault();
+  function updateLenderAuthorization(address lender, address[] memory markets) external {
+    for (uint256 i; i < markets.length; i++) {
+      address market = markets[i];
+      if (!_controlledMarkets.contains(market)) {
+        revert NotControlledMarket();
       }
-      WildcatMarket(vault).updateAccountAuthorization(lender, _authorizedLenders.contains(lender));
+      WildcatMarket(market).updateAccountAuthorization(lender, _authorizedLenders.contains(lender));
     }
   }
 
   /* -------------------------------------------------------------------------- */
-  /*                                Vault Queries                               */
+  /*                                Market Queries                               */
   /* -------------------------------------------------------------------------- */
 
-  function isControlledVault(address vault) external view returns (bool) {
-    return _controlledVaults.contains(vault);
+  function isControlledMarket(address market) external view returns (bool) {
+    return _controlledMarkets.contains(market);
   }
 
-  function getControlledVaults() external view returns (address[] memory) {
-    return _controlledVaults.values();
+  function getControlledMarkets() external view returns (address[] memory) {
+    return _controlledMarkets.values();
   }
 
-  function getControlledVaults(
+  function getControlledMarkets(
     uint256 start,
     uint256 end
   ) external view returns (address[] memory arr) {
-    uint256 len = _controlledVaults.length();
+    uint256 len = _controlledMarkets.length();
     end = MathUtils.min(end, len);
     uint256 count = end - start;
     arr = new address[](count);
     for (uint256 i = 0; i < count; i++) {
-      arr[i] = _controlledVaults.at(start + i);
+      arr[i] = _controlledMarkets.at(start + i);
     }
   }
 
-  function getControlledVaultsCount() external view returns (uint256) {
-    return _controlledVaults.length();
+  function getControlledMarketsCount() external view returns (uint256) {
+    return _controlledMarkets.length();
   }
 
-  function computeVaultAddress(
+  function computeMarketAddress(
     address asset,
     string memory namePrefix,
     string memory symbolPrefix
   ) external view returns (address) {
     bytes32 salt = _deriveSalt(asset, namePrefix, symbolPrefix);
-    return LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, vaultInitCodeHash);
+    return LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, marketInitCodeHash);
   }
 
   /* -------------------------------------------------------------------------- */
-  /*                              Vault Deployment                              */
+  /*                              Market Deployment                              */
   /* -------------------------------------------------------------------------- */
 
   /**
-   * @dev Get the temporarily stored vault parameters for a vault that is
+   * @dev Get the temporarily stored market parameters for a market that is
    *      currently being deployed.
    */
-  function getVaultParameters() external view returns (VaultParameters memory parameters) {
-    parameters.asset = _tmpVaultParameters.asset;
-    parameters.namePrefix = _tmpVaultParameters.namePrefix;
-    parameters.symbolPrefix = _tmpVaultParameters.symbolPrefix;
+  function getMarketParameters() external view returns (MarketParameters memory parameters) {
+    parameters.asset = _tmpMarketParameters.asset;
+    parameters.namePrefix = _tmpMarketParameters.namePrefix;
+    parameters.symbolPrefix = _tmpMarketParameters.symbolPrefix;
     parameters.borrower = borrower;
     parameters.controller = address(this);
-    parameters.feeRecipient = _tmpVaultParameters.feeRecipient;
+    parameters.feeRecipient = _tmpMarketParameters.feeRecipient;
     parameters.sentinel = sentinel;
-    parameters.maxTotalSupply = _tmpVaultParameters.maxTotalSupply;
-    parameters.protocolFeeBips = _tmpVaultParameters.protocolFeeBips;
-    parameters.annualInterestBips = _tmpVaultParameters.annualInterestBips;
-    parameters.delinquencyFeeBips = _tmpVaultParameters.delinquencyFeeBips;
-    parameters.withdrawalBatchDuration = _tmpVaultParameters.withdrawalBatchDuration;
-    parameters.reserveRatioBips = _tmpVaultParameters.reserveRatioBips;
-    parameters.delinquencyGracePeriod = _tmpVaultParameters.delinquencyGracePeriod;
+    parameters.maxTotalSupply = _tmpMarketParameters.maxTotalSupply;
+    parameters.protocolFeeBips = _tmpMarketParameters.protocolFeeBips;
+    parameters.annualInterestBips = _tmpMarketParameters.annualInterestBips;
+    parameters.delinquencyFeeBips = _tmpMarketParameters.delinquencyFeeBips;
+    parameters.withdrawalBatchDuration = _tmpMarketParameters.withdrawalBatchDuration;
+    parameters.reserveRatioBips = _tmpMarketParameters.reserveRatioBips;
+    parameters.delinquencyGracePeriod = _tmpMarketParameters.delinquencyGracePeriod;
   }
 
-  function _resetTmpVaultParameters() internal {
-    _tmpVaultParameters.asset = address(1);
-    _tmpVaultParameters.namePrefix = '_';
-    _tmpVaultParameters.symbolPrefix = '_';
-    _tmpVaultParameters.feeRecipient = address(1);
-    _tmpVaultParameters.protocolFeeBips = 1;
-    _tmpVaultParameters.maxTotalSupply = 1;
-    _tmpVaultParameters.annualInterestBips = 1;
-    _tmpVaultParameters.delinquencyFeeBips = 1;
-    _tmpVaultParameters.withdrawalBatchDuration = 1;
-    _tmpVaultParameters.reserveRatioBips = 1;
-    _tmpVaultParameters.delinquencyGracePeriod = 1;
+  function _resetTmpMarketParameters() internal {
+    _tmpMarketParameters.asset = address(1);
+    _tmpMarketParameters.namePrefix = '_';
+    _tmpMarketParameters.symbolPrefix = '_';
+    _tmpMarketParameters.feeRecipient = address(1);
+    _tmpMarketParameters.protocolFeeBips = 1;
+    _tmpMarketParameters.maxTotalSupply = 1;
+    _tmpMarketParameters.annualInterestBips = 1;
+    _tmpMarketParameters.delinquencyFeeBips = 1;
+    _tmpMarketParameters.withdrawalBatchDuration = 1;
+    _tmpMarketParameters.reserveRatioBips = 1;
+    _tmpMarketParameters.delinquencyGracePeriod = 1;
   }
 
   /**
@@ -271,8 +271,8 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
    *      combination of `asset, namePrefix, symbolPrefix` and registers
    *      it with the arch-controller.
    *
-   *      If a vault has already been deployed with these parameters,
-   *      reverts with `VaultAlreadyDeployed`.
+   *      If a market has already been deployed with these parameters,
+   *      reverts with `MarketAlreadyDeployed`.
    *
    *      If `msg.sender` is not `borrower` or `controllerFactory`,
    *      reverts with `CallerNotBorrowerOrControllerFactory`.
@@ -288,7 +288,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
    *      transfers `originationFeeAmount` of `originationFeeAsset` from
    *      `msg.sender` to `feeRecipient`.
    */
-  function deployVault(
+  function deployMarket(
     address asset,
     string memory namePrefix,
     string memory symbolPrefix,
@@ -298,7 +298,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
     uint32 withdrawalBatchDuration,
     uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
-  ) external returns (address vault) {
+  ) external returns (address market) {
     if (msg.sender == borrower) {
       if (!archController.isRegisteredBorrower(msg.sender)) {
         revert NotRegisteredBorrower();
@@ -317,7 +317,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
       delinquencyGracePeriod
     );
 
-    TmpVaultParameterStorage memory parameters = TmpVaultParameterStorage({
+    TmpMarketParameterStorage memory parameters = TmpMarketParameterStorage({
       asset: asset,
       namePrefix: namePrefix,
       symbolPrefix: symbolPrefix,
@@ -340,31 +340,31 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
       parameters.protocolFeeBips
     ) = controllerFactory.getProtocolFeeConfiguration();
 
-    _tmpVaultParameters = parameters;
+    _tmpMarketParameters = parameters;
 
     if (originationFeeAsset != address(0)) {
       originationFeeAsset.safeTransferFrom(borrower, parameters.feeRecipient, originationFeeAmount);
     }
 
     bytes32 salt = _deriveSalt(asset, namePrefix, symbolPrefix);
-    vault = LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, vaultInitCodeHash);
-    if (vault.codehash != bytes32(0)) {
-      revert VaultAlreadyDeployed();
+    market = LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, marketInitCodeHash);
+    if (market.codehash != bytes32(0)) {
+      revert MarketAlreadyDeployed();
     }
-    LibStoredInitCode.create2WithStoredInitCode(vaultInitCodeStorage, salt);
+    LibStoredInitCode.create2WithStoredInitCode(marketInitCodeStorage, salt);
 
-    archController.registerVault(vault);
-    _controlledVaults.add(vault);
+    archController.registerMarket(market);
+    _controlledMarkets.add(market);
 
-    _resetTmpVaultParameters();
+    _resetTmpMarketParameters();
   }
 
   /**
-   * @dev Derive create2 salt for a vault given the asset address,
+   * @dev Derive create2 salt for a market given the asset address,
    *      name prefix and symbol prefix.
    *
-   *      The salt is unique to each vault deployment in the controller,
-   *      so only one vault can be deployed for each combination of `asset`,
+   *      The salt is unique to each market deployment in the controller,
+   *      so only one market can be deployed for each combination of `asset`,
    *      `namePrefix` and `symbolPrefix`
    */
   function _deriveSalt(
@@ -386,7 +386,7 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   }
 
   /**
-   * @dev Enforce constraints on vault parameters, ensuring that
+   * @dev Enforce constraints on market parameters, ensuring that
    *      `annualInterestBips`, `delinquencyFeeBips`, `withdrawalBatchDuration`,
    *      `reserveRatioBips` and `delinquencyGracePeriod` are within the
    *      allowed ranges and that `namePrefix` and `symbolPrefix` are not null.
@@ -440,13 +440,13 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   }
 
   /**
-   * @dev Returns immutable constraints on vault parameters that
+   * @dev Returns immutable constraints on market parameters that
    *      the controller variant will enforce.
    */
   function getParameterConstraints()
     external
     view
-    returns (VaultParameterConstraints memory constraints)
+    returns (MarketParameterConstraints memory constraints)
   {
     constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
     constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
@@ -461,34 +461,34 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
   }
 
   /**
-   * @dev Modify the interest rate for a vault.
+   * @dev Modify the interest rate for a market.
    * If the new interest rate is lower than the current interest rate,
    * the reserve ratio is set to 90% for the next two weeks.
    */
   function setAnnualInterestBips(
-    address vault,
+    address market,
     uint16 annualInterestBips
-  ) external virtual onlyBorrower onlyControlledVault(vault) {
+  ) external virtual onlyBorrower onlyControlledMarket(market) {
     // If borrower is reducing the interest rate, increase the reserve
     // ratio for the next two weeks.
-    if (annualInterestBips < WildcatMarket(vault).annualInterestBips()) {
-      TemporaryReserveRatio storage tmp = temporaryExcessReserveRatio[vault];
+    if (annualInterestBips < WildcatMarket(market).annualInterestBips()) {
+      TemporaryReserveRatio storage tmp = temporaryExcessReserveRatio[market];
 
       if (tmp.expiry == 0) {
-        tmp.reserveRatioBips = uint128(WildcatMarket(vault).reserveRatioBips());
+        tmp.reserveRatioBips = uint128(WildcatMarket(market).reserveRatioBips());
 
         // Require 90% liquidity coverage for the next 2 weeks
-        WildcatMarket(vault).setReserveRatioBips(9000);
+        WildcatMarket(market).setReserveRatioBips(9000);
       }
 
       tmp.expiry = uint128(block.timestamp + 2 weeks);
     }
 
-    WildcatMarket(vault).setAnnualInterestBips(annualInterestBips);
+    WildcatMarket(market).setAnnualInterestBips(annualInterestBips);
   }
 
-  function resetReserveRatio(address vault) external virtual {
-    TemporaryReserveRatio memory tmp = temporaryExcessReserveRatio[vault];
+  function resetReserveRatio(address market) external virtual {
+    TemporaryReserveRatio memory tmp = temporaryExcessReserveRatio[market];
     if (tmp.expiry == 0) {
       revertWithSelector(AprChangeNotPending.selector);
     }
@@ -496,8 +496,8 @@ contract WildcatVaultController is IWildcatVaultControllerEventsAndErrors {
       revertWithSelector(ExcessReserveRatioStillActive.selector);
     }
 
-    WildcatMarket(vault).setReserveRatioBips(uint256(tmp.reserveRatioBips).toUint16());
-    delete temporaryExcessReserveRatio[vault];
+    WildcatMarket(market).setReserveRatioBips(uint256(tmp.reserveRatioBips).toUint16());
+    delete temporaryExcessReserveRatio[market];
   }
 
   function assertValueInRange(
