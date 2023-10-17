@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { WildcatSanctionsSentinel, WildcatSanctionsEscrow, IChainalysisSanctionsList, IWildcatArchController } from '../src/WildcatSanctionsSentinel.sol';
+import { IWildcatSanctionsSentinel, WildcatSanctionsSentinel, WildcatSanctionsEscrow, IChainalysisSanctionsList, IWildcatArchController } from '../src/WildcatSanctionsSentinel.sol';
 import { SanctionsList } from '../src/libraries/Chainalysis.sol';
 
 import { MockChainalysis, deployMockChainalysis } from './helpers/MockChainalysis.sol';
@@ -9,11 +9,11 @@ import { MockERC20 } from './helpers/MockERC20.sol';
 import { Test } from 'forge-std/Test.sol';
 
 // -- TEMP START --
-contract MockWildcatArchController is IWildcatArchController {
-  mapping(address vault => bool) public isRegisteredVault;
+contract MockWildcatArchController {
+  mapping(address market => bool) public isRegisteredMarket;
 
-  function setIsRegsiteredVault(address vault, bool isRegistered) external {
-    isRegisteredVault[vault] = isRegistered;
+  function setIsRegsiteredMarket(address market, bool isRegistered) external {
+    isRegisteredMarket[market] = isRegistered;
   }
 }
 
@@ -25,6 +25,7 @@ contract SentinelTest is Test {
     address indexed account,
     address indexed asset
   );
+  event SanctionOverride(address indexed borrower, address indexed account);
 
   MockWildcatArchController internal archController;
   WildcatSanctionsSentinel internal sentinel;
@@ -32,7 +33,7 @@ contract SentinelTest is Test {
   function setUp() public {
     deployMockChainalysis();
     archController = new MockWildcatArchController();
-    sentinel = new WildcatSanctionsSentinel(archController);
+    sentinel = new WildcatSanctionsSentinel(address(archController), address(SanctionsList));
   }
 
   function testWildcatSanctionsEscrowInitcodeHash() public {
@@ -51,15 +52,60 @@ contract SentinelTest is Test {
   }
 
   function testIsSanctioned() public {
-    assertEq(sentinel.isSanctioned(address(1)), false);
+    assertEq(sentinel.isSanctioned(address(0), address(1)), false);
     MockChainalysis(address(SanctionsList)).sanction(address(1));
-    assertEq(sentinel.isSanctioned(address(1)), true);
+    assertEq(sentinel.isSanctioned(address(0), address(1)), true);
+    vm.prank(address(0));
+    sentinel.overrideSanction(address(1));
+    assertEq(sentinel.isSanctioned(address(0), address(1)), false);
   }
 
-  function testFuzzIsSanctioned(address forWhomTheBellTolls, bool sanctioned) public {
-    assertEq(sentinel.isSanctioned(forWhomTheBellTolls), false);
+  function testFuzzIsSanctioned(
+    address borrower,
+    bool overrideSanctionStatus,
+    address forWhomTheBellTolls,
+    bool sanctioned
+  ) public {
+    assertEq(sentinel.isSanctioned(borrower, forWhomTheBellTolls), false);
     if (sanctioned) MockChainalysis(address(SanctionsList)).sanction(forWhomTheBellTolls);
-    assertEq(sentinel.isSanctioned(forWhomTheBellTolls), sanctioned);
+    if (overrideSanctionStatus) {
+      vm.prank(borrower);
+      sentinel.overrideSanction(forWhomTheBellTolls);
+    }
+    assertEq(
+      sentinel.isSanctioned(borrower, forWhomTheBellTolls),
+      sanctioned && !overrideSanctionStatus
+    );
+  }
+
+  function testSanctionOverride() external {
+    address borrower = address(1);
+    address account = address(2);
+
+    assertEq(sentinel.sanctionOverrides(borrower, account), false);
+    vm.prank(borrower);
+    sentinel.overrideSanction(account);
+    assertEq(sentinel.sanctionOverrides(borrower, account), true);
+    assertFalse(sentinel.isSanctioned(borrower, account));
+    MockChainalysis(address(SanctionsList)).sanction(account);
+    assertFalse(sentinel.isSanctioned(borrower, account));
+  }
+
+  function testRemoveSanctionOverride() external {
+    address borrower = address(1);
+    address account = address(2);
+
+    assertEq(sentinel.sanctionOverrides(borrower, account), false);
+    vm.prank(borrower);
+    sentinel.overrideSanction(account);
+    assertEq(sentinel.sanctionOverrides(borrower, account), true);
+    assertFalse(sentinel.isSanctioned(borrower, account));
+    MockChainalysis(address(SanctionsList)).sanction(account);
+    assertFalse(sentinel.isSanctioned(borrower, account));
+    vm.prank(borrower);
+    sentinel.removeSanctionOverride(account);
+    assertEq(sentinel.sanctionOverrides(borrower, account), false);
+    assertTrue(sentinel.isSanctioned(borrower, account));
   }
 
   function testGetEscrowAddress() public {
@@ -112,17 +158,21 @@ contract SentinelTest is Test {
     address asset = address(new MockERC20());
     uint256 amount = 1;
 
-    archController.setIsRegsiteredVault(address(this), true);
+    archController.setIsRegsiteredMarket(address(this), true);
+    address expectedEscrowAddress = sentinel.getEscrowAddress(borrower, account, asset);
 
     vm.expectEmit(true, true, true, true, address(sentinel));
     emit NewSanctionsEscrow(borrower, account, asset);
+
+    vm.expectEmit(true, true, true, true, address(sentinel));
+    emit SanctionOverride(borrower, expectedEscrowAddress);
 
     address escrow = sentinel.createEscrow(borrower, account, asset);
     MockERC20(asset).mint(escrow, amount);
     (address escrowedAsset, uint256 escrowedAmount) = WildcatSanctionsEscrow(escrow)
       .escrowedAsset();
 
-    assertEq(escrow, sentinel.getEscrowAddress(borrower, account, asset));
+    assertEq(escrow, expectedEscrowAddress);
     assertEq(escrow, sentinel.createEscrow(borrower, account, asset));
     assertEq(WildcatSanctionsEscrow(escrow).borrower(), borrower);
     assertEq(WildcatSanctionsEscrow(escrow).account(), account);
@@ -130,6 +180,10 @@ contract SentinelTest is Test {
     assertEq(
       WildcatSanctionsEscrow(escrow).canReleaseEscrow(),
       !SanctionsList.isSanctioned(account)
+    );
+    assertTrue(
+      sentinel.sanctionOverrides(borrower, escrow),
+      'sanction override not set for escrow'
     );
     assertEq(escrowedAsset, asset);
     assertEq(escrowedAmount, amount);
@@ -144,7 +198,7 @@ contract SentinelTest is Test {
   ) public {
     address asset = address(new MockERC20{ salt: assetSalt }());
 
-    archController.setIsRegsiteredVault(address(this), true);
+    archController.setIsRegsiteredMarket(address(this), true);
     if (sanctioned) MockChainalysis(address(SanctionsList)).sanction(account);
 
     vm.expectEmit(true, true, true, true, address(sentinel));
@@ -168,21 +222,21 @@ contract SentinelTest is Test {
     assertEq(escrowedAmount, amount);
   }
 
-  function testCreateEscrowNotRegisteredVault() public {
+  function testCreateEscrowNotRegisteredMarket() public {
     address borrower = address(1);
     address account = address(2);
     address asset = address(3);
 
-    vm.expectRevert(WildcatSanctionsSentinel.NotRegisteredVault.selector);
+    vm.expectRevert(IWildcatSanctionsSentinel.NotRegisteredMarket.selector);
     sentinel.createEscrow(borrower, account, asset);
   }
 
-  function testFuzzCreateEscrowNotRegisteredVault(
+  function testFuzzCreateEscrowNotRegisteredMarket(
     address borrower,
     address account,
     address asset
   ) public {
-    vm.expectRevert(WildcatSanctionsSentinel.NotRegisteredVault.selector);
+    vm.expectRevert(IWildcatSanctionsSentinel.NotRegisteredMarket.selector);
     sentinel.createEscrow(borrower, account, asset);
   }
 }

@@ -4,20 +4,15 @@ pragma solidity >=0.8.20;
 import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
 
 import './shared/Test.sol';
-
-import 'src/WildcatVaultController.sol';
-import 'src/WildcatVaultFactory.sol';
 import './helpers/VmUtils.sol';
 import './helpers/MockController.sol';
 import './helpers/ExpectedStateTracker.sol';
 
-contract BaseVaultTest is Test, ExpectedStateTracker {
+contract BaseMarketTest is Test, ExpectedStateTracker {
   using stdStorage for StdStorage;
-  using FeeMath for VaultState;
+  using FeeMath for MarketState;
   using SafeCastLib for uint256;
 
-  WildcatVaultFactory internal factory;
-  WildcatVaultController internal controller;
   MockERC20 internal asset;
 
   address internal wildcatController = address(0x69);
@@ -30,21 +25,47 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
   }
 
   function setUpContracts(bool disableControllerChecks) internal {
-    factory = new WildcatVaultFactory();
-    MockController _controller = new MockController(feeRecipient, address(factory));
-    if (disableControllerChecks) {
-      _controller.toggleParameterChecks();
+    if (address(controller) == address(0)) {
+      deployController(parameters.borrower, false, disableControllerChecks);
     }
-    controller = _controller;
-    _authorizeLender(alice);
-    asset = new MockERC20('Token', 'TKN', 18);
-    parameters.asset = address(asset);
     parameters.controller = address(controller);
-    setupVault();
+    parameters.asset = address(asset = new MockERC20('Token', 'TKN', 18));
+    deployMarket(parameters);
+    _authorizeLender(alice);
+    previousState = MarketState({
+      isClosed: false,
+      maxTotalSupply: parameters.maxTotalSupply,
+      scaledTotalSupply: 0,
+      isDelinquent: false,
+      timeDelinquent: 0,
+      reserveRatioBips: parameters.reserveRatioBips,
+      annualInterestBips: parameters.annualInterestBips,
+      scaleFactor: uint112(RAY),
+      lastInterestAccruedTimestamp: uint32(block.timestamp),
+      scaledPendingWithdrawals: 0,
+      pendingWithdrawalExpiry: 0,
+      normalizedUnclaimedWithdrawals: 0,
+      accruedProtocolFees: 0
+    });
+    lastTotalAssets = 0;
+
+    asset.mint(alice, type(uint128).max);
+    asset.mint(bob, type(uint128).max);
+
+    _approve(alice, address(market), type(uint256).max);
+    _approve(bob, address(market), type(uint256).max);
   }
 
-  function _authorizeLender(address account) internal asAccount(address(this)) {
-    controller.authorizeLender(account);
+  function _authorizeLender(address account) internal asAccount(parameters.borrower) {
+    address[] memory lenders = new address[](1);
+    lenders[0] = account;
+    controller.authorizeLenders(lenders);
+  }
+
+  function _deauthorizeLender(address account) internal asAccount(parameters.borrower) {
+    address[] memory lenders = new address[](1);
+    lenders[0] = account;
+    controller.deauthorizeLenders(lenders);
   }
 
   function _depositBorrowWithdraw(
@@ -54,7 +75,7 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
     uint256 withdrawalAmount
   ) internal asAccount(from) {
     _deposit(from, depositAmount);
-    // Borrow 80% of vault assets
+    // Borrow 80% of market assets
     _borrow(borrowAmount);
     // Withdraw 100% of deposits
     _requestWithdrawal(from, withdrawalAmount);
@@ -62,32 +83,32 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
 
   function _deposit(address from, uint256 amount) internal asAccount(from) returns (uint256) {
     _authorizeLender(from);
-    uint256 currentBalance = vault.balanceOf(from);
-    uint256 currentScaledBalance = vault.scaledBalanceOf(from);
+    uint256 currentBalance = market.balanceOf(from);
+    uint256 currentScaledBalance = market.scaledBalanceOf(from);
     asset.mint(from, amount);
-    asset.approve(address(vault), amount);
-    VaultState memory state = pendingState();
+    asset.approve(address(market), amount);
+    MarketState memory state = pendingState();
     uint256 expectedNormalizedAmount = MathUtils.min(amount, state.maximumDeposit());
     uint256 scaledAmount = state.scaleAmount(expectedNormalizedAmount);
     state.scaledTotalSupply += scaledAmount.toUint104();
-    uint256 actualNormalizedAmount = vault.depositUpTo(amount);
+    uint256 actualNormalizedAmount = market.depositUpTo(amount);
     assertEq(actualNormalizedAmount, expectedNormalizedAmount, 'Actual amount deposited');
     lastTotalAssets += actualNormalizedAmount;
     updateState(state);
     _checkState();
-    assertApproxEqAbs(vault.balanceOf(from), currentBalance + amount, 1);
-    assertEq(vault.scaledBalanceOf(from), currentScaledBalance + scaledAmount);
+    assertApproxEqAbs(market.balanceOf(from), currentBalance + amount, 1);
+    assertEq(market.scaledBalanceOf(from), currentScaledBalance + scaledAmount);
     return actualNormalizedAmount;
   }
 
   function _requestWithdrawal(address from, uint256 amount) internal asAccount(from) {
-    VaultState memory state = pendingState();
-    uint256 currentBalance = vault.balanceOf(from);
-    uint256 currentScaledBalance = vault.scaledBalanceOf(from);
+    MarketState memory state = pendingState();
+    uint256 currentBalance = market.balanceOf(from);
+    uint256 currentScaledBalance = market.scaledBalanceOf(from);
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 
     if (state.pendingWithdrawalExpiry == 0) {
-      // vm.expectEmit(address(vault));
+      // vm.expectEmit(address(market));
       state.pendingWithdrawalExpiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
       emit WithdrawalBatchCreated(state.pendingWithdrawalExpiry);
     }
@@ -97,28 +118,28 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
     _withdrawalData
     .accountStatuses[state.pendingWithdrawalExpiry][from].scaledAmount += scaledAmount;
 
-    // vm.expectEmit(address(vault));
+    // vm.expectEmit(address(market));
     emit WithdrawalQueued(state.pendingWithdrawalExpiry, from, scaledAmount);
 
     uint256 availableLiquidity = _availableLiquidityForPendingBatch(batch, state);
     if (availableLiquidity > 0) {
       _applyWithdrawalBatchPayment(batch, state, state.pendingWithdrawalExpiry, availableLiquidity);
     }
-    vault.queueWithdrawal(amount);
+    market.queueWithdrawal(amount);
     updateState(state);
     _checkState();
-    assertApproxEqAbs(vault.balanceOf(from), currentBalance - amount, 1, 'balance');
-    assertEq(vault.scaledBalanceOf(from), currentScaledBalance - scaledAmount, 'scaledBalance');
+    assertApproxEqAbs(market.balanceOf(from), currentBalance - amount, 1, 'balance');
+    assertEq(market.scaledBalanceOf(from), currentScaledBalance - scaledAmount, 'scaledBalance');
   }
 
   function _withdraw(address from, uint256 amount) internal asAccount(from) {
-    // VaultState memory state = pendingState();
+    // MarketState memory state = pendingState();
     // uint256 scaledAmount = state.scaleAmount(amount);
     // @todo fix
-    /* 		VaultState memory state = pendingState();
+    /* 		MarketState memory state = pendingState();
     uint256 scaledAmount = state.scaleAmount(amount);
     state.decreaseScaledTotalSupply(scaledAmount);
-    vault.withdraw(amount);
+    market.withdraw(amount);
     updateState(state);
     lastTotalAssets -= amount;
     _checkState(); */
@@ -127,12 +148,12 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
   event DebtRepaid(uint256 assetAmount);
 
   function _borrow(uint256 amount) internal asAccount(borrower) {
-    VaultState memory state = pendingState();
+    MarketState memory state = pendingState();
 
-    // vm.expectEmit(address(vault));
+    // vm.expectEmit(address(market));
     emit Borrow(amount);
-    // _expectTransfer(address(asset), borrower, address(vault), amount);
-    vault.borrow(amount);
+    // _expectTransfer(address(asset), borrower, address(market), amount);
+    market.borrow(amount);
 
     lastTotalAssets -= amount;
     updateState(state);
@@ -141,35 +162,5 @@ contract BaseVaultTest is Test, ExpectedStateTracker {
 
   function _approve(address from, address to, uint256 amount) internal asAccount(from) {
     asset.approve(to, amount);
-  }
-
-  function _deployVault() internal {
-    vault = WildcatMarket(factory.deployVault(parameters));
-  }
-
-  function setupVault() internal {
-    _deployVault();
-    previousState = VaultState({
-      isClosed: false,
-      maxTotalSupply: parameters.maxTotalSupply,
-      scaledTotalSupply: 0,
-      isDelinquent: false,
-      timeDelinquent: 0,
-      liquidityCoverageRatio: parameters.liquidityCoverageRatio,
-      annualInterestBips: parameters.annualInterestBips,
-      scaleFactor: uint112(RAY),
-      lastInterestAccruedTimestamp: uint32(block.timestamp),
-      scaledPendingWithdrawals: 0,
-      pendingWithdrawalExpiry: 0,
-      reservedAssets: 0,
-      accruedProtocolFees: 0
-    });
-    lastTotalAssets = 0;
-
-    asset.mint(alice, type(uint128).max);
-    asset.mint(bob, type(uint128).max);
-
-    _approve(alice, address(vault), type(uint256).max);
-    _approve(bob, address(vault), type(uint256).max);
   }
 }

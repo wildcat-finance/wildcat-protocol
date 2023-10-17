@@ -7,3 +7,4 @@ typechain-types
 hh-cache
 artifacts
 coverage/
+.env

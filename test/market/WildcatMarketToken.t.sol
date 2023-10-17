@@ -2,23 +2,28 @@
 pragma solidity >=0.8.20;
 
 import { MockERC20 } from 'solmate/test/utils/mocks/MockERC20.sol';
-import 'src/WildcatVaultFactory.sol';
-import 'src/WildcatVaultController.sol';
-import '../helpers/BaseERC20Test.sol';
-import '../helpers/MockController.sol';
-import '../helpers/MockSanctionsSentinel.sol';
+import { BaseERC20Test } from '../helpers/BaseERC20Test.sol';
 import '../shared/TestConstants.sol';
+import '../shared/Test.sol';
 
 bytes32 constant DaiSalt = bytes32(uint256(1));
 
-contract WildcatMarketTokenTest is BaseERC20Test {
-  using VaultStateLib for VaultState;
+contract WildcatMarketTokenTest is BaseERC20Test, Test {
+  using MarketStateLib for MarketState;
 
-  WildcatVaultFactory internal factory;
-  WildcatVaultController internal controller;
+  // WildcatMarketFactory internal factory;
+  // WildcatMarketController internal controller;
   MockERC20 internal asset;
   address internal feeRecipient = address(0xfee);
   address internal borrower = address(this);
+
+  function bound(
+    uint x,
+    uint min,
+    uint max
+  ) internal view virtual override(StdUtils, Test) returns (uint256 result) {
+    return Test.bound(x, min, max);
+  }
 
   function _maxAmount() internal override returns (uint256) {
     return uint256(type(uint104).max);
@@ -42,36 +47,46 @@ contract WildcatMarketTokenTest is BaseERC20Test {
   }
 
   function setUp() public override {
-    factory = new WildcatVaultFactory();
-    MockController mockController = new MockController(feeRecipient, address(factory));
-
-    mockController.toggleParameterChecks();
-    mockController.authorizeAll();
-    controller = mockController;
     asset = new MockERC20('Token', 'TKN', 18);
 
-    VaultParameters memory vaultParameters = VaultParameters({
+    MarketParameters memory marketParameters = MarketParameters({
       asset: address(asset),
       namePrefix: 'Wildcat ',
       symbolPrefix: 'WC',
       borrower: borrower,
-      controller: address(controller),
+      controller: controllerFactory.computeControllerAddress(borrower),
       feeRecipient: feeRecipient,
-      sentinel: address(new MockSanctionsSentinel()),
+      sentinel: address(sanctionsSentinel),
       maxTotalSupply: uint128(_maxAmount()),
       protocolFeeBips: DefaultProtocolFeeBips,
       annualInterestBips: 10000,
       delinquencyFeeBips: DefaultDelinquencyFee,
       withdrawalBatchDuration: 0,
       delinquencyGracePeriod: DefaultGracePeriod,
-      liquidityCoverageRatio: DefaultLiquidityCoverage
+      reserveRatioBips: DefaultReserveRatio
     });
-    token = IERC20Metadata(factory.deployVault(vaultParameters));
+    deployControllerAndMarket(marketParameters, true, true);
+    token = IERC20Metadata(address(market));
     _name = 'Wildcat Token';
     _symbol = 'WCTKN';
     _decimals = 18;
     // vm.warp(block.timestamp + 5008);
     // assertEq(WildcatMarket(address(token)).scaleFactor(), 2e27);
+  }
+
+  function testCtrl() external {
+    assertEq(
+      address(controller),
+      controllerFactory.computeControllerAddress(borrower),
+      'bad controller address'
+    );
+    assertTrue(MockController(address(controller)).AUTH_ALL(), 'bad auth');
+    assertEq(
+      controllerFactory.controllerInitCodeHash(),
+      uint256(keccak256(type(MockController).creationCode)),
+      'bad init code hash'
+    );
+    console2.log(market.name());
   }
 
   // function _assertTokenAmountEq(uint256 expected, uint256 actual) internal virtual override {
@@ -97,12 +112,12 @@ contract WildcatMarketTokenTest is BaseERC20Test {
   }
 
   function testTransferNullAmount() external {
-    vm.expectRevert(IVaultEventsAndErrors.NullTransferAmount.selector);
+    vm.expectRevert(IMarketEventsAndErrors.NullTransferAmount.selector);
     token.transfer(address(1), 0);
   }
 
   function testTransferFromNullAmount() external {
-    vm.expectRevert(IVaultEventsAndErrors.NullTransferAmount.selector);
+    vm.expectRevert(IMarketEventsAndErrors.NullTransferAmount.selector);
     token.transferFrom(address(0), address(1), 0);
   }
 }

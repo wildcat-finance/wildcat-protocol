@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../interfaces/ISanctionsSentinel.sol';
+import '../interfaces/IWildcatSanctionsSentinel.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/SafeCastLib.sol';
 import './WildcatMarketBase.sol';
@@ -19,7 +19,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      currently be deposited to the market.
    */
   function maximumDeposit() external view returns (uint256) {
-    VaultState memory state = currentState();
+    MarketState memory state = currentState();
     return state.maximumDeposit();
   }
 
@@ -39,38 +39,13 @@ contract WildcatMarketConfig is WildcatMarketBase {
     return _state.annualInterestBips;
   }
 
-  function liquidityCoverageRatio() external view returns (uint256) {
-    return _state.liquidityCoverageRatio;
+  function reserveRatioBips() external view returns (uint256) {
+    return _state.reserveRatioBips;
   }
 
-  // =====================================================================//
-  //                        External Config Setters                       //
-  // =====================================================================//
-
-  /**
-   * @dev Revoke an account's authorization to deposit assets.
-   */
-  function revokeAccountAuthorization(address _account) external onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
-    Account memory account = _getAccount(_account);
-    account.approval = AuthRole.WithdrawOnly;
-    _accounts[_account] = account;
-    _writeState(state);
-    emit AuthorizationStatusUpdated(_account, AuthRole.WithdrawOnly);
-  }
-
-  /**
-   * @dev Restore an account's authorization to deposit assets.
-   * Can not be used to restore a blacklisted account's status.
-   */
-  function grantAccountAuthorization(address _account) external onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
-    Account memory account = _getAccount(_account);
-    account.approval = AuthRole.DepositAndWithdraw;
-    _accounts[_account] = account;
-    _writeState(state);
-    emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
-  }
+  /* -------------------------------------------------------------------------- */
+  /*                                  Sanctions                                 */
+  /* -------------------------------------------------------------------------- */
 
   /// @dev Block a sanctioned account from interacting with the market
   ///      and transfer its balance to an escrow contract.
@@ -97,24 +72,67 @@ contract WildcatMarketConfig is WildcatMarketBase {
   //   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
   // ******************************************************************
   function nukeFromOrbit(address accountAddress) external nonReentrant {
-    if (!ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+    if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       revert BadLaunchCode();
     }
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
     _blockAccount(state, accountAddress);
     _writeState(state);
   }
 
-  // /*//////////////////////////////////////////////////////////////
-  //                       Management Actions
-  // //////////////////////////////////////////////////////////////*/
+  /**
+   * @dev Unblock an account that was previously sanctioned and blocked
+   *      and has since been removed from the sanctions list or had
+   *      their sanctioned status overridden by the borrower.
+   */
+  function stunningReversal(address accountAddress) external nonReentrant {
+    Account memory account = _accounts[accountAddress];
+    if (account.approval != AuthRole.Blocked) {
+      revert AccountNotBlocked();
+    }
+
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
+      revert NotReversedOrStunning();
+    }
+
+    account.approval = AuthRole.Null;
+    emit AuthorizationStatusUpdated(accountAddress, account.approval);
+
+    _accounts[accountAddress] = account;
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                           External Config Setters                          */
+  /* -------------------------------------------------------------------------- */
+
+  /**
+   * @dev Updates an account's authorization status based on whether the controller
+   *      has it marked as approved.
+   */
+  function updateAccountAuthorization(
+    address _account,
+    bool _isAuthorized
+  ) external onlyController nonReentrant {
+    MarketState memory state = _getUpdatedState();
+    Account memory account = _getAccount(_account);
+    if (_isAuthorized) {
+      account.approval = AuthRole.DepositAndWithdraw;
+    } else {
+      account.approval = AuthRole.WithdrawOnly;
+    }
+    _accounts[_account] = account;
+    _writeState(state);
+    emit AuthorizationStatusUpdated(_account, account.approval);
+  }
 
   /**
    * @dev Sets the maximum total supply - this only limits deposits and
    *      does not affect interest accrual.
+   *
+   *      Can not be set lower than current total supply.
    */
   function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
 
     if (_maxTotalSupply < state.totalSupply()) {
       revert NewMaxSupplyTooLow();
@@ -125,8 +143,11 @@ contract WildcatMarketConfig is WildcatMarketBase {
     emit MaxTotalSupplyUpdated(_maxTotalSupply);
   }
 
+  /**
+   * @dev Sets the annual interest rate earned by lenders in bips.
+   */
   function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant {
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
 
     if (_annualInterestBips > BIP) {
       revert InterestRateTooHigh();
@@ -137,29 +158,37 @@ contract WildcatMarketConfig is WildcatMarketBase {
     emit AnnualInterestBipsUpdated(_annualInterestBips);
   }
 
-  function setLiquidityCoverageRatio(
-    uint16 _liquidityCoverageRatio
-  ) public onlyController nonReentrant {
-    if (_liquidityCoverageRatio > BIP) {
-      revert LiquidityCoverageRatioTooHigh();
+  /**
+   * @dev Adjust the market's reserve ratio.
+   *
+   *      If the new ratio is lower than the old ratio,
+   *      asserts that the market is not currently delinquent.
+   *
+   *      If the new ratio is higher than the old ratio,
+   *      asserts that the market will not become delinquent
+   *      because of the change.
+   */
+  function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant {
+    if (_reserveRatioBips > BIP) {
+      revert ReserveRatioBipsTooHigh();
     }
 
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
 
-    uint256 initialLiquidityCoverageRatio = state.liquidityCoverageRatio;
+    uint256 initialReserveRatioBips = state.reserveRatioBips;
 
-    if (_liquidityCoverageRatio < initialLiquidityCoverageRatio) {
+    if (_reserveRatioBips < initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientCoverageForOldLiquidityRatio();
+        revert InsufficientReservesForOldLiquidityRatio();
       }
     }
-    state.liquidityCoverageRatio = _liquidityCoverageRatio;
-    if (_liquidityCoverageRatio > initialLiquidityCoverageRatio) {
+    state.reserveRatioBips = _reserveRatioBips;
+    if (_reserveRatioBips > initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientCoverageForNewLiquidityRatio();
+        revert InsufficientReservesForNewLiquidityRatio();
       }
     }
     _writeState(state);
-    emit LiquidityCoverageRatioUpdated(_liquidityCoverageRatio);
+    emit ReserveRatioBipsUpdated(_reserveRatioBips);
   }
 }

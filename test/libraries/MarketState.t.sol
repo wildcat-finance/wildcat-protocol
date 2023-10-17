@@ -4,21 +4,21 @@ pragma solidity >=0.8.20;
 import 'forge-std/Test.sol';
 import 'src/libraries/Withdrawal.sol';
 import 'src/libraries/MathUtils.sol';
-import './wrappers/VaultStateLibExternal.sol';
+import './wrappers/MarketStateLibExternal.sol';
 
 using MathUtils for uint256;
 
-// Uses an external wrapper library to make forge coverage work for VaultStateLib.
+// Uses an external wrapper library to make forge coverage work for MarketStateLib.
 // Forge is currently incapable of mapping MemberAccess function calls with
 // expressions other than library identifiers (e.g. value.x() vs XLib.x(value))
 // to the correct FunctionDefinition nodes.
-contract VaultStateTest is Test {
+contract MarketStateTest is Test {
   WithdrawalData internal _withdrawalData;
 
-  using VaultStateLibExternal for VaultState;
+  using MarketStateLibExternal for MarketState;
 
   function test_scaleAmount(uint128 normalizedAmount) external returns (uint256) {
-    VaultState memory state;
+    MarketState memory state;
     state.scaleFactor = uint112(RAY);
 
     assertEq(state.$scaleAmount(normalizedAmount), normalizedAmount);
@@ -30,7 +30,7 @@ contract VaultStateTest is Test {
   ) external returns (uint256) {
     scaleFactor = bound(scaleFactor, RAY, type(uint112).max);
     normalizedAmount = bound(normalizedAmount, 0, type(uint128).max);
-    VaultState memory state;
+    MarketState memory state;
     state.scaleFactor = uint112(scaleFactor);
     uint256 expected = ((normalizedAmount * RAY) + (scaleFactor / 2)) / uint256(scaleFactor);
     uint256 actual = state.$scaleAmount(normalizedAmount);
@@ -40,7 +40,7 @@ contract VaultStateTest is Test {
   function test_normalizeAmount(uint256 scaledAmount, uint256 scaleFactor) external {
     scaledAmount = bound(scaledAmount, 0, type(uint104).max);
     scaleFactor = bound(scaleFactor, RAY, type(uint112).max);
-    VaultState memory state;
+    MarketState memory state;
     state.scaleFactor = uint112(scaleFactor);
 
     uint256 expected = ((scaledAmount * scaleFactor) + HALF_RAY) / RAY;
@@ -52,7 +52,7 @@ contract VaultStateTest is Test {
     uint104 scaledAmount
   ) external returns (uint256) {
     scaleFactor = uint112(bound(scaleFactor, RAY, type(uint112).max));
-    VaultState memory state;
+    MarketState memory state;
     state.scaleFactor = scaleFactor;
 
     assertEq(state.$normalizeAmount(scaledAmount), uint256(scaledAmount).rayMul(scaleFactor));
@@ -63,7 +63,7 @@ contract VaultStateTest is Test {
     uint104 scaledTotalSupply
   ) external returns (uint256) {
     scaleFactor = uint112(bound(scaleFactor, RAY, type(uint112).max));
-    VaultState memory state;
+    MarketState memory state;
     state.scaleFactor = scaleFactor;
     state.scaledTotalSupply = scaledTotalSupply;
 
@@ -71,7 +71,7 @@ contract VaultStateTest is Test {
   }
 
   function test_maximumDeposit() external returns (uint256) {
-    VaultState memory state;
+    MarketState memory state;
     uint256 expected;
     assertEq(expected, state.$maximumDeposit());
   }
@@ -79,35 +79,35 @@ contract VaultStateTest is Test {
   function test_liquidityRequired(
     uint104 scaledPendingWithdrawals,
     uint104 scaledTotalSupply,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint128 accruedProtocolFees,
-    uint128 reservedAssets
+    uint128 normalizedUnclaimedWithdrawals
   ) external {
-    liquidityCoverageRatio = uint16(bound(liquidityCoverageRatio, 1, 10000));
+    reserveRatioBips = uint16(bound(reserveRatioBips, 1, 10000));
     scaledPendingWithdrawals = uint104(bound(scaledPendingWithdrawals, 0, scaledTotalSupply));
 
-    VaultState memory state;
+    MarketState memory state;
     state.scaledPendingWithdrawals = scaledPendingWithdrawals;
     state.scaledTotalSupply = scaledTotalSupply;
-    state.liquidityCoverageRatio = liquidityCoverageRatio;
+    state.reserveRatioBips = reserveRatioBips;
     state.accruedProtocolFees = accruedProtocolFees;
-    state.reservedAssets = reservedAssets;
+    state.normalizedUnclaimedWithdrawals = normalizedUnclaimedWithdrawals;
 
-    uint256 scaledCoverageLiquidity = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
-      uint256(liquidityCoverageRatio)) / uint256(10000);
+    uint256 scaledRequiredReserves = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
+      uint256(reserveRatioBips)) / uint256(10000);
     uint256 collateralForOutstanding = state.$normalizeAmount(
-      scaledCoverageLiquidity + scaledPendingWithdrawals
+      scaledRequiredReserves + scaledPendingWithdrawals
     );
 
     assertEq(
       state.$liquidityRequired(),
-      collateralForOutstanding + state.reservedAssets + uint256(accruedProtocolFees)
+      collateralForOutstanding + state.normalizedUnclaimedWithdrawals + uint256(accruedProtocolFees)
     );
   }
 
   function test_hasPendingExpiredBatch(uint32 pendingWithdrawalExpiry, uint32 timestamp) external {
     vm.warp(timestamp);
-    VaultState memory state;
+    MarketState memory state;
     state.pendingWithdrawalExpiry = pendingWithdrawalExpiry;
 
     assertEq(
@@ -119,30 +119,30 @@ contract VaultStateTest is Test {
   function test_borrowableAssets(
     uint104 scaledPendingWithdrawals,
     uint104 scaledTotalSupply,
-    uint16 liquidityCoverageRatio,
+    uint16 reserveRatioBips,
     uint128 accruedProtocolFees,
-    uint128 reservedAssets,
+    uint128 normalizedUnclaimedWithdrawals,
     uint128 totalAssets
   ) external {
-    liquidityCoverageRatio = uint16(bound(liquidityCoverageRatio, 1, 10000));
+    reserveRatioBips = uint16(bound(reserveRatioBips, 1, 10000));
     scaledPendingWithdrawals = uint104(bound(scaledPendingWithdrawals, 0, scaledTotalSupply));
 
-    VaultState memory state;
+    MarketState memory state;
     state.scaledPendingWithdrawals = scaledPendingWithdrawals;
     state.scaledTotalSupply = scaledTotalSupply;
-    state.liquidityCoverageRatio = liquidityCoverageRatio;
+    state.reserveRatioBips = reserveRatioBips;
     state.accruedProtocolFees = accruedProtocolFees;
-    state.reservedAssets = reservedAssets;
+    state.normalizedUnclaimedWithdrawals = normalizedUnclaimedWithdrawals;
 
-    uint256 scaledCoverageLiquidity = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
-      uint256(liquidityCoverageRatio)) / uint256(10000);
+    uint256 scaledRequiredReserves = (uint256(scaledTotalSupply - scaledPendingWithdrawals) *
+      uint256(reserveRatioBips)) / uint256(10000);
     uint256 collateralForOutstanding = state.$normalizeAmount(
-      scaledCoverageLiquidity + scaledPendingWithdrawals
+      scaledRequiredReserves + scaledPendingWithdrawals
     );
 
     assertEq(
       state.$liquidityRequired(),
-      collateralForOutstanding + state.reservedAssets + uint256(accruedProtocolFees)
+      collateralForOutstanding + state.normalizedUnclaimedWithdrawals + uint256(accruedProtocolFees)
     );
     assertEq(
       state.$borrowableAssets(totalAssets),
@@ -152,16 +152,16 @@ contract VaultStateTest is Test {
 
   function test_withdrawableProtocolFees(
     uint256 accruedProtocolFees,
-    uint256 reservedAssets,
+    uint256 normalizedUnclaimedWithdrawals,
     uint256 totalAssets
   ) external {
     accruedProtocolFees = bound(accruedProtocolFees, 0, type(uint128).max);
-    reservedAssets = bound(reservedAssets, 0, type(uint128).max);
-    totalAssets = bound(totalAssets, reservedAssets, type(uint128).max);
-    VaultState memory state;
+    normalizedUnclaimedWithdrawals = bound(normalizedUnclaimedWithdrawals, 0, type(uint128).max);
+    totalAssets = bound(totalAssets, normalizedUnclaimedWithdrawals, type(uint128).max);
+    MarketState memory state;
     state.accruedProtocolFees = uint128(accruedProtocolFees);
-    state.reservedAssets = uint128(reservedAssets);
-    uint256 availableAssets = totalAssets - reservedAssets;
+    state.normalizedUnclaimedWithdrawals = uint128(normalizedUnclaimedWithdrawals);
+    uint256 availableAssets = totalAssets - normalizedUnclaimedWithdrawals;
     uint256 expectedWithdrawable = accruedProtocolFees > availableAssets
       ? availableAssets
       : accruedProtocolFees;

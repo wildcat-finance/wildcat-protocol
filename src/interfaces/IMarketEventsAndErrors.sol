@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { VaultState } from '../libraries/VaultState.sol';
+import { MarketState } from '../libraries/MarketState.sol';
 import { AuthRole } from './WildcatStructsAndEnums.sol';
 
-interface IVaultEventsAndErrors {
+interface IMarketEventsAndErrors {
   /// @notice Error thrown when deposit exceeds maxTotalSupply
   error MaxSupplyExceeded();
 
   /// @notice Error thrown when non-borrower tries accessing borrower-only actions
   error NotApprovedBorrower();
 
-  /// @notice Error thrown when non-approved lender tries lending to the vault
+  /// @notice Error thrown when non-approved lender tries lending to the market
   error NotApprovedLender();
 
   /// @notice Error thrown when non-controller tries accessing controller-only actions
@@ -23,8 +23,8 @@ interface IVaultEventsAndErrors {
   /// @notice Error thrown when new maxTotalSupply lower than totalSupply
   error NewMaxSupplyTooLow();
 
-  /// @notice Error thrown when liquidity coverage ratio set higher than 100%
-  error LiquidityCoverageRatioTooHigh();
+  /// @notice Error thrown when reserve ratio set higher than 100%
+  error ReserveRatioBipsTooHigh();
 
   /// @notice Error thrown when interest rate set higher than 100%
   error InterestRateTooHigh();
@@ -38,6 +38,10 @@ interface IVaultEventsAndErrors {
   /// @notice Error thrown when transfer target is blacklisted
   error AccountBlacklisted();
 
+  error AccountNotBlocked();
+
+  error NotReversedOrStunning();
+
   error UnknownNameQueryError();
 
   error UnknownSymbolQueryError();
@@ -46,12 +50,9 @@ interface IVaultEventsAndErrors {
 
   error FeeSetWithoutRecipient();
 
-  error InsufficientCoverageForFeeWithdrawal();
+  error InsufficientReservesForFeeWithdrawal();
 
   error WithdrawalBatchNotExpired();
-
-  /// @notice Error thrown when liquidity coverage ratio set to value
-  ///         the vault currently would not meet.
 
   error NullMintAmount();
 
@@ -61,15 +62,19 @@ interface IVaultEventsAndErrors {
 
   error NullTransferAmount();
 
-  error DepositToClosedVault();
+  error NullWithdrawalAmount();
 
-  error BorrowFromClosedVault();
+  error DepositToClosedMarket();
 
-  error CloseVaultWithUnpaidWithdrawals();
+  error BorrowFromClosedMarket();
 
-  error InsufficientCoverageForNewLiquidityRatio();
+  error CloseMarketWithUnpaidWithdrawals();
 
-  error InsufficientCoverageForOldLiquidityRatio();
+  /// @notice Error thrown when reserve ratio set to value
+  ///         the market currently would not meet.
+  error InsufficientReservesForNewLiquidityRatio();
+
+  error InsufficientReservesForOldLiquidityRatio();
 
   event Transfer(address indexed from, address indexed to, uint256 value);
 
@@ -79,17 +84,15 @@ interface IVaultEventsAndErrors {
 
   event AnnualInterestBipsUpdated(uint256 annualInterestBipsUpdated);
 
-  event LiquidityCoverageRatioUpdated(uint256 liquidityCoverageRatioUpdated);
+  event ReserveRatioBipsUpdated(uint256 reserveRatioBipsUpdated);
 
   event SanctionedAccountAssetsSentToEscrow(address account, address escrow, uint256 amount);
-
-  event SanctionedStatusLifted(address account);
 
   event Deposit(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
   event Borrow(uint256 assetAmount);
 
-  event VaultClosed(uint256 timestamp);
+  event MarketClosed(uint256 timestamp);
 
   event FeesCollected(uint256 assets);
 

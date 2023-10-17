@@ -5,46 +5,38 @@ import { IERC20 } from './interfaces/IERC20.sol';
 import { IChainalysisSanctionsList } from './interfaces/IChainalysisSanctionsList.sol';
 import { SanctionsList } from './libraries/Chainalysis.sol';
 import { WildcatSanctionsSentinel } from './WildcatSanctionsSentinel.sol';
+import { IWildcatSanctionsEscrow } from './interfaces/IWildcatSanctionsEscrow.sol';
 
-contract WildcatSanctionsEscrow {
-  event EscrowReleased(
-    address indexed caller,
-    address indexed account,
-    address indexed asset,
-    uint256 amount
-  );
-
-  error CanNotReleaseEscrow();
-
-  address public immutable borrower;
-  address public immutable account;
-
-  IChainalysisSanctionsList internal constant chainalysisSanctionsList = SanctionsList;
+contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
+  address public immutable override sentinel;
+  address public immutable override borrower;
+  address public immutable override account;
   address internal immutable asset;
 
   constructor() {
-    (borrower, account, asset) = WildcatSanctionsSentinel(msg.sender).tmpVaultParams();
+    sentinel = msg.sender;
+    (borrower, account, asset) = WildcatSanctionsSentinel(sentinel).tmpEscrowParams();
   }
 
-  function balance() public view returns (uint256) {
+  function balance() public view override returns (uint256) {
     return IERC20(asset).balanceOf(address(this));
   }
 
-  function canReleaseEscrow() public view returns (bool) {
-    return !chainalysisSanctionsList.isSanctioned(account);
+  function canReleaseEscrow() public view override returns (bool) {
+    return !WildcatSanctionsSentinel(sentinel).isSanctioned(borrower, account);
   }
 
-  function escrowedAsset() public view returns (address, uint256) {
+  function escrowedAsset() public view override returns (address, uint256) {
     return (asset, balance());
   }
 
-  function releaseEscrow() public {
-    if (msg.sender != borrower && !canReleaseEscrow()) revert CanNotReleaseEscrow();
+  function releaseEscrow() public override {
+    if (!canReleaseEscrow()) revert CanNotReleaseEscrow();
 
     uint256 amount = balance();
 
     IERC20(asset).transfer(account, amount);
 
-    emit EscrowReleased(msg.sender, account, asset, amount);
+    emit EscrowReleased(account, asset, amount);
   }
 }

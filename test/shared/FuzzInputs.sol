@@ -2,7 +2,7 @@
 pragma solidity >=0.8.20;
 
 import 'src/libraries/MathUtils.sol';
-import { VaultState } from 'src/libraries/VaultState.sol';
+import { MarketState } from 'src/libraries/MarketState.sol';
 import './TestConstants.sol';
 import { bound } from '../helpers/VmUtils.sol';
 
@@ -15,25 +15,25 @@ using FuzzInputsLib for StateFuzzInputs global;
 struct StateFuzzInputs {
   uint128 maxTotalSupply;
   uint128 accruedProtocolFees;
-  uint128 reservedAssets;
+  uint128 normalizedUnclaimedWithdrawals;
   uint104 scaledTotalSupply;
   uint32 pendingWithdrawalExpiry;
   bool isDelinquent;
   uint32 timeDelinquent;
   uint16 annualInterestBips;
-  uint16 liquidityCoverageRatio;
+  uint16 reserveRatioBips;
   uint112 scaleFactor;
   uint32 lastInterestAccruedTimestamp;
 }
 
-// Used for fuzzing vault deployment parameters
+// Used for fuzzing market deployment parameters
 struct ConfigFuzzInputs {
   uint128 maxTotalSupply;
   uint16 protocolFeeBips;
   uint16 annualInterestBips;
   uint16 delinquencyFeeBips;
   uint32 withdrawalBatchDuration;
-  uint16 liquidityCoverageRatio;
+  uint16 reserveRatioBips;
   uint32 delinquencyGracePeriod;
   address feeRecipient;
 }
@@ -53,12 +53,8 @@ library FuzzInputsLib {
         MaximumWithdrawalBatchDuration
       )
     );
-    inputs.liquidityCoverageRatio = uint16(
-      bound(
-        inputs.liquidityCoverageRatio,
-        MinimumLiquidityCoverageRatio,
-        MaximumLiquidityCoverageRatio
-      )
+    inputs.reserveRatioBips = uint16(
+      bound(inputs.reserveRatioBips, MinimumReserveRatioBips, MaximumReserveRatioBips)
     );
     inputs.delinquencyGracePeriod = uint32(
       bound(
@@ -88,12 +84,8 @@ library FuzzInputsLib {
     inputs.annualInterestBips = uint16(
       bound(inputs.annualInterestBips, MinimumAnnualInterestBips, MaximumAnnualInterestBips)
     );
-    inputs.liquidityCoverageRatio = uint16(
-      bound(
-        inputs.liquidityCoverageRatio,
-        MinimumLiquidityCoverageRatio,
-        MaximumLiquidityCoverageRatio
-      )
+    inputs.reserveRatioBips = uint16(
+      bound(inputs.reserveRatioBips, MinimumReserveRatioBips, MaximumReserveRatioBips)
     );
     inputs.lastInterestAccruedTimestamp = uint32(
       bound(inputs.lastInterestAccruedTimestamp, 1, block.timestamp)
@@ -103,16 +95,16 @@ library FuzzInputsLib {
     );
   }
 
-  function toState(StateFuzzInputs memory inputs) internal pure returns (VaultState memory state) {
+  function toState(StateFuzzInputs memory inputs) internal pure returns (MarketState memory state) {
     state.maxTotalSupply = inputs.maxTotalSupply;
     state.accruedProtocolFees = inputs.accruedProtocolFees;
-    state.reservedAssets = inputs.reservedAssets;
+    state.normalizedUnclaimedWithdrawals = inputs.normalizedUnclaimedWithdrawals;
     state.scaledTotalSupply = inputs.scaledTotalSupply;
     state.pendingWithdrawalExpiry = inputs.pendingWithdrawalExpiry;
     state.isDelinquent = inputs.isDelinquent;
     state.timeDelinquent = inputs.timeDelinquent;
     state.annualInterestBips = inputs.annualInterestBips;
-    state.liquidityCoverageRatio = inputs.liquidityCoverageRatio;
+    state.reserveRatioBips = inputs.reserveRatioBips;
     state.scaleFactor = inputs.scaleFactor;
     state.lastInterestAccruedTimestamp = inputs.lastInterestAccruedTimestamp;
   }

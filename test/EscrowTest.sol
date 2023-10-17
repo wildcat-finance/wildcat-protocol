@@ -1,31 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
-
-import { WildcatSanctionsSentinel, WildcatSanctionsEscrow, IChainalysisSanctionsList, IWildcatArchController } from '../src/WildcatSanctionsSentinel.sol';
-import { SanctionsList } from '../src/libraries/Chainalysis.sol';
+import { Test } from 'forge-std/Test.sol';
+import { WildcatSanctionsSentinel, IChainalysisSanctionsList, IWildcatArchController } from 'src/WildcatSanctionsSentinel.sol';
+import { WildcatSanctionsEscrow, IWildcatSanctionsEscrow } from 'src/WildcatSanctionsEscrow.sol';
+import { SanctionsList } from 'src/libraries/Chainalysis.sol';
 
 import { MockChainalysis, deployMockChainalysis } from './helpers/MockChainalysis.sol';
 import { MockERC20 } from './helpers/MockERC20.sol';
-import { Test } from 'forge-std/Test.sol';
 
 // -- TEMP START --
-contract MockWildcatArchController is IWildcatArchController {
-  mapping(address vault => bool) public isRegisteredVault;
+contract MockWildcatArchController {
+  mapping(address market => bool) public isRegisteredMarket;
 
-  function setIsRegsiteredVault(address vault, bool isRegistered) external {
-    isRegisteredVault[vault] = isRegistered;
+  function setIsRegsiteredMarket(address market, bool isRegistered) external {
+    isRegisteredMarket[market] = isRegistered;
   }
 }
 
 // -- TEMP END --
 
 contract EscrowTest is Test {
-  event EscrowReleased(
-    address indexed caller,
-    address indexed account,
-    address indexed asset,
-    uint256 amount
-  );
+  event EscrowReleased(address indexed account, address indexed asset, uint256 amount);
 
   MockWildcatArchController internal archController;
   WildcatSanctionsSentinel internal sentinel;
@@ -33,8 +28,8 @@ contract EscrowTest is Test {
   function setUp() public {
     deployMockChainalysis();
     archController = new MockWildcatArchController();
-    sentinel = new WildcatSanctionsSentinel(archController);
-    archController.setIsRegsiteredVault(address(this), true);
+    sentinel = new WildcatSanctionsSentinel(address(archController), address(SanctionsList));
+    archController.setIsRegsiteredMarket(address(this), true);
   }
 
   function testImmutables() public {
@@ -181,14 +176,14 @@ contract EscrowTest is Test {
     assertEq(escrow.balance(), 1);
 
     vm.expectEmit(true, true, true, true, address(escrow));
-    emit EscrowReleased(address(this), account, asset, 1);
+    emit EscrowReleased(account, asset, 1);
 
     escrow.releaseEscrow();
 
     assertEq(escrow.balance(), 0);
   }
 
-  function testReleaseEscrowAsBorrower() public {
+  function testReleaseEscrowWithOverride() public {
     address borrower = address(1);
     address account = address(2);
     address asset = address(new MockERC20());
@@ -201,10 +196,12 @@ contract EscrowTest is Test {
     MockERC20(asset).mint(address(escrow), 1);
     assertEq(escrow.balance(), 1);
 
-    vm.expectEmit(true, true, true, true, address(escrow));
-    emit EscrowReleased(borrower, account, asset, 1);
-
     vm.prank(borrower);
+    sentinel.overrideSanction(account);
+
+    vm.expectEmit(true, true, true, true, address(escrow));
+    emit EscrowReleased(account, asset, 1);
+
     escrow.releaseEscrow();
 
     assertEq(escrow.balance(), 0);
@@ -220,7 +217,7 @@ contract EscrowTest is Test {
 
     MockChainalysis(address(SanctionsList)).sanction(account);
 
-    vm.expectRevert(WildcatSanctionsEscrow.CanNotReleaseEscrow.selector);
+    vm.expectRevert(IWildcatSanctionsEscrow.CanNotReleaseEscrow.selector);
     escrow.releaseEscrow();
   }
 
@@ -243,11 +240,11 @@ contract EscrowTest is Test {
     assertEq(escrow.balance(), amount);
 
     if (sanctioned && caller != borrower) {
-      vm.expectRevert(WildcatSanctionsEscrow.CanNotReleaseEscrow.selector);
+      vm.expectRevert(IWildcatSanctionsEscrow.CanNotReleaseEscrow.selector);
       escrow.releaseEscrow();
     } else {
       vm.expectEmit(true, true, true, true, address(escrow));
-      emit EscrowReleased(caller, account, asset, amount);
+      emit EscrowReleased(account, asset, amount);
 
       vm.prank(caller);
       escrow.releaseEscrow();

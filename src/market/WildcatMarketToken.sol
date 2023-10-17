@@ -6,27 +6,27 @@ import './WildcatMarketBase.sol';
 contract WildcatMarketToken is WildcatMarketBase {
   using SafeCastLib for uint256;
 
-  // =====================================================================//
-  //                            ERC20 Queries                             //
-  // =====================================================================//
+  /* -------------------------------------------------------------------------- */
+  /*                                ERC20 Queries                               */
+  /* -------------------------------------------------------------------------- */
 
   mapping(address => mapping(address => uint256)) public allowance;
 
   /// @notice Returns the normalized balance of `account` with interest.
   function balanceOf(address account) public view virtual nonReentrantView returns (uint256) {
-    (VaultState memory state, , ) = _calculateCurrentState();
+    (MarketState memory state, , ) = _calculateCurrentState();
     return state.normalizeAmount(_accounts[account].scaledBalance);
   }
 
   /// @notice Returns the normalized total supply with interest.
   function totalSupply() external view virtual nonReentrantView returns (uint256) {
-    (VaultState memory state, , ) = _calculateCurrentState();
+    (MarketState memory state, , ) = _calculateCurrentState();
     return state.totalSupply();
   }
 
-  // =====================================================================//
-  //                            ERC20 Actions                             //
-  // =====================================================================//
+  /* -------------------------------------------------------------------------- */
+  /*                                ERC20 Actions                               */
+  /* -------------------------------------------------------------------------- */
 
   function approve(address spender, uint256 amount) external virtual nonReentrant returns (bool) {
     _approve(msg.sender, spender, amount);
@@ -56,17 +56,13 @@ contract WildcatMarketToken is WildcatMarketBase {
     return true;
   }
 
-  // =====================================================================//
-  //                            INTERNAL LOGIC                            //
-  // =====================================================================//
-
   function _approve(address approver, address spender, uint256 amount) internal virtual {
     allowance[approver][spender] = amount;
     emit Approval(approver, spender, amount);
   }
 
   function _transfer(address from, address to, uint256 amount) internal virtual {
-    VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 
     if (scaledAmount == 0) {

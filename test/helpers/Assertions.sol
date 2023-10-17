@@ -1,6 +1,6 @@
 pragma solidity ^0.8.20;
 
-import 'src/libraries/VaultState.sol';
+import 'src/libraries/MarketState.sol';
 import { StdAssertions } from 'forge-std/StdAssertions.sol';
 import { LibString } from 'solady/utils/LibString.sol';
 
@@ -8,8 +8,8 @@ using LibString for uint256;
 
 contract Assertions is StdAssertions {
   function assertEq(
-    VaultState memory actual,
-    VaultState memory expected,
+    MarketState memory actual,
+    MarketState memory expected,
     string memory key
   ) internal {
     assertEq(actual.maxTotalSupply, expected.maxTotalSupply, string.concat(key, '.maxTotalSupply'));
@@ -18,7 +18,11 @@ contract Assertions is StdAssertions {
       expected.accruedProtocolFees,
       string.concat(key, '.accruedProtocolFees')
     );
-    assertEq(actual.reservedAssets, expected.reservedAssets, string.concat(key, '.reservedAssets'));
+    assertEq(
+      actual.normalizedUnclaimedWithdrawals,
+      expected.normalizedUnclaimedWithdrawals,
+      string.concat(key, '.normalizedUnclaimedWithdrawals')
+    );
     assertEq(
       actual.scaledTotalSupply,
       expected.scaledTotalSupply,
@@ -42,9 +46,9 @@ contract Assertions is StdAssertions {
       string.concat(key, '.annualInterestBips')
     );
     assertEq(
-      actual.liquidityCoverageRatio,
-      expected.liquidityCoverageRatio,
-      string.concat(key, '.liquidityCoverageRatio')
+      actual.reserveRatioBips,
+      expected.reserveRatioBips,
+      string.concat(key, '.reserveRatioBips')
     );
     assertEq(actual.scaleFactor, expected.scaleFactor, string.concat(key, '.scaleFactor'));
     assertEq(
@@ -54,7 +58,7 @@ contract Assertions is StdAssertions {
     );
   }
 
-  function assertEq(VaultState memory actual, VaultState memory expected) internal {
-    assertEq(actual, expected, 'VaultState');
+  function assertEq(MarketState memory actual, MarketState memory expected) internal {
+    assertEq(actual, expected, 'MarketState');
   }
 }
