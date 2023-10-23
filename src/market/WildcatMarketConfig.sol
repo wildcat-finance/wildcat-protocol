@@ -19,7 +19,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    */
   function isClosed() external view returns (bool) {
     MarketState memory state = currentState();
-    return state.isClosed();
+    return state.isClosed;
   }
 
   /**
