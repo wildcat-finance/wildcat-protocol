@@ -91,6 +91,12 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   /* -------------------------------------------------------------------------- */
 
   /**
+   * @dev Close a market, setting interest rate to zero and returning all
+   * outstanding debt.
+   */
+  function closeMarket(address market) external;
+
+  /**
    * @dev Modify the interest rate for a market.
    * If the new interest rate is lower than the current interest rate,
    * the reserve ratio is set to 90% for the next two weeks.

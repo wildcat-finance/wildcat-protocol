@@ -15,6 +15,14 @@ contract WildcatMarketConfig is WildcatMarketBase {
   // ===================================================================== //
 
   /**
+   * @dev Returns whether or not a market has been closed.
+   */
+  function isClosed() external view returns (bool) {
+    MarketState memory state = currentState();
+    return state.isClosed();
+  }
+
+  /**
    * @dev Returns the maximum amount of underlying asset that can
    *      currently be deposited to the market.
    */
