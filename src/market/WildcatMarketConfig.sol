@@ -115,7 +115,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
 
   /**
    * @dev Updates an account's authorization status based on whether the controller
-   *      has it marked as approved.
+   *      has it marked as approved. Requires that the lender *had* full access (i.e.
+   *      they were previously authorized) before dropping them down to WithdrawOnly,
+   *      else arbitrary accounts could grant themselves Withdraw.
    */
   function updateAccountAuthorization(
     address _account,
@@ -126,7 +128,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
     if (_isAuthorized) {
       account.approval = AuthRole.DepositAndWithdraw;
     } else {
-      account.approval = AuthRole.WithdrawOnly;
+      if (account.approval == AuthRole.DepositAndWithdraw) {
+        account.approval = AuthRole.WithdrawOnly;
+      }
     }
     _accounts[_account] = account;
     _writeState(state);
