@@ -170,8 +170,8 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
       if (scaledBalance > 0) {
         account.scaledBalance = 0;
         address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
-          accountAddress,
           borrower,
+          accountAddress,
           address(this)
         );
         emit Transfer(accountAddress, escrow, state.normalizeAmount(scaledBalance));
