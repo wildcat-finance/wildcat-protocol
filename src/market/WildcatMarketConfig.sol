@@ -95,7 +95,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
       revert NotReversedOrStunning();
     }
 
-    account.approval = AuthRole.Null;
+    account.approval = AuthRole.WithdrawOnly;
     emit AuthorizationStatusUpdated(accountAddress, account.approval);
 
     _accounts[accountAddress] = account;
