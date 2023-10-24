@@ -171,6 +171,9 @@ contract WildcatMarket is
     state.annualInterestBips = 0;
     state.isClosed = true;
     state.reserveRatioBips = 0;
+    // Ensures that delinquency fee doesn't increase scale factor further
+    // as doing so would mean last lender in market couldn't fully redeem
+    state.timeDelinquent = 0;
     if (_withdrawalData.unpaidBatches.length() > 0) {
       revert CloseMarketWithUnpaidWithdrawals();
     }
