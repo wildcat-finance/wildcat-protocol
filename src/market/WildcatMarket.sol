@@ -138,6 +138,26 @@ contract WildcatMarket is
   }
 
   /**
+   * @dev Transfers funds from the caller to the market.
+   *
+   *      Any payments made through this function are considered
+   *      repayments from the borrower. Do *not* use this function
+   *      if you are a lender or an unrelated third party.
+   *
+   *      Reverts if the market is closed.
+   */
+  function repay(uint256 amount) external nonReentrant {
+    MarketState memory state = _getUpdatedState();
+    if (state.isClosed) {
+      revert RepayToClosedMarket();
+    }
+
+    asset.safeTransferFrom(msg.sender, address(this), amount);
+
+    emit MarketRepayment(amount, block.timestamp);
+  }
+
+  /**
    * @dev Sets the market APR to 0% and marks market as closed.
    *
    *      Can not be called if there are any unpaid withdrawal batches.

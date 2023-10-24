@@ -66,6 +66,8 @@ interface IMarketEventsAndErrors {
 
   error DepositToClosedMarket();
 
+  error RepayToClosedMarket();
+
   error BorrowFromClosedMarket();
 
   error CloseMarketWithUnpaidWithdrawals();
@@ -91,6 +93,8 @@ interface IMarketEventsAndErrors {
   event Deposit(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
   event Borrow(uint256 assetAmount);
+
+  event MarketRepayment(uint256 assetAmount, uint256 timestamp);
 
   event MarketClosed(uint256 timestamp);
 
