@@ -96,6 +96,13 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    */
   function closeMarket(address market) external;
 
+    /**
+   * @dev Sets the maximum total supply (capacity) of a market - this only limits 
+   *      deposits and does not affect interest accrual.
+   *
+   *      Can not be set lower than the market's current total supply.
+   */
+  function setMaxTotalSupply(address market, uint256 maxTotalSupply) external;
   /**
    * @dev Modify the interest rate for a market.
    * If the new interest rate is lower than the current interest rate,
