@@ -6,6 +6,7 @@ import './WildcatMarketBase.sol';
 import './WildcatMarketConfig.sol';
 import './WildcatMarketToken.sol';
 import './WildcatMarketWithdrawals.sol';
+import '../WildcatSanctionsSentinel.sol';
 
 contract WildcatMarket is
   WildcatMarketBase,
@@ -124,6 +125,11 @@ contract WildcatMarket is
    *      Reverts if the market is closed.
    */
   function borrow(uint256 amount) external onlyBorrower nonReentrant {
+
+    if (WildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
+      revert BorrowWhileSanctioned();
+    }
+
     MarketState memory state = _getUpdatedState();
     if (state.isClosed) {
       revert BorrowFromClosedMarket();

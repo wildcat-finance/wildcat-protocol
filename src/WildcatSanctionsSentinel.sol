@@ -31,6 +31,10 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
     tmpEscrowParams = TmpEscrowParams(address(1), address(1), address(1));
   }
 
+  function isFlaggedByChainalysis(address account) public view returns (bool) {
+    return IChainalysisSanctionsList(chainalysisSanctionsList).isSanctioned(account);
+  }
+
   /**
    * @dev Returns boolean indicating whether `account` is sanctioned
    *      on Chainalysis and that status has not been overridden by
@@ -39,7 +43,7 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
   function isSanctioned(address borrower, address account) public view override returns (bool) {
     return
       !sanctionOverrides[borrower][account] &&
-      IChainalysisSanctionsList(chainalysisSanctionsList).isSanctioned(account);
+      isFlaggedByChainalysis(account);
   }
 
   /**

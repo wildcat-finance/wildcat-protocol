@@ -68,6 +68,8 @@ interface IMarketEventsAndErrors {
 
   error RepayToClosedMarket();
 
+  error BorrowWhileSanctioned();
+
   error BorrowFromClosedMarket();
 
   error CloseMarketWithUnpaidWithdrawals();
