@@ -35,6 +35,8 @@ interface IWildcatMarketControllerEventsAndErrors {
 
   error AprChangeOnClosedMarket();
 
+  error ProposedAprExceedsMaxBound();
+
   error AprChangeNotPending();
 
   error MarketAlreadyClosed();

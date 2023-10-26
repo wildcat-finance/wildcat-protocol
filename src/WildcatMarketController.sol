@@ -444,7 +444,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    *      the controller variant will enforce.
    */
   function getParameterConstraints()
-    external
+    public
     view
     returns (MarketParameterConstraints memory constraints)
   {
@@ -501,6 +501,12 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     if (WildcatMarket(market).isClosed()) {
       revertWithSelector(AprChangeOnClosedMarket.selector);
     }
+
+    MarketParameterConstraints memory constraints = getParameterConstraints();
+    if (annualInterestBips > constraints.maximumAnnualInterestBips) {
+      revertWithSelector(ProposedAprExceedsMaxBound.selector);
+    }
+
     // If borrower is reducing the interest rate, increase the reserve
     // ratio for the next two weeks.
     if (annualInterestBips < WildcatMarket(market).annualInterestBips()) {
