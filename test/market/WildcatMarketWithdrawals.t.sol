@@ -182,7 +182,7 @@ contract WithdrawalsTest is BaseMarketTest {
     _requestWithdrawal(alice, 1e18);
     fastForward(parameters.withdrawalBatchDuration);
     sanctionsSentinel.sanction(alice);
-    address escrow = sanctionsSentinel.getEscrowAddress(alice, borrower, address(asset));
+    address escrow = sanctionsSentinel.getEscrowAddress(borrower, alice, address(asset));
     vm.expectEmit(address(asset));
     emit Transfer(address(market), escrow, 1e18);
     vm.expectEmit(address(market));
