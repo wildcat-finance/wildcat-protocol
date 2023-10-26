@@ -170,7 +170,7 @@ contract WildcatMarket is
     MarketState memory state = _getUpdatedState();
     state.annualInterestBips = 0;
     state.isClosed = true;
-    state.reserveRatioBips = 0;
+    state.reserveRatioBips = 10000;
     // Ensures that delinquency fee doesn't increase scale factor further
     // as doing so would mean last lender in market couldn't fully redeem
     state.timeDelinquent = 0;
