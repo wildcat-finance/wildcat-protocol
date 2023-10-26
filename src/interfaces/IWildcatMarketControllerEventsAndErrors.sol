@@ -30,6 +30,11 @@ interface IWildcatMarketControllerEventsAndErrors {
   error MarketAlreadyDeployed();
 
   error ExcessReserveRatioStillActive();
+
+  error CapacityChangeOnClosedMarket();
+
+  error AprChangeOnClosedMarket();
+
   error AprChangeNotPending();
 
   error MarketAlreadyClosed();

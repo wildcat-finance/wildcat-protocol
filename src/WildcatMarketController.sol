@@ -483,6 +483,9 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     address market,
     uint256 maxTotalSupply
   ) external onlyBorrower onlyControlledMarket(market) {
+    if (WildcatMarket(market).isClosed()) {
+      revertWithSelector(CapacityChangeOnClosedMarket.selector);
+    }
     WildcatMarket(market).setMaxTotalSupply(maxTotalSupply);
   }
 
@@ -495,6 +498,9 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     address market,
     uint16 annualInterestBips
   ) external virtual onlyBorrower onlyControlledMarket(market) {
+    if (WildcatMarket(market).isClosed()) {
+      revertWithSelector(AprChangeOnClosedMarket.selector);
+    }
     // If borrower is reducing the interest rate, increase the reserve
     // ratio for the next two weeks.
     if (annualInterestBips < WildcatMarket(market).annualInterestBips()) {
