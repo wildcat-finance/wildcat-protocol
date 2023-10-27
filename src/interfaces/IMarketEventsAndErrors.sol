@@ -104,7 +104,9 @@ interface IMarketEventsAndErrors {
 
   event StateUpdated(uint256 scaleFactor, bool isDelinquent);
 
-  event ScaleFactorUpdated(
+  event InterestAndFeesAccrued(
+    uint256 fromTimestamp,
+    uint256 toTimestamp,
     uint256 scaleFactor,
     uint256 baseInterestRay,
     uint256 delinquencyFeeRay,

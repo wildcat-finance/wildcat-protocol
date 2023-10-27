@@ -370,7 +370,14 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
             delinquencyGracePeriod,
             expiry
           );
-        emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
+        emit InterestAndFeesAccrued(
+          state.lastInterestAccruedTimestamp,
+          expiry,
+          state.scaleFactor,
+          baseInterestRay,
+          delinquencyFeeRay,
+          protocolFee
+        );
       }
       _processExpiredWithdrawalBatch(state);
     }
@@ -383,7 +390,14 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
           delinquencyGracePeriod,
           block.timestamp
         );
-      emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
+      emit InterestAndFeesAccrued(
+        state.lastInterestAccruedTimestamp,
+        block.timestamp,
+        state.scaleFactor,
+        baseInterestRay,
+        delinquencyFeeRay,
+        protocolFee
+      );
     }
   }
 

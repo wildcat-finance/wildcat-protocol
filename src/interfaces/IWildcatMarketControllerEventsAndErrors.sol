@@ -49,5 +49,16 @@ interface IWildcatMarketControllerEventsAndErrors {
 
   event LenderDeauthorized(address);
 
-  event MarketDeployed(address indexed market);
+  event MarketDeployed(
+    address indexed market,
+    address asset,
+    uint256 maxTotalSupply,
+    uint256 annualInterestBips,
+    uint256 delinquencyFeeBips,
+    uint256 withdrawalBatchDuration,
+    uint256 reserveRatioBips,
+    uint256 delinquencyGracePeriod,
+    string name,
+    string symbol
+  );
 }

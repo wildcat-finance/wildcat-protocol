@@ -45,7 +45,7 @@ contract WildcatMarketTest is BaseMarketTest {
     fastForward(1 days);
     MarketState memory state = pendingState();
     vm.expectEmit(address(market));
-    emit ScaleFactorUpdated(1.001e27, 1e24, 0, 0);
+    emit InterestAndFeesAccrued(state.lastInterestAccruedTimestamp, expiry, 1.001e27, 1e24, 0, 0);
     vm.expectEmit(address(market));
     emit WithdrawalBatchExpired(expiry, 1e18, 1e18, 1e18);
     vm.expectEmit(address(market));

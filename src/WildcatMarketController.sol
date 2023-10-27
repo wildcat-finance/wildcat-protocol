@@ -357,6 +357,19 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     _controlledMarkets.add(market);
 
     _resetTmpMarketParameters();
+
+    emit MarketDeployed(
+      market,
+      asset,
+      maxTotalSupply,
+      annualInterestBips,
+      delinquencyFeeBips,
+      withdrawalBatchDuration,
+      reserveRatioBips,
+      delinquencyGracePeriod,
+      WildcatMarket(market).name(),
+      WildcatMarket(market).symbol()
+    );
   }
 
   /**
