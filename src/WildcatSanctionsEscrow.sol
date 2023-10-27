@@ -6,8 +6,12 @@ import { IChainalysisSanctionsList } from './interfaces/IChainalysisSanctionsLis
 import { SanctionsList } from './libraries/Chainalysis.sol';
 import { WildcatSanctionsSentinel } from './WildcatSanctionsSentinel.sol';
 import { IWildcatSanctionsEscrow } from './interfaces/IWildcatSanctionsEscrow.sol';
+import 'solady/utils/SafeTransferLib.sol';
+
 
 contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
+  using SafeTransferLib for address;
+
   address public immutable override sentinel;
   address public immutable override borrower;
   address public immutable override account;
@@ -35,7 +39,7 @@ contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
 
     uint256 amount = balance();
 
-    IERC20(asset).transfer(account, amount);
+    asset.safeTransfer(account, amount);
 
     emit EscrowReleased(account, asset, amount);
   }
