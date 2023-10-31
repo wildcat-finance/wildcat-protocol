@@ -516,8 +516,9 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     }
 
     MarketParameterConstraints memory constraints = getParameterConstraints();
-    if (annualInterestBips > constraints.maximumAnnualInterestBips) {
-      revertWithSelector(ProposedAprExceedsMaxBound.selector);
+    if (annualInterestBips > constraints.maximumAnnualInterestBips
+     || annualInterestBips < constraints.minimumAnnualInterestBips) {
+      revertWithSelector(ProposedAprBeyondBound.selector);
     }
 
     // If borrower is reducing the interest rate, increase the reserve
