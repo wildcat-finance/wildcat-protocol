@@ -138,7 +138,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     address accountAddress,
     uint32 expiry
   ) external nonReentrant returns (uint256) {
-    if (expiry > block.timestamp) {
+    if (expiry >= block.timestamp) {
       revert WithdrawalBatchNotExpired();
     }
     MarketState memory state = _getUpdatedState();
