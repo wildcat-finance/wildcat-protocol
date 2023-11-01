@@ -111,8 +111,8 @@ contract WildcatMarket is
       revert InsufficientReservesForFeeWithdrawal();
     }
     state.accruedProtocolFees -= withdrawableFees;
-    _writeState(state);
     asset.safeTransfer(feeRecipient, withdrawableFees);
+    _writeState(state);
     emit FeesCollected(withdrawableFees);
   }
 
@@ -138,8 +138,8 @@ contract WildcatMarket is
     if (amount > borrowable) {
       revert BorrowAmountTooHigh();
     }
-    _writeState(state);
     asset.safeTransfer(msg.sender, amount);
+    _writeState(state);
     emit Borrow(amount);
   }
 
