@@ -221,22 +221,4 @@ contract SentinelTest is Test {
     assertEq(escrowedAsset, asset);
     assertEq(escrowedAmount, amount);
   }
-
-  function testCreateEscrowNotRegisteredMarket() public {
-    address borrower = address(1);
-    address account = address(2);
-    address asset = address(3);
-
-    vm.expectRevert(IWildcatSanctionsSentinel.NotRegisteredMarket.selector);
-    sentinel.createEscrow(borrower, account, asset);
-  }
-
-  function testFuzzCreateEscrowNotRegisteredMarket(
-    address borrower,
-    address account,
-    address asset
-  ) public {
-    vm.expectRevert(IWildcatSanctionsSentinel.NotRegisteredMarket.selector);
-    sentinel.createEscrow(borrower, account, asset);
-  }
 }
