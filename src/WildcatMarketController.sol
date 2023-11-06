@@ -348,7 +348,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
 
     bytes32 salt = _deriveSalt(asset, namePrefix, symbolPrefix);
     market = LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, marketInitCodeHash);
-    if (market.codehash != bytes32(0)) {
+    if (market.code.length != 0) {
       revert MarketAlreadyDeployed();
     }
     LibStoredInitCode.create2WithStoredInitCode(marketInitCodeStorage, salt);
