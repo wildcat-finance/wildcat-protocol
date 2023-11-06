@@ -94,13 +94,13 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      their sanctioned status overridden by the borrower.
    */
   function stunningReversal(address accountAddress) external nonReentrant {
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
+      revert NotReversedOrStunning();
+    }
+
     Account memory account = _accounts[accountAddress];
     if (account.approval != AuthRole.Blocked) {
       revert AccountNotBlocked();
-    }
-
-    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
-      revert NotReversedOrStunning();
     }
 
     account.approval = AuthRole.WithdrawOnly;
@@ -159,11 +159,11 @@ contract WildcatMarketConfig is WildcatMarketBase {
    * @dev Sets the annual interest rate earned by lenders in bips.
    */
   function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant {
-    MarketState memory state = _getUpdatedState();
-
     if (_annualInterestBips > BIP) {
       revert InterestRateTooHigh();
     }
+
+    MarketState memory state = _getUpdatedState();
 
     state.annualInterestBips = _annualInterestBips;
     _writeState(state);

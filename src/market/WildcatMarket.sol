@@ -174,16 +174,19 @@ contract WildcatMarket is
    *      debts to the borrower.
    */
   function closeMarket() external onlyController nonReentrant {
+    if (_withdrawalData.unpaidBatches.length() > 0) {
+      revert CloseMarketWithUnpaidWithdrawals();
+    }
+
     MarketState memory state = _getUpdatedState();
+
     state.annualInterestBips = 0;
     state.isClosed = true;
     state.reserveRatioBips = 10000;
     // Ensures that delinquency fee doesn't increase scale factor further
     // as doing so would mean last lender in market couldn't fully redeem
     state.timeDelinquent = 0;
-    if (_withdrawalData.unpaidBatches.length() > 0) {
-      revert CloseMarketWithUnpaidWithdrawals();
-    }
+
     uint256 currentlyHeld = totalAssets();
     uint256 totalDebts = state.totalDebts();
     if (currentlyHeld < totalDebts) {

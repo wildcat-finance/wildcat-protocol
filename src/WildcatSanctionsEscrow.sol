@@ -38,9 +38,11 @@ contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
     if (!canReleaseEscrow()) revert CanNotReleaseEscrow();
 
     uint256 amount = balance();
+    address _account = account;
+    address _asset = asset;
 
-    asset.safeTransfer(account, amount);
+    asset.safeTransfer(_account, amount);
 
-    emit EscrowReleased(account, asset, amount);
+    emit EscrowReleased(_account, _asset, amount);
   }
 }
