@@ -521,16 +521,32 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
       revertWithSelector(ProposedAprBeyondBound.selector);
     }
 
-    // If borrower is reducing the interest rate, increase the reserve
-    // ratio for the next two weeks.
-    if (annualInterestBips < WildcatMarket(market).annualInterestBips()) {
+    // If borrower is reducing the interest rate, potentially increase the
+    // reserve ratio for the next two weeks.
+    uint256 oldRate = WildcatMarket(market).annualInterestBips();
+    if (annualInterestBips < oldRate) {
       TemporaryReserveRatio storage tmp = temporaryExcessReserveRatio[market];
 
       if (tmp.expiry == 0) {
         tmp.reserveRatioBips = uint128(WildcatMarket(market).reserveRatioBips());
+        
+        // Relative difference between old rate and new rate
+        uint256 rateDiff = MathUtils.max(
+          10000,
+          MathUtils.rayMul(
+            2,
+            MathUtils.rayDiv(
+              MathUtils.satSub(oldRate, annualInterestBips),
+              oldRate
+            )
+           )
+          );
+        uint16 newReserve = uint16(MathUtils.max(rateDiff, tmp.reserveRatioBips));
 
-        // Require 90% liquidity coverage for the next 2 weeks
-        WildcatMarket(market).setReserveRatioBips(9000);
+        // Adjust liquidity coverage for the next 2 weeks to double the relative
+        // difference between old and new rates if it exceeds old reserve ratio
+        // e.g. a 30% decrease from 10% to 7% implies a 60% reserve ratio
+        WildcatMarket(market).setReserveRatioBips(newReserve);
       }
 
       tmp.expiry = uint128(block.timestamp + 2 weeks);
