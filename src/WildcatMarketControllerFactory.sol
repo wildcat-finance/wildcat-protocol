@@ -291,7 +291,14 @@ contract WildcatMarketControllerFactory {
       salt,
       controllerInitCodeHash
     );
-    if (controller.codehash != bytes32(0)) {
+
+    uint256 controllerCodeSize;
+
+    assembly {
+      controllerCodeSize := extcodesize(controller)
+    }
+
+    if (controllerCodeSize > 0) {
       revert ControllerAlreadyDeployed();
     }
     LibStoredInitCode.create2WithStoredInitCode(controllerInitCodeStorage, salt);
