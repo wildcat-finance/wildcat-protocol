@@ -512,10 +512,10 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     uint256 newRate
   ) public pure returns (uint256) {
     require(newRate < oldRate);
-    uint256 diffPercent = MathUtils.rayDiv(
-                            MathUtils.satSub(oldRate, newRate),
-                            oldRate);
-    return MathUtils.rayMul(diffPercent, 100);
+    return MathUtils.rayDiv(
+             MathUtils.rayMul(10000, MathUtils.satSub(oldRate, newRate)),
+             oldRate
+           );
   }
 
   /**
