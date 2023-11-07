@@ -502,6 +502,22 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     WildcatMarket(market).setMaxTotalSupply(maxTotalSupply);
   }
 
+  /** 
+  * @dev Returns the difference between two APR rates (in bips).
+  * Utilises relative difference formula but avoids absolute value
+  * since uint is unsigned - requires that newRate < oldRate.
+  */
+  function aprRateDiff(
+    uint256 oldRate,
+    uint256 newRate
+  ) public pure returns (uint256) {
+    require(newRate < oldRate);
+    uint256 diffPercent = MathUtils.rayDiv(
+                            MathUtils.satSub(oldRate, newRate),
+                            oldRate);
+    return MathUtils.rayMul(diffPercent, 100);
+  }
+
   /**
    * @dev Modify the interest rate for a market.
    * If the new interest rate is lower than the current interest rate,
@@ -533,13 +549,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
         // Relative difference between old rate and new rate
         uint256 rateDiff = MathUtils.max(
           10000,
-          MathUtils.rayMul(
-            2,
-            MathUtils.rayDiv(
-              MathUtils.satSub(oldRate, annualInterestBips),
-              oldRate
-            )
-           )
+          MathUtils.rayMul(2, aprRateDiff(oldRate, annualInterestBips))
           );
         uint16 newReserve = uint16(MathUtils.max(rateDiff, tmp.reserveRatioBips));
 
