@@ -104,13 +104,8 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
 
     escrowContract = getEscrowAddress(borrower, account, asset);
 
-    uint256 size;
-    assembly {
-      size := extcodesize(escrowContract)
-    }
-
     // Skip creation if the address code size is non-zero
-    if (size > 0) return escrowContract;
+    if (escrowContract.code.length != 0) return escrowContract;
 
     tmpEscrowParams = TmpEscrowParams(borrower, account, asset);
 
