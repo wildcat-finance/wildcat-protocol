@@ -145,8 +145,6 @@ contract BaseMarketTest is Test, ExpectedStateTracker {
     _checkState(); */
   }
 
-  event DebtRepaid(uint256 assetAmount);
-
   function _borrow(uint256 amount) internal asAccount(borrower) {
     MarketState memory state = pendingState();
 
