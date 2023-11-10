@@ -161,7 +161,7 @@ contract WildcatMarket is
     asset.safeTransferFrom(msg.sender, address(this), amount);
     updateState();
     
-    emit MarketRepayment(amount, block.timestamp);
+    emit MarketRepayment(msg.sender, amount, block.timestamp);
   }
 
   /**

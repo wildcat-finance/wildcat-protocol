@@ -96,7 +96,7 @@ interface IMarketEventsAndErrors {
 
   event Borrow(uint256 assetAmount);
 
-  event MarketRepayment(uint256 assetAmount, uint256 timestamp);
+  event MarketRepayment(address indexed account, uint256 assetAmount, uint256 timestamp);
 
   event MarketClosed(uint256 timestamp);
 
