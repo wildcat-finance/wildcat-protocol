@@ -135,7 +135,7 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     sanctionsSentinel.overrideSanction(alice);
 
     vm.expectEmit(address(market)); // this line causing the test fail
-    emit AuthorizationStatusUpdated(alice, AuthRole.Null);
+    emit AuthorizationStatusUpdated(alice, AuthRole.WithdrawOnly);
     market.stunningReversal(alice);
     assertEq(uint(market.getAccountRole(alice)), uint(AuthRole.WithdrawOnly), 'account role should be WithdrawOnly');
   }
