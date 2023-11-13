@@ -59,7 +59,7 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
       sentinel: address(sanctionsSentinel),
       maxTotalSupply: uint128(_maxAmount()),
       protocolFeeBips: DefaultProtocolFeeBips,
-      annualInterestBips: 10000,
+      annualInterestBips: 0,
       delinquencyFeeBips: DefaultDelinquencyFee,
       withdrawalBatchDuration: 0,
       delinquencyGracePeriod: DefaultGracePeriod,
@@ -108,7 +108,8 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
   function _burn(address from, uint256 amount) internal override {
     vm.prank(from);
     WildcatMarket(address(token)).queueWithdrawal(amount);
-    WildcatMarket(address(token)).executeWithdrawal(from, uint32(block.timestamp));
+    VmUtils.fastForward(1);
+    WildcatMarket(address(token)).executeWithdrawal(from, uint32(block.timestamp - 1));
   }
 
   function testTransferNullAmount() external {
