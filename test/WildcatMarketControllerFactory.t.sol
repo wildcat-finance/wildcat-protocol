@@ -37,7 +37,7 @@ contract WildcatMarketControllerFactoryTest is Test {
   }
 
   function _expectRevertInvalidConstraints() internal {
-    vm.expectRevert(WildcatMarketControllerFactory.InvalidConstraints.selector);
+    vm.expectRevert(IWildcatMarketControllerFactory.InvalidConstraints.selector);
     new WildcatMarketControllerFactory(address(archController), address(0), constraints);
     _resetConstraints();
   }

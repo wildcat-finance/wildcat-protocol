@@ -47,12 +47,17 @@ contract Test is ForgeTest, Prankster {
     archController.registerControllerFactory(address(controllerFactory));
   }
 
+  event NewController(address borrower, address controller);
+
   function deployController(
     address borrower,
     bool authorizeAll,
     bool disableConstraints
   ) internal asSelf {
     archController.registerBorrower(borrower);
+    address expectedController = controllerFactory.computeControllerAddress(borrower);
+    vm.expectEmit(address(controllerFactory));
+    emit NewController(borrower, expectedController);
     startPrank(borrower);
     MockController _controller = MockController(controllerFactory.deployController());
     assertTrue(
@@ -73,7 +78,21 @@ contract Test is ForgeTest, Prankster {
     controller = _controller;
   }
 
+  event UpdateProtocolFeeConfiguration(
+    address feeRecipient,
+    uint16 protocolFeeBips,
+    address originationFeeAsset,
+    uint256 originationFeeAmount
+  );
+
   function updateFeeConfiguration(MarketParameters memory parameters) internal asSelf {
+    vm.expectEmit(address(controllerFactory));
+    emit UpdateProtocolFeeConfiguration(
+      parameters.feeRecipient,
+      parameters.protocolFeeBips,
+      address(0),
+      0
+    );
     controllerFactory.setProtocolFeeConfiguration(
       parameters.feeRecipient,
       address(0),
@@ -82,7 +101,9 @@ contract Test is ForgeTest, Prankster {
     );
   }
 
-  function deployMarket(MarketParameters memory parameters) internal asAccount(parameters.borrower) {
+  function deployMarket(
+    MarketParameters memory parameters
+  ) internal asAccount(parameters.borrower) {
     updateFeeConfiguration(parameters);
     market = WildcatMarket(
       controller.deployMarket(
