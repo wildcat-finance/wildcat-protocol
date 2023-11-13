@@ -127,10 +127,8 @@ contract WildcatMarketConfig is WildcatMarketBase {
     Account memory account = _getAccount(_account);
     if (_isAuthorized) {
       account.approval = AuthRole.DepositAndWithdraw;
-    } else {
-      if (account.approval == AuthRole.DepositAndWithdraw) {
-        account.approval = AuthRole.WithdrawOnly;
-      }
+    } else if (account.approval == AuthRole.DepositAndWithdraw) {
+      account.approval = AuthRole.WithdrawOnly;
     }
     _accounts[_account] = account;
     _writeState(state);
