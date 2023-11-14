@@ -5,37 +5,41 @@ import './WildcatStructsAndEnums.sol';
 import './IWildcatMarketControllerEventsAndErrors.sol';
 
 interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
-  // Returns immutable controller factory
-  function controllerFactory() external view returns (address);
-
-  // Returns immutable market factory
-  function marketFactory() external view returns (address);
-
   // Returns immutable arch-controller
   function archController() external view returns (address);
 
+  // Returns immutable controller factory
+  function controllerFactory() external view returns (address);
+
   // Returns immutable borrower address
   function borrower() external view returns (address);
+
+  // Returns immutable sentinel address
+  function sentinel() external view returns (address);
+
+  function marketInitCodeStorage() external view returns (address);
+
+  function marketInitCodeHash() external view returns (uint256);
 
   /**
    * @dev Returns immutable protocol fee configuration for new markets.
    *      Queried from the controller factory.
    *
    * @return feeRecipient         feeRecipient to use in new markets
-   * @return protocolFeeBips      protocolFeeBips to use in new markets
    * @return originationFeeAsset  Asset used to pay fees for new market
    *                              deployments
    * @return originationFeeAmount Amount of originationFeeAsset paid
    *                              for new market deployments
+   * @return protocolFeeBips      protocolFeeBips to use in new markets
    */
   function getProtocolFeeConfiguration()
     external
     view
     returns (
       address feeRecipient,
-      uint16 protocolFeeBips,
       address originationFeeAsset,
-      uint256 originationFeeAmount
+      uint80 originationFeeAmount,
+      uint16 protocolFeeBips
     );
 
   /**
@@ -85,6 +89,27 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    *      status.
    */
   function updateLenderAuthorization(address lender, address[] memory markets) external;
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Market Registry                              */
+  /* -------------------------------------------------------------------------- */
+
+  function isControlledMarket(address market) external view returns (bool);
+
+  function getControlledMarkets() external view returns (address[] memory);
+
+  function getControlledMarkets(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory arr);
+
+  function getControlledMarketsCount() external view returns (uint256);
+
+  function computeMarketAddress(
+    address asset,
+    string memory namePrefix,
+    string memory symbolPrefix
+  ) external view returns (address);
 
   /* -------------------------------------------------------------------------- */
   /*                               Market Controls                               */
