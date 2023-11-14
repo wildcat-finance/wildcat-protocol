@@ -535,8 +535,8 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
       return;
     }
 
-    uint104 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity).toUint104();
-    uint104 scaledAmountBurned = uint104(MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed));
+    uint256 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity);
+    uint104 scaledAmountBurned = MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed).toUint104();
     uint128 normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
 
     batch.scaledAmountBurned += scaledAmountBurned;
@@ -559,13 +559,13 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     MarketState memory state,
     uint256 availableLiquidity
   ) internal pure {
-    uint104 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity).toUint104();
     uint104 scaledAmountOwed = batch.scaledTotalAmount - batch.scaledAmountBurned;
     // Do nothing if batch is already paid
     if (scaledAmountOwed == 0) {
       return;
     }
-    uint104 scaledAmountBurned = uint104(MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed));
+    uint256 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity);
+    uint104 scaledAmountBurned = MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed).toUint104();
     uint128 normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
 
     batch.scaledAmountBurned += scaledAmountBurned;
