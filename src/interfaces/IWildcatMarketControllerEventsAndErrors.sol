@@ -49,14 +49,25 @@ interface IWildcatMarketControllerEventsAndErrors {
 
   event MarketDeployed(
     address indexed market,
+    string name,
+    string symbol,
     address asset,
     uint256 maxTotalSupply,
     uint256 annualInterestBips,
     uint256 delinquencyFeeBips,
     uint256 withdrawalBatchDuration,
     uint256 reserveRatioBips,
-    uint256 delinquencyGracePeriod,
-    string name,
-    string symbol
+    uint256 delinquencyGracePeriod
+  );
+
+  event TemporaryExcessReserveRatioActivated(
+    address indexed market,
+    uint256 originalReserveRatioBips,
+    uint256 temporaryReserveRatioBips,
+    uint256 temporaryReserveRatioExpiry
+  );
+
+  event TemporaryExcessReserveRatioExpired(
+    address indexed market
   );
 }
