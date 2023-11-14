@@ -7,7 +7,7 @@ import './wrappers/LibStoredInitCodeExternal.sol';
 contract Undeployable {
   constructor() {
     assembly {
-      return(0, 30000)
+      revert(0, 0)
     }
   }
 }
