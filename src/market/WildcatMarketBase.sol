@@ -362,7 +362,8 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
       uint256 expiry = state.pendingWithdrawalExpiry;
       // Only accrue interest if time has passed since last update.
       // This will only be false if withdrawalBatchDuration is 0.
-      if (expiry != state.lastInterestAccruedTimestamp) {
+      uint32 lastInterestAccruedTimestamp = state.lastInterestAccruedTimestamp;
+      if (expiry != lastInterestAccruedTimestamp) {
         (uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
           .updateScaleFactorAndFees(
             protocolFeeBips,
@@ -371,7 +372,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
             expiry
           );
         emit InterestAndFeesAccrued(
-          state.lastInterestAccruedTimestamp,
+          lastInterestAccruedTimestamp,
           expiry,
           state.scaleFactor,
           baseInterestRay,
@@ -381,8 +382,9 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
       }
       _processExpiredWithdrawalBatch(state);
     }
+    uint32 lastInterestAccruedTimestamp = state.lastInterestAccruedTimestamp;
     // Apply interest and fees accrued since last update (expiry or previous tx)
-    if (block.timestamp != state.lastInterestAccruedTimestamp) {
+    if (block.timestamp != lastInterestAccruedTimestamp) {
       (uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
         .updateScaleFactorAndFees(
           protocolFeeBips,
@@ -391,7 +393,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
           block.timestamp
         );
       emit InterestAndFeesAccrued(
-        state.lastInterestAccruedTimestamp,
+        lastInterestAccruedTimestamp,
         block.timestamp,
         state.scaleFactor,
         baseInterestRay,
@@ -520,7 +522,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     if (scaledAmountOwed == 0) {
       return;
     }
-    
+
     uint104 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity).toUint104();
     uint104 scaledAmountBurned = uint104(MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed));
     uint128 normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
