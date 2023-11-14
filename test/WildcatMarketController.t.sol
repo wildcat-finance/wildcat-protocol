@@ -143,6 +143,25 @@ contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketController
     }
   }
 
+  function test_getProtocolFeeConfiguration() external {
+    (
+      address feeRecipient,
+      address originationFeeAsset,
+      uint80 originationFeeAmount,
+      uint16 protocolFeeBips
+    ) = controller.getProtocolFeeConfiguration();
+    (
+      address _feeRecipient,
+      address _originationFeeAsset,
+      uint80 _originationFeeAmount,
+      uint16 _protocolFeeBips
+    ) = controllerFactory.getProtocolFeeConfiguration();
+    assertEq(feeRecipient, _feeRecipient, 'feeRecipient');
+    assertEq(originationFeeAsset, _originationFeeAsset, 'originationFeeAsset');
+    assertEq(originationFeeAmount, _originationFeeAmount, 'originationFeeAmount');
+    assertEq(protocolFeeBips, _protocolFeeBips, 'protocolFeeBips');
+  }
+
   function _callDeployMarket(
     address from
   ) internal asAccount(from) returns (address marketAddress) {
@@ -167,6 +186,71 @@ contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketController
         'arch controller does not recognize market'
       );
     }
+  }
+
+  function test_updateLenderAuthorization_NotControlledMarket() external asAccount(borrower) {
+    address[] memory markets = new address[](1);
+    markets[0] = address(1);
+    vm.expectRevert(NotControlledMarket.selector);
+    controller.updateLenderAuthorization(address(1), markets);
+  }
+
+  function test_updateLenderAuthorization() external asAccount(borrower) {
+    address[] memory markets = new address[](1);
+    markets[0] = address(market);
+    _authorizeLender(bob);
+    vm.expectEmit(address(market));
+    emit IMarketEventsAndErrors.AuthorizationStatusUpdated(bob, AuthRole.DepositAndWithdraw);
+    controller.updateLenderAuthorization(bob, markets);
+
+    _deauthorizeLender(bob);
+    vm.expectEmit(address(market));
+    emit IMarketEventsAndErrors.AuthorizationStatusUpdated(bob, AuthRole.WithdrawOnly);
+    controller.updateLenderAuthorization(bob, markets);
+  }
+
+  function test_closeMarket() external asAccount(borrower) {
+    vm.expectEmit(address(market));
+    emit IMarketEventsAndErrors.MarketClosed(block.timestamp);
+    controller.closeMarket(address(market));
+  }
+
+  function test_closeMarket_NotBorrower() external {
+    vm.expectRevert(CallerNotBorrower.selector);
+    controller.closeMarket(address(market));
+  }
+
+  function test_closeMarket_NotControlledMarket() external asAccount(borrower) {
+    vm.expectRevert(NotControlledMarket.selector);
+    controller.closeMarket(address(1));
+  }
+
+  function test_closeMarket_MarketAlreadyClosed() external asAccount(borrower) {
+    controller.closeMarket(address(market));
+    vm.expectRevert(MarketAlreadyClosed.selector);
+    controller.closeMarket(address(market));
+  }
+
+  function test_setMaxTotalSupply() external asAccount(borrower) {
+    vm.expectEmit(address(market));
+    emit IMarketEventsAndErrors.MaxTotalSupplyUpdated(1e18);
+    controller.setMaxTotalSupply(address(market), 1e18);
+  }
+
+  function test_setMaxTotalSupply_NotBorrower() external {
+    vm.expectRevert(CallerNotBorrower.selector);
+    controller.setMaxTotalSupply(address(market), 0);
+  }
+
+  function test_setMaxTotalSupply_NotControlledMarket() external asAccount(borrower) {
+    vm.expectRevert(NotControlledMarket.selector);
+    controller.setMaxTotalSupply(address(1), 0);
+  }
+
+  function test_setMaxTotalSupply_CapacityChangeOnClosedMarket() external asAccount(borrower) {
+    controller.closeMarket(address(market));
+    vm.expectRevert(CapacityChangeOnClosedMarket.selector);
+    controller.setMaxTotalSupply(address(market), 0);
   }
 
   function test_MarketSet() external {
