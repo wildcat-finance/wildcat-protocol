@@ -261,6 +261,18 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     return currentState().accruedProtocolFees;
   }
 
+  function totalDebts() external view nonReentrantView returns (uint256) {
+    return currentState().totalDebts();
+  }
+
+  function outstandingDebt() external view nonReentrantView returns (uint256) {
+    return currentState().totalDebts().satSub(totalAssets());
+  }
+
+  function delinquentDebt() external view nonReentrantView returns (uint256) {
+    return currentState().liquidityRequired().satSub(totalAssets());
+  }
+
   /**
    * @dev Returns the state of the market as of the last update.
    */
