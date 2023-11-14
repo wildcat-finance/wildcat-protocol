@@ -4,6 +4,14 @@ pragma solidity >=0.8.19;
 import { Test } from 'forge-std/Test.sol';
 import './wrappers/LibStoredInitCodeExternal.sol';
 
+contract Undeployable {
+  constructor() {
+    assembly {
+      return(0, 30000)
+    }
+  }
+}
+
 contract LibStoredInitCodeTest is Test {
   LibStoredInitCodeExternal internal immutable lib = new LibStoredInitCodeExternal();
 
@@ -91,6 +99,13 @@ contract LibStoredInitCodeTest is Test {
     assertEq(deployed.balance, 1e18);
   }
 
+  function test_createWithStoredInitCode_DeploymentFailed(bytes32 salt) external {
+    address initCodeStorage = lib.deployInitCode(type(Undeployable).creationCode);
+
+    vm.expectRevert(LibStoredInitCode.DeploymentFailed.selector);
+    lib.createWithStoredInitCode(initCodeStorage);
+  }
+
   // ===================================================================== //
   //              create2WithStoredInitCode(address,bytes32)               //
   // ===================================================================== //
@@ -109,6 +124,16 @@ contract LibStoredInitCodeTest is Test {
         uint160(uint256(keccak256(abi.encodePacked(uint168(create2Prefix), salt, initCodeHash))))
       )
     );
+  }
+
+  function test_create2WithStoredInitCode_DeploymentFailed(bytes32 salt) external {
+    uint256 create2Prefix = lib.getCreate2Prefix(address(lib));
+    address initCodeStorage = lib.deployInitCode(type(TestContract).creationCode);
+    uint256 initCodeHash = uint256(keccak256(type(TestContract).creationCode));
+
+    lib.create2WithStoredInitCode(initCodeStorage, salt);
+    vm.expectRevert(LibStoredInitCode.DeploymentFailed.selector);
+    lib.create2WithStoredInitCode(initCodeStorage, salt);
   }
 
   // ===================================================================== //

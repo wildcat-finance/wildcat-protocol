@@ -3,6 +3,7 @@ pragma solidity >=0.8.20;
 
 library LibStoredInitCode {
   error InitCodeDeploymentFailed();
+  error DeploymentFailed();
 
   function deployInitCode(bytes memory data) internal returns (address initCodeStorage) {
     assembly {
@@ -93,6 +94,10 @@ library LibStoredInitCode {
       let initCodeSize := sub(extcodesize(initCodeStorage), 1)
       extcodecopy(initCodeStorage, initCodePointer, 1, initCodeSize)
       deployment := create(value, initCodePointer, initCodeSize)
+      if iszero(deployment) {
+        mstore(0x00, 0x30116425) // DeploymentFailed()
+        revert(0x1c, 0x04)
+      }
     }
   }
 
