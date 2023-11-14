@@ -146,7 +146,7 @@ contract WithdrawalsTest is BaseMarketTest {
     _deposit(alice, userBalance);
     _requestWithdrawal(alice, withdrawalAmount);
     uint256 expiry = block.timestamp + parameters.withdrawalBatchDuration;
-    fastForward(parameters.withdrawalBatchDuration);
+    fastForward(parameters.withdrawalBatchDuration + 1);
     MarketState memory state = pendingState();
     updateState(state);
     uint256 previousBalance = asset.balanceOf(alice);
@@ -165,7 +165,7 @@ contract WithdrawalsTest is BaseMarketTest {
     _deposit(alice, userBalance);
     _requestWithdrawal(alice, withdrawalAmount);
     uint256 expiry = block.timestamp + parameters.withdrawalBatchDuration;
-    fastForward(parameters.withdrawalBatchDuration);
+    fastForward(parameters.withdrawalBatchDuration + 1);
     MarketState memory state = pendingState();
     updateState(state);
     uint256 previousBalance = asset.balanceOf(alice);
@@ -180,14 +180,14 @@ contract WithdrawalsTest is BaseMarketTest {
   function test_executeWithdrawal_Sanctioned() external {
     _deposit(alice, 1e18);
     _requestWithdrawal(alice, 1e18);
-    fastForward(parameters.withdrawalBatchDuration);
+    fastForward(parameters.withdrawalBatchDuration + 1);
     sanctionsSentinel.sanction(alice);
     address escrow = sanctionsSentinel.getEscrowAddress(borrower, alice, address(asset));
     vm.expectEmit(address(asset));
     emit Transfer(address(market), escrow, 1e18);
     vm.expectEmit(address(market));
-    emit SanctionedAccountWithdrawalSentToEscrow(alice, escrow, uint32(block.timestamp), 1e18);
-    market.executeWithdrawal(alice, uint32(block.timestamp));
+    emit SanctionedAccountWithdrawalSentToEscrow(alice, escrow, uint32(block.timestamp - 1), 1e18);
+    market.executeWithdrawal(alice, uint32(block.timestamp-1));
   }
 
   function test_processUnpaidWithdrawalBatch_NoUnpaidBatches() external {
@@ -282,7 +282,7 @@ contract WithdrawalsTest is BaseMarketTest {
     AccountWithdrawalStatus memory status = market.getAccountWithdrawalStatus(alice, expiry);
     assertEq(status.scaledAmount, 1e18);
     assertEq(status.normalizedAmountWithdrawn, 0);
-    fastForward(parameters.withdrawalBatchDuration);
+    fastForward(parameters.withdrawalBatchDuration + 1);
     market.updateState();
     market.executeWithdrawal(alice, expiry);
     status = market.getAccountWithdrawalStatus(alice, expiry);
