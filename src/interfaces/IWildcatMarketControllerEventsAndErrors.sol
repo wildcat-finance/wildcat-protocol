@@ -67,6 +67,17 @@ interface IWildcatMarketControllerEventsAndErrors {
     uint256 temporaryReserveRatioExpiry
   );
 
+  event TemporaryExcessReserveRatioUpdated(
+    address indexed market,
+    uint256 originalReserveRatioBips,
+    uint256 temporaryReserveRatioBips,
+    uint256 temporaryReserveRatioExpiry
+  );
+
+  event TemporaryExcessReserveRatioCanceled(
+    address indexed market
+  );
+
   event TemporaryExcessReserveRatioExpired(
     address indexed market
   );

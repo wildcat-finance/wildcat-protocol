@@ -112,7 +112,7 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   ) external view returns (address);
 
   /* -------------------------------------------------------------------------- */
-  /*                               Market Controls                               */
+  /*                               Market Controls                              */
   /* -------------------------------------------------------------------------- */
 
   /**
@@ -143,7 +143,7 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
 
   function temporaryExcessReserveRatio(
     address
-  ) external view returns (uint128 reserveRatioBips, uint128 expiry);
+  ) external view returns (uint16 originalAnnualInterestBips, uint16 originalReserveRatioBips, uint32 expiry);
 
   /**
    * @dev Deploys a new instance of the market through the market factory

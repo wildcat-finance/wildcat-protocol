@@ -11,8 +11,9 @@ import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 
 struct TemporaryReserveRatio {
-  uint128 reserveRatioBips;
-  uint128 expiry;
+  uint16 originalAnnualInterestBips;
+  uint16 originalReserveRatioBips;
+  uint32 expiry;
 }
 
 struct TmpMarketParameterStorage {
@@ -518,7 +519,7 @@ contract WildcatMarketController is IWildcatMarketController {
   }
 
   /**
-   * @dev Sets the maximum total supply (capacity) of a market - this only limits 
+   * @dev Sets the maximum total supply (capacity) of a market - this only limits
    *      deposits and does not affect interest accrual.
    *
    *      Can not be set lower than the market's current total supply.
@@ -533,26 +534,44 @@ contract WildcatMarketController is IWildcatMarketController {
     WildcatMarket(market).setMaxTotalSupply(maxTotalSupply);
   }
 
-  /** 
-  * @dev Returns the difference between two APR rates (in bips).
-  * Utilises relative difference formula but avoids absolute value
-  * since uint is unsigned - requires that newRate < oldRate.
-  */
-  function aprRateDiff(
-    uint256 oldRate,
-    uint256 newRate
-  ) public pure returns (uint256) {
-    require(newRate < oldRate);
-    return MathUtils.rayDiv(
-             MathUtils.rayMul(10000, MathUtils.satSub(oldRate, newRate)),
-             oldRate
-           );
+  /**
+   * @dev Returns the new temporary reserve ratio for a given interest rate
+   *      change. This is calculated as double the relative difference between
+   *      the old and new APR rates (in bips), bounded to a maximum of 100%.
+   *      If this value is lower than the existing reserve ratio, the existing
+   *      reserve ratio is returned instead.
+   */
+  function _calculateTemporaryReserveRatioBips(
+    uint256 annualInterestBips,
+    uint256 originalAnnualInterestBips,
+    uint256 originalReserveRatioBips
+  ) internal pure returns (uint16 temporaryReserveRatioBips) {
+    // Calculate double the relative reduction in the interest rate in bips,
+    // bound to a maximum of 100%
+    uint256 doubleRelativeDiff = MathUtils.mulDiv(
+      20000,
+      originalAnnualInterestBips - annualInterestBips,
+      originalAnnualInterestBips
+    );
+    uint256 boundRelativeDiff = MathUtils.min(10000, doubleRelativeDiff);
+    // If the bound relative diff is lower than the existing reserve ratio, return that instead.
+    temporaryReserveRatioBips = uint16(MathUtils.max(boundRelativeDiff, originalReserveRatioBips));
   }
 
   /**
    * @dev Modify the interest rate for a market.
-   * If the new interest rate is lower than the current interest rate,
-   * the reserve ratio is set to 90% for the next two weeks.
+   *
+   *      The original interest rate and reserve ratio are set to those
+   *      stored for the market if there is already a temporary reserve
+   *      ratio; otherwise, they are the current market values.
+   *
+   *      If the new interest rate is lower than the original, the reserve
+   *      ratio is set to the maximum of the original reserve ratio and
+   *      double the relative reduction in the interest rate (in bips),
+   *      not exceeding 100%.
+   *
+   *      If the new interest rate is higher than the original and there
+   *      is an existing temporary reserve ratio, it is canceled.
    */
   function setAnnualInterestBips(
     address market,
@@ -569,41 +588,61 @@ contract WildcatMarketController is IWildcatMarketController {
       AnnualInterestBipsOutOfBounds.selector
     );
 
-    // If borrower is reducing the interest rate, potentially increase the
-    // reserve ratio for the next two weeks.
-    uint256 oldRate = WildcatMarket(market).annualInterestBips();
-    if (annualInterestBips < oldRate) {
-      TemporaryReserveRatio storage tmp = temporaryExcessReserveRatio[market];
+    // Get the existing temporary reserve ratio from storage, if any
+    TemporaryReserveRatio memory tmp = temporaryExcessReserveRatio[market];
 
-      uint256 originalReserveRatioBips;
-      if (tmp.expiry == 0) {
-        originalReserveRatioBips = WildcatMarket(market).reserveRatioBips();
-        tmp.reserveRatioBips = uint128(WildcatMarket(market).reserveRatioBips());
-        
-        // Relative difference between old rate and new rate
-        uint256 rateDiff = MathUtils.max(
-          10000,
-          MathUtils.rayMul(2, aprRateDiff(oldRate, annualInterestBips))
-          );
-        uint16 newReserve = uint16(MathUtils.max(rateDiff, tmp.reserveRatioBips));
+    // If there is no temporary reserve ratio, use the current reserve ratio and interest
+    // rate from the market for the following calculations; otherwise, use the original
+    // values recorded.
+    (uint16 originalAnnualInterestBips, uint16 originalReserveRatioBips) = tmp.expiry == 0
+      ? (
+        uint16(WildcatMarket(market).annualInterestBips()),
+        uint16(WildcatMarket(market).reserveRatioBips())
+      )
+      : (tmp.originalAnnualInterestBips, tmp.originalReserveRatioBips);
 
-        // Adjust liquidity coverage for the next 2 weeks to double the relative
-        // difference between old and new rates if it exceeds old reserve ratio
-        // e.g. a 30% decrease from 10% to 7% implies a 60% reserve ratio
-        WildcatMarket(market).setReserveRatioBips(newReserve);
-      } else {
-        originalReserveRatioBips = tmp.reserveRatioBips;
-      }
-
-      uint256 expiry = block.timestamp + 2 weeks;
-      tmp.expiry = uint128(expiry);
-
-      emit TemporaryExcessReserveRatioActivated(
-        market,
-        originalReserveRatioBips,
-        9_000,
-        expiry
+    if (annualInterestBips < originalAnnualInterestBips) {
+      // If the new interest rate is lower than the original, calculate a temporarily
+      // increased reserve ratio as max(originalReserveRatio, min(2 * relativeReduction, 100%))
+      uint16 temporaryReserveRatioBips = _calculateTemporaryReserveRatioBips(
+        annualInterestBips,
+        originalAnnualInterestBips,
+        originalReserveRatioBips
       );
+      uint32 expiry = uint32(block.timestamp + 2 weeks);
+      if (tmp.expiry == 0) {
+        // If there is no existing temporary reserve ratio, store the current
+        // interest rate and reserve ratio as the original values.
+        emit TemporaryExcessReserveRatioActivated(
+          market,
+          originalReserveRatioBips,
+          temporaryReserveRatioBips,
+          expiry
+        );
+        tmp.originalAnnualInterestBips = originalAnnualInterestBips;
+        tmp.originalReserveRatioBips = originalReserveRatioBips;
+      } else {
+        // If the new interest rate is lower than the original but higher than the current
+        // interest rate, update the reserve ratio but leave the previous expiry.
+        if (annualInterestBips >= WildcatMarket(market).annualInterestBips()) {
+          expiry = tmp.expiry;
+        }
+        emit TemporaryExcessReserveRatioUpdated(
+          market,
+          originalReserveRatioBips,
+          temporaryReserveRatioBips,
+          expiry
+        );
+      }
+      tmp.expiry = expiry;
+      temporaryExcessReserveRatio[market] = tmp;
+      WildcatMarket(market).setReserveRatioBips(temporaryReserveRatioBips);
+    } else if (tmp.expiry != 0) {
+      // If there is a temporary reserve ratio and the new interest rate is greater
+      // than or equal to the original, reset the reserve ratio early.
+      emit TemporaryExcessReserveRatioCanceled(market);
+      delete temporaryExcessReserveRatio[market];
+      WildcatMarket(market).setReserveRatioBips(originalReserveRatioBips);
     }
 
     WildcatMarket(market).setAnnualInterestBips(annualInterestBips);
@@ -619,7 +658,7 @@ contract WildcatMarketController is IWildcatMarketController {
     }
 
     emit TemporaryExcessReserveRatioExpired(market);
-    WildcatMarket(market).setReserveRatioBips(uint256(tmp.reserveRatioBips).toUint16());
+    WildcatMarket(market).setReserveRatioBips(uint256(tmp.originalReserveRatioBips).toUint16());
     delete temporaryExcessReserveRatio[market];
   }
 
