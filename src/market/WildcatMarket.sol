@@ -143,6 +143,31 @@ contract WildcatMarket is
     emit Borrow(amount);
   }
 
+  function _repay(MarketState memory state, uint256 amount) internal {
+    if (amount == 0) {
+      revert NullRepayAmount();
+    }
+    if (state.isClosed) {
+      revert RepayToClosedMarket();
+    }
+    asset.safeTransferFrom(msg.sender, address(this), amount);
+    emit DebtRepaid(msg.sender, amount);
+  }
+
+  function repayOutstandingDebt() external nonReentrant {
+    MarketState memory state = _getUpdatedState();
+    uint256 outstandingDebt = state.totalDebts().satSub(totalAssets());
+    _repay(state, outstandingDebt);
+    _writeState(state);
+  }
+
+  function repayDelinquentDebt() external nonReentrant {
+    MarketState memory state = _getUpdatedState();
+    uint256 delinquentDebt = state.liquidityRequired().satSub(totalAssets());
+    _repay(state, delinquentDebt);
+    _writeState(state);
+  }
+
   /**
    * @dev Transfers funds from the caller to the market.
    *
@@ -150,18 +175,12 @@ contract WildcatMarket is
    *      repayments from the borrower. Do *not* use this function
    *      if you are a lender or an unrelated third party.
    *
-   *      Reverts if the market is closed.
+   *      Reverts if the market is closed or `amount` is 0.
    */
   function repay(uint256 amount) external nonReentrant {
     MarketState memory state = _getUpdatedState();
-    if (state.isClosed) {
-      revert RepayToClosedMarket();
-    }
-
-    asset.safeTransferFrom(msg.sender, address(this), amount);
-    updateState();
-    
-    emit DebtRepaid(msg.sender, amount);
+    _repay(state, amount);
+    _writeState(state);
   }
 
   /**
