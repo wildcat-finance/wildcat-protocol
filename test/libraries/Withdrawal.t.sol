@@ -14,9 +14,6 @@ contract WithdrawalTest is Test {
 
   using WithdrawalLibExternal for WithdrawalBatch;
 
-  event WithdrawalBatchCreated(uint256 expiry);
-  event WithdrawalQueued(uint256 expiry, address account, uint256 scaledAmount);
-
   function test_availableLiquidityForPendingBatch(
     uint128 totalAssets,
     uint104 scaledTotalPendingWithdrawals,
