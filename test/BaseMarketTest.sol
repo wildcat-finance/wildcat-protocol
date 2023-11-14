@@ -119,7 +119,7 @@ contract BaseMarketTest is Test, ExpectedStateTracker {
     .accountStatuses[state.pendingWithdrawalExpiry][from].scaledAmount += scaledAmount;
 
     // vm.expectEmit(address(market));
-    emit WithdrawalQueued(state.pendingWithdrawalExpiry, from, scaledAmount);
+    emit WithdrawalQueued(state.pendingWithdrawalExpiry, from, scaledAmount, amount);
 
     uint256 availableLiquidity = _availableLiquidityForPendingBatch(batch, state);
     if (availableLiquidity > 0) {

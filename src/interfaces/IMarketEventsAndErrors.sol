@@ -64,6 +64,8 @@ interface IMarketEventsAndErrors {
 
   error NullWithdrawalAmount();
 
+  error NullRepayAmount();
+
   error DepositToClosedMarket();
 
   error RepayToClosedMarket();
@@ -90,13 +92,17 @@ interface IMarketEventsAndErrors {
 
   event ReserveRatioBipsUpdated(uint256 reserveRatioBipsUpdated);
 
-  event SanctionedAccountAssetsSentToEscrow(address account, address escrow, uint256 amount);
+  event SanctionedAccountAssetsSentToEscrow(
+    address indexed account,
+    address escrow,
+    uint256 amount
+  );
 
   event Deposit(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
   event Borrow(uint256 assetAmount);
 
-  event DebtRepaid(address indexed account, uint256 assetAmount);
+  event DebtRepaid(address indexed from, uint256 assetAmount);
 
   event MarketClosed(uint256 timestamp);
 
@@ -110,7 +116,7 @@ interface IMarketEventsAndErrors {
     uint256 scaleFactor,
     uint256 baseInterestRay,
     uint256 delinquencyFeeRay,
-    uint256 protocolFee
+    uint256 protocolFees
   );
 
   event AuthorizationStatusUpdated(address indexed account, AuthRole role);
@@ -120,7 +126,7 @@ interface IMarketEventsAndErrors {
   // =====================================================================//
 
   event WithdrawalBatchExpired(
-    uint256 expiry,
+    uint256 indexed expiry,
     uint256 scaledTotalAmount,
     uint256 scaledAmountBurned,
     uint256 normalizedAmountPaid
@@ -129,27 +135,36 @@ interface IMarketEventsAndErrors {
   /**
    * @dev Emitted when a new withdrawal batch is created.
    */
-  event WithdrawalBatchCreated(uint256 expiry);
+  event WithdrawalBatchCreated(uint256 indexed expiry);
 
   /**
    * @dev Emitted when a withdrawal batch is paid off.
    */
-  event WithdrawalBatchClosed(uint256 expiry);
+  event WithdrawalBatchClosed(uint256 indexed expiry);
 
   event WithdrawalBatchPayment(
-    uint256 expiry,
+    uint256 indexed expiry,
     uint256 scaledAmountBurned,
     uint256 normalizedAmountPaid
   );
 
-  event WithdrawalQueued(uint256 expiry, address account, uint256 scaledAmount);
+  event WithdrawalQueued(
+    uint256 indexed expiry,
+    address indexed account,
+    uint256 scaledAmount,
+    uint256 normalizedAmount
+  );
 
-  event WithdrawalExecuted(uint256 expiry, address account, uint256 normalizedAmount);
+  event WithdrawalExecuted(
+    uint256 indexed expiry,
+    address indexed account,
+    uint256 normalizedAmount
+  );
 
   event Withdrawal(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
   event SanctionedAccountWithdrawalSentToEscrow(
-    address account,
+    address indexed account,
     address escrow,
     uint32 expiry,
     uint256 amount
