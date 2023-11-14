@@ -41,11 +41,12 @@ contract WildcatMarketTest is BaseMarketTest {
     setUp();
     _deposit(alice, 1e18);
     _requestWithdrawal(alice, 1e18);
+    uint32 timestamp = uint32(block.timestamp);
     uint32 expiry = previousState.pendingWithdrawalExpiry;
     fastForward(1 days);
     MarketState memory state = pendingState();
     vm.expectEmit(address(market));
-    emit InterestAndFeesAccrued(state.lastInterestAccruedTimestamp, expiry, 1.001e27, 1e24, 0, 0);
+    emit InterestAndFeesAccrued(timestamp, expiry, 1.001e27, 1e24, 0, 0);
     vm.expectEmit(address(market));
     emit WithdrawalBatchExpired(expiry, 1e18, 1e18, 1e18);
     vm.expectEmit(address(market));
