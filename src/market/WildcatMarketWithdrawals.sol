@@ -106,7 +106,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     batch.scaledTotalAmount += scaledAmount;
     state.scaledPendingWithdrawals += scaledAmount;
 
-    emit WithdrawalQueued(expiry, msg.sender, scaledAmount);
+    emit WithdrawalQueued(expiry, msg.sender, scaledAmount, amount);
 
     // Burn as much of the withdrawal batch as possible with available liquidity.
     uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
