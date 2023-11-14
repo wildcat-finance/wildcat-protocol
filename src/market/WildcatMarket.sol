@@ -24,7 +24,7 @@ contract WildcatMarket is
    *      one exists and has expired, then update the market's
    *      delinquency status.
    */
-  function updateState() public nonReentrant {
+  function updateState() external nonReentrant {
     MarketState memory state = _getUpdatedState();
     _writeState(state);
   }
