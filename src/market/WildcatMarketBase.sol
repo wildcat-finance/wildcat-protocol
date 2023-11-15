@@ -371,15 +371,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     state = _state;
     // Handle expired withdrawal batch
     if (state.hasPendingExpiredBatch()) {
-      uint32 expiry = state.pendingWithdrawalExpiry;
-
-      WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
-
-      uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
-      if (availableLiquidity > 0) {
-        _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
-      }
-
+      uint256 expiry = state.pendingWithdrawalExpiry;
       // Only accrue interest if time has passed since last update.
       // This will only be false if withdrawalBatchDuration is 0.
       uint32 lastInterestAccruedTimestamp = state.lastInterestAccruedTimestamp;
