@@ -261,9 +261,9 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory , Sph
     parameters.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
     parameters.minimumAnnualInterestBips = MinimumAnnualInterestBips;
     parameters.maximumAnnualInterestBips = MaximumAnnualInterestBips;
-    parameters.spherex_admin = SpherexAdmin();
-    parameters.spherex_operator = SpherexOperator();
-    parameters.spherex_engine = SpherexEngine();
+    parameters.spherex_admin = sphereXAdmin();
+    parameters.spherex_operator = sphereXOperator();
+    parameters.spherex_engine = sphereXEngine();
   }
 
   /**

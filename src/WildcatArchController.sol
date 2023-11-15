@@ -2,7 +2,7 @@
 pragma solidity >=0.8.20;
 
 import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
-import 'solady/auth/Ownable.sol';
+import './Ownable.sol';
 import './libraries/MathUtils.sol'; 
 import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
  
