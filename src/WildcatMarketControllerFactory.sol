@@ -341,6 +341,7 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory , Sph
       reserveRatioBips,
       delinquencyGracePeriod
     );
+    _addAllowedSenderOnChain(market);
   }
 
   function computeControllerAddress(address borrower) external view override returns (address) {

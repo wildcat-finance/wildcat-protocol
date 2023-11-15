@@ -385,7 +385,6 @@ contract WildcatMarketController is IWildcatMarketController , SphereXProtected 
 
     IWildcatArchController(archController).registerMarket(market);
     _controlledMarkets.add(market);
-    _addAllowedSenderOnChain(market);
 
     _resetTmpMarketParameters();
 
