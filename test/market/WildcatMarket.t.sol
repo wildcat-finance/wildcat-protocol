@@ -41,11 +41,12 @@ contract WildcatMarketTest is BaseMarketTest {
     setUp();
     _deposit(alice, 1e18);
     _requestWithdrawal(alice, 1e18);
+    uint32 timestamp = uint32(block.timestamp);
     uint32 expiry = previousState.pendingWithdrawalExpiry;
     fastForward(1 days);
     MarketState memory state = pendingState();
     vm.expectEmit(address(market));
-    emit ScaleFactorUpdated(1.001e27, 1e24, 0, 0);
+    emit InterestAndFeesAccrued(timestamp, expiry, 1.001e27, 1e24, 0, 0);
     vm.expectEmit(address(market));
     emit WithdrawalBatchExpired(expiry, 1e18, 1e18, 1e18);
     vm.expectEmit(address(market));
@@ -242,5 +243,66 @@ contract WildcatMarketTest is BaseMarketTest {
     assertEq(unpaidBatches.length, 1);
     vm.expectRevert(IMarketEventsAndErrors.CloseMarketWithUnpaidWithdrawals.selector);
     market.closeMarket();
+  }
+
+  /* ========================================================================== */
+  /*                                   repay()                                  */
+  /* ========================================================================== */
+
+  function test_repay() external {
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+    asset.mint(address(this), 2e17);
+    asset.approve(address(market), 2e17);
+    vm.expectEmit(address(market));
+    emit DebtRepaid(address(this), 2e17);
+    market.repay(2e17);
+  }
+
+  function test_repay_NullRepayAmount() external {
+    vm.expectRevert(IMarketEventsAndErrors.NullRepayAmount.selector);
+    market.repay(0);
+  }
+
+  function test_repay_RepayToClosedMarket() external {
+    vm.prank(address(controller));
+    market.closeMarket();
+    vm.expectRevert(IMarketEventsAndErrors.RepayToClosedMarket.selector);
+    market.repay(1e18);
+  }
+
+  /* ========================================================================== */
+  /*                           repayOutstandingDebt()                           */
+  /* ========================================================================== */
+
+  function test_repayOutstandingDebt() external {
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+    asset.mint(address(this), 8e17);
+    asset.approve(address(market), 8e17);
+    vm.expectEmit(address(market));
+    emit DebtRepaid(address(this), 8e17);
+    market.repayOutstandingDebt();
+  }
+
+  function test_repayOutstandingDebt_NullRepayAmount() external {
+    vm.expectRevert(IMarketEventsAndErrors.NullRepayAmount.selector);
+    market.repayOutstandingDebt();
+  }
+
+  /* ========================================================================== */
+  /*                            repayDelinquentDebt()                           */
+  /* ========================================================================== */
+
+  function test_repayDelinquentDebt() external {
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 2e17);// 20% of 8e17
+    asset.mint(address(this), 1.6e17);
+    asset.approve(address(market), 1.6e17);
+    vm.expectEmit(address(market));
+    emit DebtRepaid(address(this), 1.6e17);
+    market.repayDelinquentDebt();
+  }
+
+  function test_repayDelinquentDebt_NullRepayAmount() external {
+    vm.expectRevert(IMarketEventsAndErrors.NullRepayAmount.selector);
+    market.repayDelinquentDebt();
   }
 }

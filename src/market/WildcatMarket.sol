@@ -6,6 +6,7 @@ import './WildcatMarketBase.sol';
 import './WildcatMarketConfig.sol';
 import './WildcatMarketToken.sol';
 import './WildcatMarketWithdrawals.sol';
+import '../WildcatSanctionsSentinel.sol';
 
 contract WildcatMarket is
   WildcatMarketBase,
@@ -42,38 +43,45 @@ contract WildcatMarket is
   function depositUpTo(
     uint256 amount
   ) public virtual nonReentrant returns (uint256 /* actualAmount */) {
+
     // Get current state
     MarketState memory state = _getUpdatedState();
 
-    if (state.isClosed) {
-      revert DepositToClosedMarket();
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, msg.sender)) {
+      _blockAccount(state, msg.sender);
+      _writeState(state);
     }
+    else {
+      if (state.isClosed) {
+        revert DepositToClosedMarket();
+      }
 
-    // Reduce amount if it would exceed totalSupply
-    amount = MathUtils.min(amount, state.maximumDeposit());
+      // Reduce amount if it would exceed totalSupply
+      amount = MathUtils.min(amount, state.maximumDeposit());
 
-    // Scale the mint amount
-    uint104 scaledAmount = state.scaleAmount(amount).toUint104();
-    if (scaledAmount == 0) revert NullMintAmount();
+      // Scale the mint amount
+      uint104 scaledAmount = state.scaleAmount(amount).toUint104();
+      if (scaledAmount == 0) revert NullMintAmount();
 
-    // Transfer deposit from caller
-    asset.safeTransferFrom(msg.sender, address(this), amount);
+      // Transfer deposit from caller
+      asset.safeTransferFrom(msg.sender, address(this), amount);
 
-    // Cache account data and revert if not authorized to deposit.
-    Account memory account = _getAccountWithRole(msg.sender, AuthRole.DepositAndWithdraw);
-    account.scaledBalance += scaledAmount;
-    _accounts[msg.sender] = account;
+      // Cache account data and revert if not authorized to deposit.
+      Account memory account = _getAccountWithRole(msg.sender, AuthRole.DepositAndWithdraw);
+      account.scaledBalance += scaledAmount;
+      _accounts[msg.sender] = account;
 
-    emit Transfer(address(0), msg.sender, amount);
-    emit Deposit(msg.sender, amount, scaledAmount);
+      emit Transfer(address(0), msg.sender, amount);
+      emit Deposit(msg.sender, amount, scaledAmount);
 
-    // Increase supply
-    state.scaledTotalSupply += scaledAmount;
+      // Increase supply
+      state.scaledTotalSupply += scaledAmount;
 
-    // Update stored state
-    _writeState(state);
+      // Update stored state
+      _writeState(state);
 
-    return amount;
+      return amount;
+    }
   }
 
   /**
@@ -103,8 +111,8 @@ contract WildcatMarket is
       revert InsufficientReservesForFeeWithdrawal();
     }
     state.accruedProtocolFees -= withdrawableFees;
-    _writeState(state);
     asset.safeTransfer(feeRecipient, withdrawableFees);
+    _writeState(state);
     emit FeesCollected(withdrawableFees);
   }
 
@@ -117,6 +125,11 @@ contract WildcatMarket is
    *      Reverts if the market is closed.
    */
   function borrow(uint256 amount) external onlyBorrower nonReentrant {
+
+    if (WildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
+      revert BorrowWhileSanctioned();
+    }
+
     MarketState memory state = _getUpdatedState();
     if (state.isClosed) {
       revert BorrowFromClosedMarket();
@@ -125,9 +138,49 @@ contract WildcatMarket is
     if (amount > borrowable) {
       revert BorrowAmountTooHigh();
     }
-    _writeState(state);
     asset.safeTransfer(msg.sender, amount);
+    _writeState(state);
     emit Borrow(amount);
+  }
+
+  function _repay(MarketState memory state, uint256 amount) internal {
+    if (amount == 0) {
+      revert NullRepayAmount();
+    }
+    if (state.isClosed) {
+      revert RepayToClosedMarket();
+    }
+    asset.safeTransferFrom(msg.sender, address(this), amount);
+    emit DebtRepaid(msg.sender, amount);
+  }
+
+  function repayOutstandingDebt() external nonReentrant {
+    MarketState memory state = _getUpdatedState();
+    uint256 outstandingDebt = state.totalDebts().satSub(totalAssets());
+    _repay(state, outstandingDebt);
+    _writeState(state);
+  }
+
+  function repayDelinquentDebt() external nonReentrant {
+    MarketState memory state = _getUpdatedState();
+    uint256 delinquentDebt = state.liquidityRequired().satSub(totalAssets());
+    _repay(state, delinquentDebt);
+    _writeState(state);
+  }
+
+  /**
+   * @dev Transfers funds from the caller to the market.
+   *
+   *      Any payments made through this function are considered
+   *      repayments from the borrower. Do *not* use this function
+   *      if you are a lender or an unrelated third party.
+   *
+   *      Reverts if the market is closed or `amount` is 0.
+   */
+  function repay(uint256 amount) external nonReentrant {
+    MarketState memory state = _getUpdatedState();
+    _repay(state, amount);
+    _writeState(state);
   }
 
   /**
@@ -140,13 +193,19 @@ contract WildcatMarket is
    *      debts to the borrower.
    */
   function closeMarket() external onlyController nonReentrant {
-    MarketState memory state = _getUpdatedState();
-    state.annualInterestBips = 0;
-    state.isClosed = true;
-    state.reserveRatioBips = 0;
     if (_withdrawalData.unpaidBatches.length() > 0) {
       revert CloseMarketWithUnpaidWithdrawals();
     }
+
+    MarketState memory state = _getUpdatedState();
+
+    state.annualInterestBips = 0;
+    state.isClosed = true;
+    state.reserveRatioBips = 10000;
+    // Ensures that delinquency fee doesn't increase scale factor further
+    // as doing so would mean last lender in market couldn't fully redeem
+    state.timeDelinquent = 0;
+
     uint256 currentlyHeld = totalAssets();
     uint256 totalDebts = state.totalDebts();
     if (currentlyHeld < totalDebts) {

@@ -5,37 +5,41 @@ import './WildcatStructsAndEnums.sol';
 import './IWildcatMarketControllerEventsAndErrors.sol';
 
 interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
-  // Returns immutable controller factory
-  function controllerFactory() external view returns (address);
-
-  // Returns immutable market factory
-  function marketFactory() external view returns (address);
-
   // Returns immutable arch-controller
   function archController() external view returns (address);
 
+  // Returns immutable controller factory
+  function controllerFactory() external view returns (address);
+
   // Returns immutable borrower address
   function borrower() external view returns (address);
+
+  // Returns immutable sentinel address
+  function sentinel() external view returns (address);
+
+  function marketInitCodeStorage() external view returns (address);
+
+  function marketInitCodeHash() external view returns (uint256);
 
   /**
    * @dev Returns immutable protocol fee configuration for new markets.
    *      Queried from the controller factory.
    *
    * @return feeRecipient         feeRecipient to use in new markets
-   * @return protocolFeeBips      protocolFeeBips to use in new markets
    * @return originationFeeAsset  Asset used to pay fees for new market
    *                              deployments
    * @return originationFeeAmount Amount of originationFeeAsset paid
    *                              for new market deployments
+   * @return protocolFeeBips      protocolFeeBips to use in new markets
    */
   function getProtocolFeeConfiguration()
     external
     view
     returns (
       address feeRecipient,
-      uint16 protocolFeeBips,
       address originationFeeAsset,
-      uint256 originationFeeAmount
+      uint80 originationFeeAmount,
+      uint16 protocolFeeBips
     );
 
   /**
@@ -87,9 +91,43 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   function updateLenderAuthorization(address lender, address[] memory markets) external;
 
   /* -------------------------------------------------------------------------- */
-  /*                               Market Controls                               */
+  /*                               Market Registry                              */
   /* -------------------------------------------------------------------------- */
 
+  function isControlledMarket(address market) external view returns (bool);
+
+  function getControlledMarkets() external view returns (address[] memory);
+
+  function getControlledMarkets(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory arr);
+
+  function getControlledMarketsCount() external view returns (uint256);
+
+  function computeMarketAddress(
+    address asset,
+    string memory namePrefix,
+    string memory symbolPrefix
+  ) external view returns (address);
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Market Controls                              */
+  /* -------------------------------------------------------------------------- */
+
+  /**
+   * @dev Close a market, setting interest rate to zero and returning all
+   * outstanding debt.
+   */
+  function closeMarket(address market) external;
+
+    /**
+   * @dev Sets the maximum total supply (capacity) of a market - this only limits 
+   *      deposits and does not affect interest accrual.
+   *
+   *      Can not be set lower than the market's current total supply.
+   */
+  function setMaxTotalSupply(address market, uint256 maxTotalSupply) external;
   /**
    * @dev Modify the interest rate for a market.
    * If the new interest rate is lower than the current interest rate,
@@ -105,7 +143,7 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
 
   function temporaryExcessReserveRatio(
     address
-  ) external view returns (uint128 reserveRatioBips, uint128 expiry);
+  ) external view returns (uint16 originalAnnualInterestBips, uint16 originalReserveRatioBips, uint32 expiry);
 
   /**
    * @dev Deploys a new instance of the market through the market factory

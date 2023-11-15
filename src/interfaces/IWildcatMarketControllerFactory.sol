@@ -4,7 +4,7 @@ pragma solidity >=0.8.20;
 import './WildcatStructsAndEnums.sol';
 
 interface IWildcatMarketControllerFactory {
-  event NewController(address borrower, address controller, string namePrefix, string symbolPrefix);
+  event NewController(address borrower, address controller);
   event UpdateProtocolFeeConfiguration(
     address feeRecipient,
     uint16 protocolFeeBips,
@@ -21,11 +21,16 @@ interface IWildcatMarketControllerFactory {
   // Returns immutable arch-controller
   function archController() external view returns (address);
 
-  // Returns market factory used by controller
-  function marketFactory() external view returns (address);
-
   // Returns sentinel used by controller
   function sentinel() external view returns (address);
+
+  function marketInitCodeStorage() external view returns (address);
+
+  function marketInitCodeHash() external view returns (uint256);
+
+  function controllerInitCodeStorage() external view returns (address);
+
+  function controllerInitCodeHash() external view returns (uint256);
 
   function isDeployedController(address controller) external view returns (bool);
 
@@ -131,4 +136,6 @@ interface IWildcatMarketControllerFactory {
     uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
   ) external returns (address controller, address market);
+
+  function computeControllerAddress(address borrower) external view returns (address);
 }

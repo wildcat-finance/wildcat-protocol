@@ -30,7 +30,14 @@ interface IWildcatMarketControllerEventsAndErrors {
   error MarketAlreadyDeployed();
 
   error ExcessReserveRatioStillActive();
+
+  error CapacityChangeOnClosedMarket();
+
+  error AprChangeOnClosedMarket();
+
   error AprChangeNotPending();
+
+  error MarketAlreadyClosed();
 
   /* -------------------------------------------------------------------------- */
   /*                                   Events                                   */
@@ -40,5 +47,38 @@ interface IWildcatMarketControllerEventsAndErrors {
 
   event LenderDeauthorized(address);
 
-  event MarketDeployed(address indexed market);
+  event MarketDeployed(
+    address indexed market,
+    string name,
+    string symbol,
+    address asset,
+    uint256 maxTotalSupply,
+    uint256 annualInterestBips,
+    uint256 delinquencyFeeBips,
+    uint256 withdrawalBatchDuration,
+    uint256 reserveRatioBips,
+    uint256 delinquencyGracePeriod
+  );
+
+  event TemporaryExcessReserveRatioActivated(
+    address indexed market,
+    uint256 originalReserveRatioBips,
+    uint256 temporaryReserveRatioBips,
+    uint256 temporaryReserveRatioExpiry
+  );
+
+  event TemporaryExcessReserveRatioUpdated(
+    address indexed market,
+    uint256 originalReserveRatioBips,
+    uint256 temporaryReserveRatioBips,
+    uint256 temporaryReserveRatioExpiry
+  );
+
+  event TemporaryExcessReserveRatioCanceled(
+    address indexed market
+  );
+
+  event TemporaryExcessReserveRatioExpired(
+    address indexed market
+  );
 }

@@ -3,43 +3,29 @@ pragma solidity >=0.8.20;
 
 import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import './interfaces/WildcatStructsAndEnums.sol';
-import './interfaces/IWildcatMarketController.sol';
 import './interfaces/IWildcatArchController.sol';
+import './interfaces/IWildcatMarketControllerFactory.sol';
 import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 import './market/WildcatMarket.sol';
 import './WildcatMarketController.sol';
 
-contract WildcatMarketControllerFactory {
+contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
   using EnumerableSet for EnumerableSet.AddressSet;
 
-  event NewController(address borrower, address controller, string namePrefix, string symbolPrefix);
-  event UpdateProtocolFeeConfiguration(
-    address feeRecipient,
-    uint16 protocolFeeBips,
-    address originationFeeAsset,
-    uint256 originationFeeAmount
-  );
-
-  error NotRegisteredBorrower();
-  error InvalidProtocolFeeConfiguration();
-  error CallerNotArchControllerOwner();
-  error InvalidConstraints();
-  error ControllerAlreadyDeployed();
-
   // Returns immutable arch-controller
-  IWildcatArchController public immutable archController;
+  address public immutable override archController;
 
   // Returns sentinel used by controller
-  address public immutable sentinel;
+  address public immutable override sentinel;
 
-  address public immutable marketInitCodeStorage;
+  address public immutable override marketInitCodeStorage;
 
-  uint256 public immutable marketInitCodeHash;
+  uint256 public immutable override marketInitCodeHash;
 
-  address public immutable controllerInitCodeStorage;
+  address public immutable override controllerInitCodeStorage;
 
-  uint256 public immutable controllerInitCodeHash;
+  uint256 public immutable override controllerInitCodeHash;
 
   uint256 internal immutable ownCreate2Prefix = LibStoredInitCode.getCreate2Prefix(address(this));
 
@@ -63,7 +49,7 @@ contract WildcatMarketControllerFactory {
   EnumerableSet.AddressSet internal _deployedControllers;
 
   modifier onlyArchControllerOwner() {
-    if (msg.sender != archController.owner()) {
+    if (msg.sender != IWildcatArchController(archController).owner()) {
       revert CallerNotArchControllerOwner();
     }
     _;
@@ -74,7 +60,7 @@ contract WildcatMarketControllerFactory {
     address _sentinel,
     MarketParameterConstraints memory constraints
   ) {
-    archController = IWildcatArchController(_archController);
+    archController = _archController;
     sentinel = _sentinel;
     if (
       constraints.minimumAnnualInterestBips > constraints.maximumAnnualInterestBips ||
@@ -123,22 +109,22 @@ contract WildcatMarketControllerFactory {
     initCodeStorage = LibStoredInitCode.deployInitCode(marketInitCode);
   }
 
-  function isDeployedController(address controller) external view returns (bool) {
+  function isDeployedController(address controller) external view override returns (bool) {
     return _deployedControllers.contains(controller);
   }
 
-  function getDeployedControllersCount() external view returns (uint256) {
+  function getDeployedControllersCount() external view override returns (uint256) {
     return _deployedControllers.length();
   }
 
-  function getDeployedControllers() external view returns (address[] memory) {
+  function getDeployedControllers() external view override returns (address[] memory) {
     return _deployedControllers.values();
   }
 
   function getDeployedControllers(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory arr) {
+  ) external view override returns (address[] memory arr) {
     uint256 len = _deployedControllers.length();
     end = MathUtils.min(end, len);
     uint256 count = end - start;
@@ -165,6 +151,7 @@ contract WildcatMarketControllerFactory {
   function getProtocolFeeConfiguration()
     external
     view
+    override
     returns (
       address feeRecipient,
       address originationFeeAsset,
@@ -197,7 +184,7 @@ contract WildcatMarketControllerFactory {
     address originationFeeAsset,
     uint80 originationFeeAmount,
     uint16 protocolFeeBips
-  ) external onlyArchControllerOwner {
+  ) external override onlyArchControllerOwner {
     bool hasOriginationFee = originationFeeAmount > 0;
     bool nullFeeRecipient = feeRecipient == address(0);
     bool nullOriginationFeeAsset = originationFeeAsset == address(0);
@@ -214,6 +201,12 @@ contract WildcatMarketControllerFactory {
       originationFeeAmount: originationFeeAmount,
       protocolFeeBips: protocolFeeBips
     });
+    emit UpdateProtocolFeeConfiguration(
+      feeRecipient,
+      protocolFeeBips,
+      originationFeeAsset,
+      originationFeeAmount
+    );
   }
 
   /**
@@ -223,6 +216,7 @@ contract WildcatMarketControllerFactory {
   function getParameterConstraints()
     external
     view
+    override
     returns (MarketParameterConstraints memory constraints)
   {
     constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
@@ -247,6 +241,7 @@ contract WildcatMarketControllerFactory {
     external
     view
     virtual
+    override
     returns (MarketControllerParameters memory parameters)
   {
     parameters.archController = address(archController);
@@ -279,8 +274,8 @@ contract WildcatMarketControllerFactory {
    *      Calls `archController.registerController(controller)` and emits
    *      `NewController(borrower, controller)`.
    */
-  function deployController() public returns (address controller) {
-    if (!archController.isRegisteredBorrower(msg.sender)) {
+  function deployController() public override returns (address controller) {
+    if (!IWildcatArchController(archController).isRegisteredBorrower(msg.sender)) {
       revert NotRegisteredBorrower();
     }
     _tmpMarketBorrowerParameter = msg.sender;
@@ -291,13 +286,15 @@ contract WildcatMarketControllerFactory {
       salt,
       controllerInitCodeHash
     );
-    if (controller.codehash != bytes32(0)) {
+
+    if (controller.code.length != 0) {
       revert ControllerAlreadyDeployed();
     }
     LibStoredInitCode.create2WithStoredInitCode(controllerInitCodeStorage, salt);
     _tmpMarketBorrowerParameter = address(1);
-    archController.registerController(controller);
+    IWildcatArchController(archController).registerController(controller);
     _deployedControllers.add(controller);
+    emit NewController(msg.sender, controller);
   }
 
   /**
@@ -324,7 +321,7 @@ contract WildcatMarketControllerFactory {
     uint32 withdrawalBatchDuration,
     uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
-  ) external returns (address controller, address market) {
+  ) external override returns (address controller, address market) {
     controller = deployController();
     market = IWildcatMarketController(controller).deployMarket(
       asset,
@@ -339,7 +336,7 @@ contract WildcatMarketControllerFactory {
     );
   }
 
-  function computeControllerAddress(address borrower) external view returns (address) {
+  function computeControllerAddress(address borrower) external view override returns (address) {
     // Salt is borrower address
     bytes32 salt = bytes32(uint256(uint160(borrower)));
     return

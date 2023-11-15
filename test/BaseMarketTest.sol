@@ -119,7 +119,7 @@ contract BaseMarketTest is Test, ExpectedStateTracker {
     .accountStatuses[state.pendingWithdrawalExpiry][from].scaledAmount += scaledAmount;
 
     // vm.expectEmit(address(market));
-    emit WithdrawalQueued(state.pendingWithdrawalExpiry, from, scaledAmount);
+    emit WithdrawalQueued(state.pendingWithdrawalExpiry, from, scaledAmount, amount);
 
     uint256 availableLiquidity = _availableLiquidityForPendingBatch(batch, state);
     if (availableLiquidity > 0) {
@@ -144,8 +144,6 @@ contract BaseMarketTest is Test, ExpectedStateTracker {
     lastTotalAssets -= amount;
     _checkState(); */
   }
-
-  event DebtRepaid(uint256 assetAmount);
 
   function _borrow(uint256 amount) internal asAccount(borrower) {
     MarketState memory state = pendingState();

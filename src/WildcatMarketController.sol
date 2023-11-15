@@ -11,8 +11,9 @@ import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 
 struct TemporaryReserveRatio {
-  uint128 reserveRatioBips;
-  uint128 expiry;
+  uint16 originalAnnualInterestBips;
+  uint16 originalReserveRatioBips;
+  uint32 expiry;
 }
 
 struct TmpMarketParameterStorage {
@@ -29,7 +30,7 @@ struct TmpMarketParameterStorage {
   uint32 delinquencyGracePeriod;
 }
 
-contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
+contract WildcatMarketController is IWildcatMarketController {
   using EnumerableSet for EnumerableSet.AddressSet;
   using SafeCastLib for uint256;
   using SafeTransferLib for address;
@@ -38,17 +39,17 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   /*                                 Immutables                                 */
   /* -------------------------------------------------------------------------- */
 
-  IWildcatArchController public immutable archController;
+  address public immutable override archController;
 
-  IWildcatMarketControllerFactory public immutable controllerFactory;
+  address public immutable override controllerFactory;
 
-  address public immutable borrower;
+  address public immutable override borrower;
 
-  address public immutable sentinel;
+  address public immutable override sentinel;
 
-  address public immutable marketInitCodeStorage;
+  address public immutable override marketInitCodeStorage;
 
-  uint256 public immutable marketInitCodeHash;
+  uint256 public immutable override marketInitCodeHash;
 
   uint256 internal immutable ownCreate2Prefix = LibStoredInitCode.getCreate2Prefix(address(this));
 
@@ -73,7 +74,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   /// @dev Temporary storage for market parameters, used during market deployment
   TmpMarketParameterStorage internal _tmpMarketParameters;
 
-  mapping(address => TemporaryReserveRatio) public temporaryExcessReserveRatio;
+  mapping(address => TemporaryReserveRatio) public override temporaryExcessReserveRatio;
 
   // MarketParameterConstraints internal immutable constraints
 
@@ -92,9 +93,10 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   }
 
   constructor() {
-    controllerFactory = IWildcatMarketControllerFactory(msg.sender);
-    MarketControllerParameters memory parameters = controllerFactory.getMarketControllerParameters();
-    archController = IWildcatArchController(parameters.archController);
+    controllerFactory = msg.sender;
+    MarketControllerParameters memory parameters = IWildcatMarketControllerFactory(msg.sender)
+      .getMarketControllerParameters();
+    archController = parameters.archController;
     borrower = parameters.borrower;
     sentinel = parameters.sentinel;
     marketInitCodeStorage = parameters.marketInitCodeStorage;
@@ -118,14 +120,14 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   /**
    * @dev Returns the set of authorized lenders.
    */
-  function getAuthorizedLenders() external view returns (address[] memory) {
+  function getAuthorizedLenders() external view override returns (address[] memory) {
     return _authorizedLenders.values();
   }
 
   function getAuthorizedLenders(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory arr) {
+  ) external view override returns (address[] memory arr) {
     uint256 len = _authorizedLenders.length();
     end = MathUtils.min(end, len);
     uint256 count = end - start;
@@ -135,11 +137,11 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     }
   }
 
-  function getAuthorizedLendersCount() external view returns (uint256) {
+  function getAuthorizedLendersCount() external view override returns (uint256) {
     return _authorizedLenders.length();
   }
 
-  function isAuthorizedLender(address lender) external view virtual returns (bool) {
+  function isAuthorizedLender(address lender) external view virtual override returns (bool) {
     return _authorizedLenders.contains(lender);
   }
 
@@ -150,7 +152,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    *      Must call `updateLenderAuthorization` to apply changes
    *      to existing market accounts
    */
-  function authorizeLenders(address[] memory lenders) external onlyBorrower {
+  function authorizeLenders(address[] memory lenders) external override onlyBorrower {
     for (uint256 i = 0; i < lenders.length; i++) {
       address lender = lenders[i];
       if (_authorizedLenders.add(lender)) {
@@ -166,7 +168,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    *      Must call `updateLenderAuthorization` to apply changes
    *      to existing market accounts
    */
-  function deauthorizeLenders(address[] memory lenders) external onlyBorrower {
+  function deauthorizeLenders(address[] memory lenders) external override onlyBorrower {
     for (uint256 i = 0; i < lenders.length; i++) {
       address lender = lenders[i];
       if (_authorizedLenders.remove(lender)) {
@@ -179,7 +181,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    * @dev Update lender authorization for a set of markets to the current
    *      status.
    */
-  function updateLenderAuthorization(address lender, address[] memory markets) external {
+  function updateLenderAuthorization(address lender, address[] memory markets) external override {
     for (uint256 i; i < markets.length; i++) {
       address market = markets[i];
       if (!_controlledMarkets.contains(market)) {
@@ -193,18 +195,18 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   /*                                Market Queries                               */
   /* -------------------------------------------------------------------------- */
 
-  function isControlledMarket(address market) external view returns (bool) {
+  function isControlledMarket(address market) external view override returns (bool) {
     return _controlledMarkets.contains(market);
   }
 
-  function getControlledMarkets() external view returns (address[] memory) {
+  function getControlledMarkets() external view override returns (address[] memory) {
     return _controlledMarkets.values();
   }
 
   function getControlledMarkets(
     uint256 start,
     uint256 end
-  ) external view returns (address[] memory arr) {
+  ) external view override returns (address[] memory arr) {
     uint256 len = _controlledMarkets.length();
     end = MathUtils.min(end, len);
     uint256 count = end - start;
@@ -214,7 +216,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     }
   }
 
-  function getControlledMarketsCount() external view returns (uint256) {
+  function getControlledMarketsCount() external view override returns (uint256) {
     return _controlledMarkets.length();
   }
 
@@ -222,7 +224,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     address asset,
     string memory namePrefix,
     string memory symbolPrefix
-  ) external view returns (address) {
+  ) external view override returns (address) {
     bytes32 salt = _deriveSalt(asset, namePrefix, symbolPrefix);
     return LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, marketInitCodeHash);
   }
@@ -235,7 +237,12 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    * @dev Get the temporarily stored market parameters for a market that is
    *      currently being deployed.
    */
-  function getMarketParameters() external view returns (MarketParameters memory parameters) {
+  function getMarketParameters()
+    external
+    view
+    override
+    returns (MarketParameters memory parameters)
+  {
     parameters.asset = _tmpMarketParameters.asset;
     parameters.namePrefix = _tmpMarketParameters.namePrefix;
     parameters.symbolPrefix = _tmpMarketParameters.symbolPrefix;
@@ -298,9 +305,9 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
     uint32 withdrawalBatchDuration,
     uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
-  ) external returns (address market) {
+  ) external override returns (address market) {
     if (msg.sender == borrower) {
-      if (!archController.isRegisteredBorrower(msg.sender)) {
+      if (!IWildcatArchController(archController).isRegisteredBorrower(msg.sender)) {
         revert NotRegisteredBorrower();
       }
     } else if (msg.sender != address(controllerFactory)) {
@@ -338,7 +345,7 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
       originationFeeAsset,
       originationFeeAmount,
       parameters.protocolFeeBips
-    ) = controllerFactory.getProtocolFeeConfiguration();
+    ) = IWildcatMarketControllerFactory(controllerFactory).getProtocolFeeConfiguration();
 
     _tmpMarketParameters = parameters;
 
@@ -348,15 +355,28 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
 
     bytes32 salt = _deriveSalt(asset, namePrefix, symbolPrefix);
     market = LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, marketInitCodeHash);
-    if (market.codehash != bytes32(0)) {
+    if (market.code.length != 0) {
       revert MarketAlreadyDeployed();
     }
     LibStoredInitCode.create2WithStoredInitCode(marketInitCodeStorage, salt);
 
-    archController.registerMarket(market);
+    IWildcatArchController(archController).registerMarket(market);
     _controlledMarkets.add(market);
 
     _resetTmpMarketParameters();
+
+    emit MarketDeployed(
+      market,
+      WildcatMarket(market).name(),
+      WildcatMarket(market).symbol(),
+      parameters.asset,
+      parameters.maxTotalSupply,
+      parameters.annualInterestBips,
+      parameters.delinquencyFeeBips,
+      parameters.withdrawalBatchDuration,
+      parameters.reserveRatioBips,
+      parameters.delinquencyGracePeriod
+    );
   }
 
   /**
@@ -440,12 +460,38 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   }
 
   /**
+   * @dev Returns immutable protocol fee configuration for new markets.
+   *      Queried from the controller factory.
+   *
+   * @return feeRecipient         feeRecipient to use in new markets
+   * @return originationFeeAsset  Asset used to pay fees for new market
+   *                              deployments
+   * @return originationFeeAmount Amount of originationFeeAsset paid
+   *                              for new market deployments
+   * @return protocolFeeBips      protocolFeeBips to use in new markets
+   */
+  function getProtocolFeeConfiguration()
+    external
+    view
+    override
+    returns (
+      address feeRecipient,
+      address originationFeeAsset,
+      uint80 originationFeeAmount,
+      uint16 protocolFeeBips
+    )
+  {
+    return IWildcatMarketControllerFactory(controllerFactory).getProtocolFeeConfiguration();
+  }
+
+  /**
    * @dev Returns immutable constraints on market parameters that
    *      the controller variant will enforce.
    */
   function getParameterConstraints()
     external
     view
+    override
     returns (MarketParameterConstraints memory constraints)
   {
     constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
@@ -461,33 +507,148 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
   }
 
   /**
+   * @dev Close a market, setting interest rate to zero and returning all
+   * outstanding debt.
+   */
+  function closeMarket(address market) external override onlyBorrower onlyControlledMarket(market) {
+    if (WildcatMarket(market).isClosed()) {
+      revertWithSelector(MarketAlreadyClosed.selector);
+    }
+
+    WildcatMarket(market).closeMarket();
+  }
+
+  /**
+   * @dev Sets the maximum total supply (capacity) of a market - this only limits
+   *      deposits and does not affect interest accrual.
+   *
+   *      Can not be set lower than the market's current total supply.
+   */
+  function setMaxTotalSupply(
+    address market,
+    uint256 maxTotalSupply
+  ) external override onlyBorrower onlyControlledMarket(market) {
+    if (WildcatMarket(market).isClosed()) {
+      revertWithSelector(CapacityChangeOnClosedMarket.selector);
+    }
+    WildcatMarket(market).setMaxTotalSupply(maxTotalSupply);
+  }
+
+  /**
+   * @dev Returns the new temporary reserve ratio for a given interest rate
+   *      change. This is calculated as double the relative difference between
+   *      the old and new APR rates (in bips), bounded to a maximum of 100%.
+   *      If this value is lower than the existing reserve ratio, the existing
+   *      reserve ratio is returned instead.
+   */
+  function _calculateTemporaryReserveRatioBips(
+    uint256 annualInterestBips,
+    uint256 originalAnnualInterestBips,
+    uint256 originalReserveRatioBips
+  ) internal pure returns (uint16 temporaryReserveRatioBips) {
+    // Calculate double the relative reduction in the interest rate in bips,
+    // bound to a maximum of 100%
+    uint256 doubleRelativeDiff = MathUtils.mulDiv(
+      20000,
+      originalAnnualInterestBips - annualInterestBips,
+      originalAnnualInterestBips
+    );
+    uint256 boundRelativeDiff = MathUtils.min(10000, doubleRelativeDiff);
+    // If the bound relative diff is lower than the existing reserve ratio, return that instead.
+    temporaryReserveRatioBips = uint16(MathUtils.max(boundRelativeDiff, originalReserveRatioBips));
+  }
+
+  /**
    * @dev Modify the interest rate for a market.
-   * If the new interest rate is lower than the current interest rate,
-   * the reserve ratio is set to 90% for the next two weeks.
+   *
+   *      The original interest rate and reserve ratio are set to those
+   *      stored for the market if there is already a temporary reserve
+   *      ratio; otherwise, they are the current market values.
+   *
+   *      If the new interest rate is lower than the original, the reserve
+   *      ratio is set to the maximum of the original reserve ratio and
+   *      double the relative reduction in the interest rate (in bips),
+   *      not exceeding 100%.
+   *
+   *      If the new interest rate is higher than the original and there
+   *      is an existing temporary reserve ratio, it is canceled.
    */
   function setAnnualInterestBips(
     address market,
     uint16 annualInterestBips
-  ) external virtual onlyBorrower onlyControlledMarket(market) {
-    // If borrower is reducing the interest rate, increase the reserve
-    // ratio for the next two weeks.
-    if (annualInterestBips < WildcatMarket(market).annualInterestBips()) {
-      TemporaryReserveRatio storage tmp = temporaryExcessReserveRatio[market];
+  ) external virtual override onlyBorrower onlyControlledMarket(market) {
+    if (WildcatMarket(market).isClosed()) {
+      revertWithSelector(AprChangeOnClosedMarket.selector);
+    }
 
+    assertValueInRange(
+      annualInterestBips,
+      MinimumAnnualInterestBips,
+      MaximumAnnualInterestBips,
+      AnnualInterestBipsOutOfBounds.selector
+    );
+
+    // Get the existing temporary reserve ratio from storage, if any
+    TemporaryReserveRatio memory tmp = temporaryExcessReserveRatio[market];
+
+    // If there is no temporary reserve ratio, use the current reserve ratio and interest
+    // rate from the market for the following calculations; otherwise, use the original
+    // values recorded.
+    (uint16 originalAnnualInterestBips, uint16 originalReserveRatioBips) = tmp.expiry == 0
+      ? (
+        uint16(WildcatMarket(market).annualInterestBips()),
+        uint16(WildcatMarket(market).reserveRatioBips())
+      )
+      : (tmp.originalAnnualInterestBips, tmp.originalReserveRatioBips);
+
+    if (annualInterestBips < originalAnnualInterestBips) {
+      // If the new interest rate is lower than the original, calculate a temporarily
+      // increased reserve ratio as max(originalReserveRatio, min(2 * relativeReduction, 100%))
+      uint16 temporaryReserveRatioBips = _calculateTemporaryReserveRatioBips(
+        annualInterestBips,
+        originalAnnualInterestBips,
+        originalReserveRatioBips
+      );
+      uint32 expiry = uint32(block.timestamp + 2 weeks);
       if (tmp.expiry == 0) {
-        tmp.reserveRatioBips = uint128(WildcatMarket(market).reserveRatioBips());
-
-        // Require 90% liquidity coverage for the next 2 weeks
-        WildcatMarket(market).setReserveRatioBips(9000);
+        // If there is no existing temporary reserve ratio, store the current
+        // interest rate and reserve ratio as the original values.
+        emit TemporaryExcessReserveRatioActivated(
+          market,
+          originalReserveRatioBips,
+          temporaryReserveRatioBips,
+          expiry
+        );
+        tmp.originalAnnualInterestBips = originalAnnualInterestBips;
+        tmp.originalReserveRatioBips = originalReserveRatioBips;
+      } else {
+        // If the new interest rate is lower than the original but higher than the current
+        // interest rate, update the reserve ratio but leave the previous expiry.
+        if (annualInterestBips >= WildcatMarket(market).annualInterestBips()) {
+          expiry = tmp.expiry;
+        }
+        emit TemporaryExcessReserveRatioUpdated(
+          market,
+          originalReserveRatioBips,
+          temporaryReserveRatioBips,
+          expiry
+        );
       }
-
-      tmp.expiry = uint128(block.timestamp + 2 weeks);
+      tmp.expiry = expiry;
+      temporaryExcessReserveRatio[market] = tmp;
+      WildcatMarket(market).setReserveRatioBips(temporaryReserveRatioBips);
+    } else if (tmp.expiry != 0) {
+      // If there is a temporary reserve ratio and the new interest rate is greater
+      // than or equal to the original, reset the reserve ratio early.
+      emit TemporaryExcessReserveRatioCanceled(market);
+      delete temporaryExcessReserveRatio[market];
+      WildcatMarket(market).setReserveRatioBips(originalReserveRatioBips);
     }
 
     WildcatMarket(market).setAnnualInterestBips(annualInterestBips);
   }
 
-  function resetReserveRatio(address market) external virtual {
+  function resetReserveRatio(address market) external virtual override {
     TemporaryReserveRatio memory tmp = temporaryExcessReserveRatio[market];
     if (tmp.expiry == 0) {
       revertWithSelector(AprChangeNotPending.selector);
@@ -496,7 +657,8 @@ contract WildcatMarketController is IWildcatMarketControllerEventsAndErrors {
       revertWithSelector(ExcessReserveRatioStillActive.selector);
     }
 
-    WildcatMarket(market).setReserveRatioBips(uint256(tmp.reserveRatioBips).toUint16());
+    emit TemporaryExcessReserveRatioExpired(market);
+    WildcatMarket(market).setReserveRatioBips(uint256(tmp.originalReserveRatioBips).toUint16());
     delete temporaryExcessReserveRatio[market];
   }
 

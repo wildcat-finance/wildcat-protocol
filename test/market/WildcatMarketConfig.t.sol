@@ -88,10 +88,16 @@ contract WildcatMarketConfigTest is BaseMarketTest {
   // }
 
   function test_nukeFromOrbit(address _account) external {
+    _deposit(_account, 1e18);
     sanctionsSentinel.sanction(_account);
+    address escrow = sanctionsSentinel.getEscrowAddress(borrower, _account, address(market));
 
     vm.expectEmit(address(market));
     emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
+    vm.expectEmit(address(market));
+    emit Transfer(_account, escrow, 1e18);
+    vm.expectEmit(address(market));
+    emit SanctionedAccountAssetsSentToEscrow(_account, escrow, 1e18);
     market.nukeFromOrbit(_account);
     assertEq(
       uint(market.getAccountRole(_account)),
@@ -100,9 +106,37 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     );
   }
 
+  function test_nukeFromOrbit_AlreadyNuked(address _account) external {
+    sanctionsSentinel.sanction(_account);
+
+    vm.expectEmit(address(market));
+    emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
+    market.nukeFromOrbit(_account);
+    market.nukeFromOrbit(_account);
+    assertEq(
+      uint(market.getAccountRole(_account)),
+      uint(AuthRole.Blocked),
+      'account role should be Blocked'
+    );
+  }
+
+  function test_nukeFromOrbit_NullBalance(address _account) external {
+    sanctionsSentinel.sanction(_account);
+    address escrow = sanctionsSentinel.getEscrowAddress(borrower, _account, address(market));
+    vm.expectEmit(address(market));
+    emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
+    market.nukeFromOrbit(_account);
+    assertEq(
+      uint(market.getAccountRole(_account)),
+      uint(AuthRole.Blocked),
+      'account role should be Blocked'
+    );
+    assertEq(escrow.code.length, 0, 'escrow should not be deployed');
+  }
+
   function test_nukeFromOrbit_WithBalance() external {
     _deposit(alice, 1e18);
-    address escrow = sanctionsSentinel.getEscrowAddress(alice, borrower, address(market));
+    address escrow = sanctionsSentinel.getEscrowAddress(borrower, alice, address(market));
     sanctionsSentinel.sanction(alice);
 
     vm.expectEmit(address(market));
@@ -134,10 +168,10 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     vm.prank(borrower);
     sanctionsSentinel.overrideSanction(alice);
 
-    vm.expectEmit(address(market));
-    emit AuthorizationStatusUpdated(alice, AuthRole.Null);
+    vm.expectEmit(address(market)); // this line causing the test fail
+    emit AuthorizationStatusUpdated(alice, AuthRole.WithdrawOnly);
     market.stunningReversal(alice);
-    assertEq(uint(market.getAccountRole(alice)), uint(AuthRole.Null), 'account role should be Null');
+    assertEq(uint(market.getAccountRole(alice)), uint(AuthRole.WithdrawOnly), 'account role should be WithdrawOnly');
   }
 
   function test_stunningReversal_AccountNotBlocked(address _account) external {

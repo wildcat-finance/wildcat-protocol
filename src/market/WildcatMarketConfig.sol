@@ -15,6 +15,14 @@ contract WildcatMarketConfig is WildcatMarketBase {
   // ===================================================================== //
 
   /**
+   * @dev Returns whether or not a market has been closed.
+   */
+  function isClosed() external view returns (bool) {
+    MarketState memory state = currentState();
+    return state.isClosed;
+  }
+
+  /**
    * @dev Returns the maximum amount of underlying asset that can
    *      currently be deposited to the market.
    */
@@ -86,16 +94,16 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      their sanctioned status overridden by the borrower.
    */
   function stunningReversal(address accountAddress) external nonReentrant {
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
+      revert NotReversedOrStunning();
+    }
+
     Account memory account = _accounts[accountAddress];
     if (account.approval != AuthRole.Blocked) {
       revert AccountNotBlocked();
     }
 
-    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
-      revert NotReversedOrStunning();
-    }
-
-    account.approval = AuthRole.Null;
+    account.approval = AuthRole.WithdrawOnly;
     emit AuthorizationStatusUpdated(accountAddress, account.approval);
 
     _accounts[accountAddress] = account;
@@ -107,7 +115,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
 
   /**
    * @dev Updates an account's authorization status based on whether the controller
-   *      has it marked as approved.
+   *      has it marked as approved. Requires that the lender *had* full access (i.e.
+   *      they were previously authorized) before dropping them down to WithdrawOnly,
+   *      else arbitrary accounts could grant themselves Withdraw.
    */
   function updateAccountAuthorization(
     address _account,
@@ -117,7 +127,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
     Account memory account = _getAccount(_account);
     if (_isAuthorized) {
       account.approval = AuthRole.DepositAndWithdraw;
-    } else {
+    } else if (account.approval == AuthRole.DepositAndWithdraw) {
       account.approval = AuthRole.WithdrawOnly;
     }
     _accounts[_account] = account;
@@ -147,11 +157,11 @@ contract WildcatMarketConfig is WildcatMarketBase {
    * @dev Sets the annual interest rate earned by lenders in bips.
    */
   function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant {
-    MarketState memory state = _getUpdatedState();
-
     if (_annualInterestBips > BIP) {
       revert InterestRateTooHigh();
     }
+
+    MarketState memory state = _getUpdatedState();
 
     state.annualInterestBips = _annualInterestBips;
     _writeState(state);

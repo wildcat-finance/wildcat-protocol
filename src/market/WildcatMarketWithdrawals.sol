@@ -28,9 +28,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   function getWithdrawalBatch(
     uint32 expiry
   ) external view nonReentrantView returns (WithdrawalBatch memory) {
-    (, uint32 expiredBatchExpiry, WithdrawalBatch memory expiredBatch) = _calculateCurrentState();
-    if ((expiry == expiredBatchExpiry).and(expiry > 0)) {
-      return expiredBatch;
+    (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
+    if ((expiry == pendingBatchExpiry).and(expiry > 0)) {
+      return pendingBatch;
     }
     return _withdrawalData.batches[expiry];
   }
@@ -46,13 +46,13 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     address accountAddress,
     uint32 expiry
   ) external view nonReentrantView returns (uint256) {
-    if (expiry > block.timestamp) {
+    if (expiry >= block.timestamp) {
       revert WithdrawalBatchNotExpired();
     }
-    (, uint32 expiredBatchExpiry, WithdrawalBatch memory expiredBatch) = _calculateCurrentState();
+    (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
     WithdrawalBatch memory batch;
-    if (expiry == expiredBatchExpiry) {
-      batch = expiredBatch;
+    if (expiry == pendingBatchExpiry) {
+      batch = pendingBatch;
     } else {
       batch = _withdrawalData.batches[expiry];
     }
@@ -75,15 +75,16 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
    * @dev Create a withdrawal request for a lender.
    */
   function queueWithdrawal(uint256 amount) external nonReentrant {
+
     MarketState memory state = _getUpdatedState();
-
-    // Cache account data and revert if not authorized to withdraw.
-    Account memory account = _getAccountWithRole(msg.sender, AuthRole.WithdrawOnly);
-
+    
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
     if (scaledAmount == 0) {
       revert NullBurnAmount();
     }
+
+    // Cache account data and revert if not authorized to withdraw.
+    Account memory account = _getAccountWithRole(msg.sender, AuthRole.WithdrawOnly);
 
     // Reduce caller's balance and emit transfer event.
     account.scaledBalance -= scaledAmount;
@@ -105,7 +106,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     batch.scaledTotalAmount += scaledAmount;
     state.scaledPendingWithdrawals += scaledAmount;
 
-    emit WithdrawalQueued(expiry, msg.sender, scaledAmount);
+    emit WithdrawalQueued(expiry, msg.sender, scaledAmount, amount);
 
     // Burn as much of the withdrawal batch as possible with available liquidity.
     uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
@@ -130,7 +131,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
    *      an escrow contract specific to the account and blocks the account.
    *
    *      Reverts if:
-   *      - `expiry > block.timestamp`
+   *      - `expiry >= block.timestamp`
    *      -  `expiry` does not correspond to an existing withdrawal batch
    *      - `accountAddress` has already withdrawn the full amount owed
    */
@@ -138,7 +139,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     address accountAddress,
     uint32 expiry
   ) external nonReentrant returns (uint256) {
-    if (expiry > block.timestamp) {
+    if (expiry >= block.timestamp) {
       revert WithdrawalBatchNotExpired();
     }
     MarketState memory state = _getUpdatedState();
@@ -154,18 +155,18 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 
     uint128 normalizedAmountWithdrawn = newTotalWithdrawn - status.normalizedAmountWithdrawn;
 
-    status.normalizedAmountWithdrawn = newTotalWithdrawn;
-    state.normalizedUnclaimedWithdrawals -= normalizedAmountWithdrawn;
-
     if (normalizedAmountWithdrawn == 0) {
       revert NullWithdrawalAmount();
     }
 
+    status.normalizedAmountWithdrawn = newTotalWithdrawn;
+    state.normalizedUnclaimedWithdrawals -= normalizedAmountWithdrawn;
+
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       _blockAccount(state, accountAddress);
       address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
-        accountAddress,
         borrower,
+        accountAddress,
         address(asset)
       );
       asset.safeTransfer(escrow, normalizedAmountWithdrawn);

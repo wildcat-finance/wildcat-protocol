@@ -10,20 +10,24 @@ import 'solady/utils/SafeTransferLib.sol';
 
 contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketControllerEventsAndErrors {
   function _check(
-    uint256 apr,
-    uint256 reserveRatio,
-    uint256 cachedReserveRatio,
-    uint256 tmpExpiry
+    uint256 annualInterestBips,
+    uint256 originalAnnualInterestBips,
+    uint256 reserveRatioBips,
+    uint256 originalReserveRatioBips,
+    uint256 temporaryReserveRatioExpiry
   ) internal {
-    (uint256 reserveRatioBips, uint256 expiry) = controller.temporaryExcessReserveRatio(
-      address(market)
-    );
+    (
+      uint256 _originalAnnualInterestBips,
+      uint256 _originalReserveRatioBips,
+      uint256 expiry
+    ) = controller.temporaryExcessReserveRatio(address(market));
 
-    assertEq(market.annualInterestBips(), apr, 'APR');
-    assertEq(market.reserveRatioBips(), reserveRatio, 'reserve ratio');
+    assertEq(market.annualInterestBips(), annualInterestBips, 'annualInterestBips');
+    assertEq(market.reserveRatioBips(), reserveRatioBips, 'reserveRatioBips');
 
-    assertEq(reserveRatioBips, cachedReserveRatio, 'Previous reserve ratio');
-    assertEq(expiry, tmpExpiry, 'Temporary reserve ratio expiry');
+    assertEq(_originalAnnualInterestBips, originalAnnualInterestBips, 'originalAnnualInterestBips');
+    assertEq(_originalReserveRatioBips, originalReserveRatioBips, 'originalReserveRatioBips');
+    assertEq(expiry, temporaryReserveRatioExpiry, 'temporaryReserveRatioExpiry');
   }
 
   function test_getParameterConstraints() public {
@@ -112,6 +116,9 @@ contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketController
       'getAuthorizedLenders(start, end)'
     );
     assertEq(controller.getAuthorizedLendersCount(), 3, 'getAuthorizedLendersCount');
+    for (uint i = 1; i < 4; i++) {
+      assertTrue(controller.isAuthorizedLender(address(uint160(i))), 'isAuthorizedLender');
+    }
   }
 
   function test_deauthorizeLenders() external asAccount(borrower) {
@@ -131,9 +138,33 @@ contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketController
     assertEq(controller.getAuthorizedLenders(), lenders, 'getAuthorizedLenders');
     assertEq(controller.getAuthorizedLenders(0, 2), lenders, 'getAuthorizedLenders(start, end)');
     assertEq(controller.getAuthorizedLendersCount(), 0, 'getAuthorizedLendersCount');
+    for (uint i = 1; i < 4; i++) {
+      assertFalse(controller.isAuthorizedLender(address(uint160(i))), 'isAuthorizedLender');
+    }
   }
 
-  function _callDeployMarket(address from) internal asAccount(from) returns (address marketAddress) {
+  function test_getProtocolFeeConfiguration() external {
+    (
+      address feeRecipient,
+      address originationFeeAsset,
+      uint80 originationFeeAmount,
+      uint16 protocolFeeBips
+    ) = controller.getProtocolFeeConfiguration();
+    (
+      address _feeRecipient,
+      address _originationFeeAsset,
+      uint80 _originationFeeAmount,
+      uint16 _protocolFeeBips
+    ) = controllerFactory.getProtocolFeeConfiguration();
+    assertEq(feeRecipient, _feeRecipient, 'feeRecipient');
+    assertEq(originationFeeAsset, _originationFeeAsset, 'originationFeeAsset');
+    assertEq(originationFeeAmount, _originationFeeAmount, 'originationFeeAmount');
+    assertEq(protocolFeeBips, _protocolFeeBips, 'protocolFeeBips');
+  }
+
+  function _callDeployMarket(
+    address from
+  ) internal asAccount(from) returns (address marketAddress) {
     marketAddress = controller.deployMarket(
       parameters.asset,
       parameters.namePrefix,
@@ -146,12 +177,80 @@ contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketController
       parameters.delinquencyGracePeriod
     );
     if (marketAddress != address(0)) {
-      assertTrue(controller.isControlledMarket(marketAddress), 'controller does not recognize market');
+      assertTrue(
+        controller.isControlledMarket(marketAddress),
+        'controller does not recognize market'
+      );
       assertTrue(
         archController.isRegisteredMarket(marketAddress),
         'arch controller does not recognize market'
       );
     }
+  }
+
+  function test_updateLenderAuthorization_NotControlledMarket() external asAccount(borrower) {
+    address[] memory markets = new address[](1);
+    markets[0] = address(1);
+    vm.expectRevert(NotControlledMarket.selector);
+    controller.updateLenderAuthorization(address(1), markets);
+  }
+
+  function test_updateLenderAuthorization() external asAccount(borrower) {
+    address[] memory markets = new address[](1);
+    markets[0] = address(market);
+    _authorizeLender(bob);
+    vm.expectEmit(address(market));
+    emit IMarketEventsAndErrors.AuthorizationStatusUpdated(bob, AuthRole.DepositAndWithdraw);
+    controller.updateLenderAuthorization(bob, markets);
+
+    _deauthorizeLender(bob);
+    vm.expectEmit(address(market));
+    emit IMarketEventsAndErrors.AuthorizationStatusUpdated(bob, AuthRole.WithdrawOnly);
+    controller.updateLenderAuthorization(bob, markets);
+  }
+
+  function test_closeMarket() external asAccount(borrower) {
+    vm.expectEmit(address(market));
+    emit IMarketEventsAndErrors.MarketClosed(block.timestamp);
+    controller.closeMarket(address(market));
+  }
+
+  function test_closeMarket_NotBorrower() external {
+    vm.expectRevert(CallerNotBorrower.selector);
+    controller.closeMarket(address(market));
+  }
+
+  function test_closeMarket_NotControlledMarket() external asAccount(borrower) {
+    vm.expectRevert(NotControlledMarket.selector);
+    controller.closeMarket(address(1));
+  }
+
+  function test_closeMarket_MarketAlreadyClosed() external asAccount(borrower) {
+    controller.closeMarket(address(market));
+    vm.expectRevert(MarketAlreadyClosed.selector);
+    controller.closeMarket(address(market));
+  }
+
+  function test_setMaxTotalSupply() external asAccount(borrower) {
+    vm.expectEmit(address(market));
+    emit IMarketEventsAndErrors.MaxTotalSupplyUpdated(1e18);
+    controller.setMaxTotalSupply(address(market), 1e18);
+  }
+
+  function test_setMaxTotalSupply_NotBorrower() external {
+    vm.expectRevert(CallerNotBorrower.selector);
+    controller.setMaxTotalSupply(address(market), 0);
+  }
+
+  function test_setMaxTotalSupply_NotControlledMarket() external asAccount(borrower) {
+    vm.expectRevert(NotControlledMarket.selector);
+    controller.setMaxTotalSupply(address(1), 0);
+  }
+
+  function test_setMaxTotalSupply_CapacityChangeOnClosedMarket() external asAccount(borrower) {
+    controller.closeMarket(address(market));
+    vm.expectRevert(CapacityChangeOnClosedMarket.selector);
+    controller.setMaxTotalSupply(address(market), 0);
   }
 
   function test_MarketSet() external {
@@ -171,10 +270,18 @@ contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketController
     address[] memory marketSlice = new address[](1);
 
     marketSlice[0] = markets[0];
-    assertEq(controller.getControlledMarkets(0, 1), marketSlice, 'getControlledMarkets(start, end)');
+    assertEq(
+      controller.getControlledMarkets(0, 1),
+      marketSlice,
+      'getControlledMarkets(start, end)'
+    );
 
     marketSlice[0] = markets[1];
-    assertEq(controller.getControlledMarkets(1, 2), marketSlice, 'getControlledMarkets(start, end)');
+    assertEq(
+      controller.getControlledMarkets(1, 2),
+      marketSlice,
+      'getControlledMarkets(start, end)'
+    );
 
     assertTrue(controller.isControlledMarket(markets[0]), 'isControlledMarket');
     assertTrue(controller.isControlledMarket(markets[1]), 'isControlledMarket');
@@ -286,23 +393,91 @@ contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketController
     controller.setAnnualInterestBips(address(market), DefaultInterest + 1);
   }
 
-  function test_setAnnualInterestBips_Decrease() public {
+  function test_setAnnualInterestBips_NegligibleDecrease() public {
     vm.prank(borrower);
     controller.setAnnualInterestBips(address(market), DefaultInterest - 1);
-    _check(DefaultInterest - 1, 9000, DefaultReserveRatio, block.timestamp + 2 weeks);
+    _check(
+      DefaultInterest - 1,
+      DefaultInterest,
+      DefaultReserveRatio,
+      DefaultReserveRatio,
+      block.timestamp + 2 weeks
+    );
   }
 
-  function test_setAnnualInterestBips_Decrease_AlreadyPending() public {
-    vm.prank(borrower);
-    controller.setAnnualInterestBips(address(market), DefaultInterest - 1);
-
+  function test_setAnnualInterestBips_Decrease_Decrease() public {
     uint256 expiry = block.timestamp + 2 weeks;
-    _check(DefaultInterest - 1, 9000, DefaultReserveRatio, expiry);
-
-    fastForward(2 weeks);
+    vm.expectEmit(address(controller));
+    emit TemporaryExcessReserveRatioActivated(address(market), DefaultReserveRatio, 4_000, expiry);
     vm.prank(borrower);
-    controller.setAnnualInterestBips(address(market), DefaultInterest - 2);
-    _check(DefaultInterest - 2, 9000, DefaultReserveRatio, expiry + 2 weeks);
+    controller.setAnnualInterestBips(address(market), 800);
+
+    _check(800, DefaultInterest, 4_000, DefaultReserveRatio, expiry);
+
+    fastForward(1 weeks);
+
+    vm.expectEmit(address(controller));
+    emit TemporaryExcessReserveRatioUpdated(
+      address(market),
+      DefaultReserveRatio,
+      6_000,
+      expiry + 1 weeks
+    );
+    vm.prank(borrower);
+    controller.setAnnualInterestBips(address(market), 700);
+    _check(700, DefaultInterest, 6_000, DefaultReserveRatio, expiry + 1 weeks);
+  }
+
+  function test_setAnnualInterestBips_Decrease_Increase() public {
+    uint256 expiry = block.timestamp + 2 weeks;
+    vm.expectEmit(address(controller));
+    emit TemporaryExcessReserveRatioActivated(address(market), DefaultReserveRatio, 4_000, expiry);
+    vm.prank(borrower);
+    controller.setAnnualInterestBips(address(market), 800);
+
+    _check(800, DefaultInterest, 4_000, DefaultReserveRatio, expiry);
+
+    fastForward(1 weeks);
+
+    vm.expectEmit(address(controller));
+    emit TemporaryExcessReserveRatioUpdated(address(market), DefaultReserveRatio, 4_000, expiry);
+    vm.prank(borrower);
+    controller.setAnnualInterestBips(address(market), 800);
+    _check(800, DefaultInterest, 4_000, DefaultReserveRatio, expiry);
+
+    vm.expectEmit(address(controller));
+    emit TemporaryExcessReserveRatioUpdated(address(market), DefaultReserveRatio, 3_000, expiry);
+    vm.prank(borrower);
+    controller.setAnnualInterestBips(address(market), 850);
+    _check(850, DefaultInterest, 3_000, DefaultReserveRatio, expiry);
+  }
+
+  function test_setAnnualInterestBips_MaxReserveRatio() public {
+    uint256 expiry = block.timestamp + 2 weeks;
+    vm.expectEmit(address(controller));
+    emit TemporaryExcessReserveRatioActivated(address(market), DefaultReserveRatio, 10_000, expiry);
+    vm.prank(borrower);
+    controller.setAnnualInterestBips(address(market), 400);
+
+    _check(400, DefaultInterest, 10_000, DefaultReserveRatio, expiry);
+  }
+
+  function test_setAnnualInterestBips_Decrease_Cancel() public {
+    uint256 expiry = block.timestamp + 2 weeks;
+    vm.expectEmit(address(controller));
+    emit TemporaryExcessReserveRatioActivated(address(market), DefaultReserveRatio, 4_000, expiry);
+    vm.prank(borrower);
+    controller.setAnnualInterestBips(address(market), 800);
+
+    _check(800, DefaultInterest, 4_000, DefaultReserveRatio, expiry);
+
+    fastForward(1 weeks);
+
+    vm.expectEmit(address(controller));
+    emit TemporaryExcessReserveRatioCanceled(address(market));
+    vm.prank(borrower);
+    controller.setAnnualInterestBips(address(market), 1_001);
+    _check(1_001, 0, DefaultReserveRatio, 0, 0);
   }
 
   function test_setAnnualInterestBips_Decrease_Undercollateralized() public {
@@ -312,14 +487,20 @@ contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketController
 
     vm.startPrank(borrower);
     vm.expectRevert(IMarketEventsAndErrors.InsufficientReservesForNewLiquidityRatio.selector);
-    controller.setAnnualInterestBips(address(market), DefaultInterest - 1);
+    controller.setAnnualInterestBips(address(market), 550);
+  }
+
+  function test_setAnnualInterestBips_AprChangeOnClosedMarket() public asAccount(borrower) {
+    controller.closeMarket(address(market));
+    vm.expectRevert(AprChangeOnClosedMarket.selector);
+    controller.setAnnualInterestBips(address(market), 550);
   }
 
   function test_setAnnualInterestBips_Increase() public {
     vm.prank(borrower);
     controller.setAnnualInterestBips(address(market), DefaultInterest + 1);
 
-    _check(DefaultInterest + 1, DefaultReserveRatio, 0, 0);
+    _check(DefaultInterest + 1, 0, DefaultReserveRatio, 0, 0);
   }
 
   function test_setAnnualInterestBips_Increase_Undercollateralized() public {
@@ -348,11 +529,19 @@ contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketController
     vm.prank(borrower);
     controller.setAnnualInterestBips(address(market), DefaultInterest - 1);
 
+    _check(
+      DefaultInterest - 1,
+      DefaultInterest,
+      DefaultReserveRatio,
+      DefaultReserveRatio,
+      block.timestamp + 2 weeks
+    );
+
     fastForward(2 weeks);
     controller.resetReserveRatio(address(market));
 
     assertEq(market.reserveRatioBips(), DefaultReserveRatio, 'reserve ratio not reset');
 
-    _check(DefaultInterest - 1, DefaultReserveRatio, 0, 0);
+    _check(DefaultInterest - 1, 0, DefaultReserveRatio, 0, 0);
   }
 }

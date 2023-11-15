@@ -170,8 +170,8 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
       if (scaledBalance > 0) {
         account.scaledBalance = 0;
         address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
-          accountAddress,
           borrower,
+          accountAddress,
           address(this)
         );
         emit Transfer(accountAddress, escrow, state.normalizeAmount(scaledBalance));
@@ -259,6 +259,18 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    */
   function accruedProtocolFees() external view nonReentrantView returns (uint256) {
     return currentState().accruedProtocolFees;
+  }
+
+  function totalDebts() external view nonReentrantView returns (uint256) {
+    return currentState().totalDebts();
+  }
+
+  function outstandingDebt() external view nonReentrantView returns (uint256) {
+    return currentState().totalDebts().satSub(totalAssets());
+  }
+
+  function delinquentDebt() external view nonReentrantView returns (uint256) {
+    return currentState().liquidityRequired().satSub(totalAssets());
   }
 
   /**
@@ -362,7 +374,8 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
       uint256 expiry = state.pendingWithdrawalExpiry;
       // Only accrue interest if time has passed since last update.
       // This will only be false if withdrawalBatchDuration is 0.
-      if (expiry != state.lastInterestAccruedTimestamp) {
+      uint32 lastInterestAccruedTimestamp = state.lastInterestAccruedTimestamp;
+      if (expiry != lastInterestAccruedTimestamp) {
         (uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
           .updateScaleFactorAndFees(
             protocolFeeBips,
@@ -370,12 +383,20 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
             delinquencyGracePeriod,
             expiry
           );
-        emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
+        emit InterestAndFeesAccrued(
+          lastInterestAccruedTimestamp,
+          expiry,
+          state.scaleFactor,
+          baseInterestRay,
+          delinquencyFeeRay,
+          protocolFee
+        );
       }
       _processExpiredWithdrawalBatch(state);
     }
+    uint32 lastInterestAccruedTimestamp = state.lastInterestAccruedTimestamp;
     // Apply interest and fees accrued since last update (expiry or previous tx)
-    if (block.timestamp != state.lastInterestAccruedTimestamp) {
+    if (block.timestamp != lastInterestAccruedTimestamp) {
       (uint256 baseInterestRay, uint256 delinquencyFeeRay, uint256 protocolFee) = state
         .updateScaleFactorAndFees(
           protocolFeeBips,
@@ -383,7 +404,29 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
           delinquencyGracePeriod,
           block.timestamp
         );
-      emit ScaleFactorUpdated(state.scaleFactor, baseInterestRay, delinquencyFeeRay, protocolFee);
+      emit InterestAndFeesAccrued(
+        lastInterestAccruedTimestamp,
+        block.timestamp,
+        state.scaleFactor,
+        baseInterestRay,
+        delinquencyFeeRay,
+        protocolFee
+      );
+    }
+
+    // If there is a pending withdrawal batch which is not fully paid off, set aside
+    // up to the available liquidity for that batch.
+    if (state.pendingWithdrawalExpiry != 0) {
+      uint32 expiry = state.pendingWithdrawalExpiry;
+      WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
+      if (batch.scaledAmountBurned < batch.scaledTotalAmount) {
+        // Burn as much of the withdrawal batch as possible with available liquidity.
+        uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
+        if (availableLiquidity > 0) {
+          _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
+          _withdrawalData.batches[expiry] = batch;
+        }
+      }
     }
   }
 
@@ -401,32 +444,32 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     view
     returns (
       MarketState memory state,
-      uint32 expiredBatchExpiry,
-      WithdrawalBatch memory expiredBatch
+      uint32 pendingBatchExpiry,
+      WithdrawalBatch memory pendingBatch
     )
   {
     state = _state;
     // Handle expired withdrawal batch
     if (state.hasPendingExpiredBatch()) {
-      expiredBatchExpiry = state.pendingWithdrawalExpiry;
+      pendingBatchExpiry = state.pendingWithdrawalExpiry;
       // Only accrue interest if time has passed since last update.
       // This will only be false if withdrawalBatchDuration is 0.
-      if (expiredBatchExpiry != state.lastInterestAccruedTimestamp) {
+      if (pendingBatchExpiry != state.lastInterestAccruedTimestamp) {
         state.updateScaleFactorAndFees(
           protocolFeeBips,
           delinquencyFeeBips,
           delinquencyGracePeriod,
-          expiredBatchExpiry
+          pendingBatchExpiry
         );
       }
 
-      expiredBatch = _withdrawalData.batches[expiredBatchExpiry];
-      uint256 availableLiquidity = expiredBatch.availableLiquidityForPendingBatch(
+      pendingBatch = _withdrawalData.batches[pendingBatchExpiry];
+      uint256 availableLiquidity = pendingBatch.availableLiquidityForPendingBatch(
         state,
         totalAssets()
       );
       if (availableLiquidity > 0) {
-        _applyWithdrawalBatchPaymentView(expiredBatch, state, availableLiquidity);
+        _applyWithdrawalBatchPaymentView(pendingBatch, state, availableLiquidity);
       }
       state.pendingWithdrawalExpiry = 0;
     }
@@ -438,6 +481,23 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
         delinquencyGracePeriod,
         block.timestamp
       );
+    }
+
+    // If there is a pending withdrawal batch which is not fully paid off, set aside
+    // up to the available liquidity for that batch.
+    if (state.pendingWithdrawalExpiry != 0) {
+      pendingBatchExpiry = state.pendingWithdrawalExpiry;
+      pendingBatch = _withdrawalData.batches[pendingBatchExpiry];
+      if (pendingBatch.scaledAmountBurned < pendingBatch.scaledTotalAmount) {
+        // Burn as much of the withdrawal batch as possible with available liquidity.
+        uint256 availableLiquidity = pendingBatch.availableLiquidityForPendingBatch(
+          state,
+          totalAssets()
+        );
+        if (availableLiquidity > 0) {
+          _applyWithdrawalBatchPaymentView(pendingBatch, state, availableLiquidity);
+        }
+      }
     }
   }
 
@@ -467,10 +527,12 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     uint32 expiry = state.pendingWithdrawalExpiry;
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
-    // Burn as much of the withdrawal batch as possible with available liquidity.
-    uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
-    if (availableLiquidity > 0) {
-      _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
+    if (batch.scaledAmountBurned < batch.scaledTotalAmount) {
+      // Burn as much of the withdrawal batch as possible with available liquidity.
+      uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
+      if (availableLiquidity > 0) {
+        _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
+      }
     }
 
     emit WithdrawalBatchExpired(
@@ -501,13 +563,16 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     uint32 expiry,
     uint256 availableLiquidity
   ) internal {
-    uint104 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity).toUint104();
     uint104 scaledAmountOwed = batch.scaledTotalAmount - batch.scaledAmountBurned;
     // Do nothing if batch is already paid
     if (scaledAmountOwed == 0) {
       return;
     }
-    uint104 scaledAmountBurned = uint104(MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed));
+
+    uint256 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity);
+    uint104 scaledAmountBurned = MathUtils
+      .min(scaledAvailableLiquidity, scaledAmountOwed)
+      .toUint104();
     uint128 normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
 
     batch.scaledAmountBurned += scaledAmountBurned;
@@ -530,13 +595,15 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     MarketState memory state,
     uint256 availableLiquidity
   ) internal pure {
-    uint104 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity).toUint104();
     uint104 scaledAmountOwed = batch.scaledTotalAmount - batch.scaledAmountBurned;
     // Do nothing if batch is already paid
     if (scaledAmountOwed == 0) {
       return;
     }
-    uint104 scaledAmountBurned = uint104(MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed));
+    uint256 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity);
+    uint104 scaledAmountBurned = MathUtils
+      .min(scaledAvailableLiquidity, scaledAmountOwed)
+      .toUint104();
     uint128 normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
 
     batch.scaledAmountBurned += scaledAmountBurned;
