@@ -46,7 +46,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     address accountAddress,
     uint32 expiry
   ) external view nonReentrantView returns (uint256) {
-    if (expiry > block.timestamp) {
+    if (expiry >= block.timestamp) {
       revert WithdrawalBatchNotExpired();
     }
     (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
@@ -131,7 +131,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
    *      an escrow contract specific to the account and blocks the account.
    *
    *      Reverts if:
-   *      - `expiry > block.timestamp`
+   *      - `expiry >= block.timestamp`
    *      -  `expiry` does not correspond to an existing withdrawal batch
    *      - `accountAddress` has already withdrawn the full amount owed
    */

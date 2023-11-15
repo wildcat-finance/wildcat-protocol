@@ -187,7 +187,7 @@ contract WithdrawalsTest is BaseMarketTest {
     emit Transfer(address(market), escrow, 1e18);
     vm.expectEmit(address(market));
     emit SanctionedAccountWithdrawalSentToEscrow(alice, escrow, uint32(block.timestamp - 1), 1e18);
-    market.executeWithdrawal(alice, uint32(block.timestamp-1));
+    market.executeWithdrawal(alice, uint32(block.timestamp - 1));
   }
 
   function test_processUnpaidWithdrawalBatch_NoUnpaidBatches() external {
@@ -302,7 +302,7 @@ contract WithdrawalsTest is BaseMarketTest {
     // Borrow 80% of deposits then request withdrawal of 100% of deposits
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
     uint32 expiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
-    fastForward(parameters.withdrawalBatchDuration);
+    fastForward(parameters.withdrawalBatchDuration + 1);
     AccountWithdrawalStatus memory status = market.getAccountWithdrawalStatus(alice, expiry);
     uint256 withdrawableAmount = market.getAvailableWithdrawalAmount(alice, expiry);
     assertEq(withdrawableAmount, 2e17);
@@ -312,7 +312,7 @@ contract WithdrawalsTest is BaseMarketTest {
     // Borrow 80% of deposits then request withdrawal of 100% of deposits
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
     uint32 expiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
-    fastForward(parameters.withdrawalBatchDuration);
+    fastForward(parameters.withdrawalBatchDuration + 1);
     market.updateState();
     AccountWithdrawalStatus memory status = market.getAccountWithdrawalStatus(alice, expiry);
     uint256 withdrawableAmount = market.getAvailableWithdrawalAmount(alice, expiry);
@@ -328,7 +328,7 @@ contract WithdrawalsTest is BaseMarketTest {
     // Borrow 80% of deposits then request withdrawal of 100% of deposits
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
     uint32 expiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
-    fastForward(parameters.withdrawalBatchDuration);
+    fastForward(parameters.withdrawalBatchDuration + 1);
     AccountWithdrawalStatus memory status = market.getAccountWithdrawalStatus(alice, expiry);
     uint256 withdrawableAmount = market.getAvailableWithdrawalAmount(alice, expiry);
     assertEq(withdrawableAmount, 2e17);
@@ -347,7 +347,6 @@ contract WithdrawalsTest is BaseMarketTest {
     // vm.expectEmit(address(market));
     // emit WithdrawalBatchPayment(expiry, 8e17, 8e17 + feesAccruedOnWithdrawal);
     market.updateState();
-    _checkBatch(expiry, 1e18, 1e18, 1e18 );
-
+    _checkBatch(expiry, 1e18, 1e18, 1e18);
   }
 }
