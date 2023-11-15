@@ -78,6 +78,8 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
   constructor() {
     MarketParameters memory parameters = IWildcatMarketController(msg.sender).getMarketParameters();
 
+    __SphereXProtectedBase_init(parameters.spherex_admin, parameters.spherex_operator, parameters.spherex_engine);
+
     if ((parameters.protocolFeeBips > 0).and(parameters.feeRecipient == address(0))) {
       revert FeeSetWithoutRecipient();
     }

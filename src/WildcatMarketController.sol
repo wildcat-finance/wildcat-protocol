@@ -30,6 +30,9 @@ struct TmpMarketParameterStorage {
   uint32 withdrawalBatchDuration;
   uint16 reserveRatioBips;
   uint32 delinquencyGracePeriod;
+  address spherex_admin;
+  address spherex_operator;
+  address spherex_engine;
 }
 
 contract WildcatMarketController is IWildcatMarketController , SphereXProtected {
@@ -260,6 +263,9 @@ contract WildcatMarketController is IWildcatMarketController , SphereXProtected 
     parameters.withdrawalBatchDuration = _tmpMarketParameters.withdrawalBatchDuration;
     parameters.reserveRatioBips = _tmpMarketParameters.reserveRatioBips;
     parameters.delinquencyGracePeriod = _tmpMarketParameters.delinquencyGracePeriod;
+    parameters.spherex_admin = sphereXAdmin();
+    parameters.spherex_operator = sphereXOperator();
+    parameters.spherex_engine = sphereXEngine();
   }
 
   function _resetTmpMarketParameters() internal sphereXGuardInternal(0x07baf908) {
@@ -274,6 +280,9 @@ contract WildcatMarketController is IWildcatMarketController , SphereXProtected 
     _tmpMarketParameters.withdrawalBatchDuration = 1;
     _tmpMarketParameters.reserveRatioBips = 1;
     _tmpMarketParameters.delinquencyGracePeriod = 1;
+    _tmpMarketParameters.spherex_admin = address(1);
+    _tmpMarketParameters.spherex_operator = address(1);
+    _tmpMarketParameters.spherex_engine = address(1);
   }
 
   struct DeployMarketLocals {
@@ -346,7 +355,10 @@ contract WildcatMarketController is IWildcatMarketController , SphereXProtected 
       delinquencyFeeBips: delinquencyFeeBips,
       withdrawalBatchDuration: withdrawalBatchDuration,
       reserveRatioBips: reserveRatioBips,
-      delinquencyGracePeriod: delinquencyGracePeriod
+      delinquencyGracePeriod: delinquencyGracePeriod,
+      spherex_admin: sphereXAdmin(),
+      spherex_operator: sphereXOperator(),
+      spherex_engine: sphereXEngine()
     });
 
     locals.originationFeeAsset;
@@ -373,6 +385,7 @@ contract WildcatMarketController is IWildcatMarketController , SphereXProtected 
 
     IWildcatArchController(archController).registerMarket(market);
     _controlledMarkets.add(market);
+    _addAllowedSenderOnChain(market);
 
     _resetTmpMarketParameters();
 

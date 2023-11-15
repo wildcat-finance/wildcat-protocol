@@ -26,7 +26,10 @@ contract ExpectedStateTracker is Test, Assertions, IMarketEventsAndErrors {
       delinquencyFeeBips: DefaultDelinquencyFee,
       withdrawalBatchDuration: DefaultWithdrawalBatchDuration,
       reserveRatioBips: DefaultReserveRatio,
-      delinquencyGracePeriod: DefaultGracePeriod
+      delinquencyGracePeriod: DefaultGracePeriod,
+      spherex_admin: address(0),
+      spherex_operator: address(0),
+      spherex_engine: address(0)
     });
   MarketState internal previousState;
   WithdrawalData internal _withdrawalData;
