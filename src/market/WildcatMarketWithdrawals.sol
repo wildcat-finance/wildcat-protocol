@@ -28,9 +28,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   function getWithdrawalBatch(
     uint32 expiry
   ) external view nonReentrantView returns (WithdrawalBatch memory) {
-    (, uint32 expiredBatchExpiry, WithdrawalBatch memory expiredBatch) = _calculateCurrentState();
-    if ((expiry == expiredBatchExpiry).and(expiry > 0)) {
-      return expiredBatch;
+    (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
+    if ((expiry == pendingBatchExpiry).and(expiry > 0)) {
+      return pendingBatch;
     }
     return _withdrawalData.batches[expiry];
   }
@@ -49,10 +49,10 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     if (expiry > block.timestamp) {
       revert WithdrawalBatchNotExpired();
     }
-    (, uint32 expiredBatchExpiry, WithdrawalBatch memory expiredBatch) = _calculateCurrentState();
+    (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
     WithdrawalBatch memory batch;
-    if (expiry == expiredBatchExpiry) {
-      batch = expiredBatch;
+    if (expiry == pendingBatchExpiry) {
+      batch = pendingBatch;
     } else {
       batch = _withdrawalData.batches[expiry];
     }
