@@ -7,13 +7,12 @@
 [submodule "lib/solmate"]
 	path = lib/solmate
 	url = https://github.com/transmissions11/solmate
-[submodule "lib/solady"]
-	path = lib/solady
-	url = https://github.com/Vectorized/solady
-	branch = v0.0.86
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
 [submodule "lib/sol-utils"]
 	path = lib/sol-utils
 	url = https://github.com/d1ll0n/sol-utils
+[submodule "lib/solady"]
+	path = lib/solady
+	url = https://github.com/Vectorized/solady

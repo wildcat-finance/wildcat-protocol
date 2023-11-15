@@ -1,156 +1,204 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../interfaces/ISanctionsSentinel.sol';
+import '../interfaces/IWildcatSanctionsSentinel.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/SafeCastLib.sol';
 import './WildcatMarketBase.sol';
 
 contract WildcatMarketConfig is WildcatMarketBase {
-	using SafeCastLib for uint256;
-	using BoolUtils for bool;
+  using SafeCastLib for uint256;
+  using BoolUtils for bool;
 
-	// ===================================================================== //
-	//                      External Config Getters                          //
-	// ===================================================================== //
+  // ===================================================================== //
+  //                      External Config Getters                          //
+  // ===================================================================== //
 
-	/**
-	 * @dev Returns the maximum amount of underlying asset that can
-	 *      currently be deposited to the market.
-	 */
-	function maximumDeposit() external view returns (uint256) {
-		VaultState memory state = currentState();
-		return state.maximumDeposit();
-	}
+  /**
+   * @dev Returns whether or not a market has been closed.
+   */
+  function isClosed() external view returns (bool) {
+    MarketState memory state = currentState();
+    return state.isClosed;
+  }
 
-	/**
-	 * @dev Returns the maximum supply the market can reach via
-	 *      deposits (does not apply to interest accrual).
-	 */
-	function maxTotalSupply() external view returns (uint256) {
-		return _state.maxTotalSupply;
-	}
+  /**
+   * @dev Returns the maximum amount of underlying asset that can
+   *      currently be deposited to the market.
+   */
+  function maximumDeposit() external view returns (uint256) {
+    MarketState memory state = currentState();
+    return state.maximumDeposit();
+  }
 
-	/**
-	 * @dev Returns the annual interest rate earned by lenders
-	 *      in bips.
-	 */
-	function annualInterestBips() external view returns (uint256) {
-		return _state.annualInterestBips;
-	}
+  /**
+   * @dev Returns the maximum supply the market can reach via
+   *      deposits (does not apply to interest accrual).
+   */
+  function maxTotalSupply() external view returns (uint256) {
+    return _state.maxTotalSupply;
+  }
 
-	function liquidityCoverageRatio() external view returns (uint256) {
-		return _state.liquidityCoverageRatio;
-	}
+  /**
+   * @dev Returns the annual interest rate earned by lenders
+   *      in bips.
+   */
+  function annualInterestBips() external view returns (uint256) {
+    return _state.annualInterestBips;
+  }
 
-	// =====================================================================//
-	//                        External Config Setters                       //
-	// =====================================================================//
+  function reserveRatioBips() external view returns (uint256) {
+    return _state.reserveRatioBips;
+  }
 
-	/**
-	 * @dev Revoke an account's authorization to deposit assets.
-	 */
-	function revokeAccountAuthorization(address _account) external onlyController nonReentrant {
-		VaultState memory state = _getUpdatedState();
-		Account memory account = _getAccount(_account);
-		account.approval = AuthRole.WithdrawOnly;
-		_accounts[_account] = account;
-		_writeState(state);
-		emit AuthorizationStatusUpdated(_account, AuthRole.WithdrawOnly);
-	}
+  /* -------------------------------------------------------------------------- */
+  /*                                  Sanctions                                 */
+  /* -------------------------------------------------------------------------- */
 
-	/**
-	 * @dev Restore an account's authorization to deposit assets.
-	 * Can not be used to restore a blacklisted account's status.
-	 */
-	function grantAccountAuthorization(address _account) external onlyController nonReentrant {
-		VaultState memory state = _getUpdatedState();
-		Account memory account = _getAccount(_account);
-		account.approval = AuthRole.DepositAndWithdraw;
-		_accounts[_account] = account;
-		_writeState(state);
-		emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
-	}
-
-	/// @dev Block a sanctioned account from interacting with the market
-	///      and transfer its balance to an escrow contract.
-	// ******************************************************************
-	//          *  |\**/|  *          *                                *
-	//          *  \ == /  *          *                                *
-	//          *   | b|   *          *                                *
-	//          *   | y|   *          *                                *
-	//          *   \ e/   *          *                                *
-	//          *    \/    *          *                                *
-	//          *          *          *                                *
-	//          *          *          *                                *
-	//          *          *  |\**/|  *                                *
-	//          *          *  \ == /  *         _.-^^---....,,--       *
-	//          *          *   | b|   *    _--                  --_    *
-	//          *          *   | y|   *   <                        >)  *
-	//          *          *   \ e/   *   |         O-FAC!          |  *
-	//          *          *    \/    *    \._                   _./   *
-	//          *          *          *       ```--. . , ; .--'''      *
-	//          *          *          *   💸        | |   |            *
-	//          *          *          *          .-=||  | |=-.    💸   *
-	//  💰🤑💰 *   😅    *    😐    *    💸    `-=#$%&%$#=-'         *
-	//   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪       *
-	//   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
-	// ******************************************************************
-	function nukeFromOrbit(address accountAddress) external {
-    if (!ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+  /// @dev Block a sanctioned account from interacting with the market
+  ///      and transfer its balance to an escrow contract.
+  // ******************************************************************
+  //          *  |\**/|  *          *                                *
+  //          *  \ == /  *          *                                *
+  //          *   | b|   *          *                                *
+  //          *   | y|   *          *                                *
+  //          *   \ e/   *          *                                *
+  //          *    \/    *          *                                *
+  //          *          *          *                                *
+  //          *          *          *                                *
+  //          *          *  |\**/|  *                                *
+  //          *          *  \ == /  *         _.-^^---....,,--       *
+  //          *          *   | b|   *    _--                  --_    *
+  //          *          *   | y|   *   <                        >)  *
+  //          *          *   \ e/   *   |         O-FAC!          |  *
+  //          *          *    \/    *    \._                   _./   *
+  //          *          *          *       ```--. . , ; .--'''      *
+  //          *          *          *   💸        | |   |            *
+  //          *          *          *          .-=||  | |=-.    💸   *
+  //  💰🤑💰 *   😅    *    😐    *    💸    `-=#$%&%$#=-'         *
+  //   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪       *
+  //   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
+  // ******************************************************************
+  function nukeFromOrbit(address accountAddress) external nonReentrant {
+    if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       revert BadLaunchCode();
     }
-		VaultState memory state = _getUpdatedState();
+    MarketState memory state = _getUpdatedState();
     _blockAccount(state, accountAddress);
-		_writeState(state);
-	}
+    _writeState(state);
+  }
 
-	// /*//////////////////////////////////////////////////////////////
-	//                       Management Actions
-	// //////////////////////////////////////////////////////////////*/
+  /**
+   * @dev Unblock an account that was previously sanctioned and blocked
+   *      and has since been removed from the sanctions list or had
+   *      their sanctioned status overridden by the borrower.
+   */
+  function stunningReversal(address accountAddress) external nonReentrant {
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
+      revert NotReversedOrStunning();
+    }
 
-	/**
-	 * @dev Sets the maximum total supply - this only limits deposits and
-	 *      does not affect interest accrual.
-	 */
-	function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyController nonReentrant {
-		VaultState memory state = _getUpdatedState();
+    Account memory account = _accounts[accountAddress];
+    if (account.approval != AuthRole.Blocked) {
+      revert AccountNotBlocked();
+    }
 
-		if (_maxTotalSupply < state.totalSupply()) {
-			revert NewMaxSupplyTooLow();
-		}
+    account.approval = AuthRole.WithdrawOnly;
+    emit AuthorizationStatusUpdated(accountAddress, account.approval);
 
-		state.maxTotalSupply = _maxTotalSupply.toUint128();
-		_writeState(state);
-		emit MaxTotalSupplyUpdated(_maxTotalSupply);
-	}
+    _accounts[accountAddress] = account;
+  }
 
-	function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant {
-		VaultState memory state = _getUpdatedState();
+  /* -------------------------------------------------------------------------- */
+  /*                           External Config Setters                          */
+  /* -------------------------------------------------------------------------- */
 
-		if (_annualInterestBips > BIP) {
-			revert InterestRateTooHigh();
-		}
+  /**
+   * @dev Updates an account's authorization status based on whether the controller
+   *      has it marked as approved. Requires that the lender *had* full access (i.e.
+   *      they were previously authorized) before dropping them down to WithdrawOnly,
+   *      else arbitrary accounts could grant themselves Withdraw.
+   */
+  function updateAccountAuthorization(
+    address _account,
+    bool _isAuthorized
+  ) external onlyController nonReentrant {
+    MarketState memory state = _getUpdatedState();
+    Account memory account = _getAccount(_account);
+    if (_isAuthorized) {
+      account.approval = AuthRole.DepositAndWithdraw;
+    } else if (account.approval == AuthRole.DepositAndWithdraw) {
+      account.approval = AuthRole.WithdrawOnly;
+    }
+    _accounts[_account] = account;
+    _writeState(state);
+    emit AuthorizationStatusUpdated(_account, account.approval);
+  }
 
-		state.annualInterestBips = _annualInterestBips;
-		_writeState(state);
-		emit AnnualInterestBipsUpdated(_annualInterestBips);
-	}
+  /**
+   * @dev Sets the maximum total supply - this only limits deposits and
+   *      does not affect interest accrual.
+   *
+   *      Can not be set lower than current total supply.
+   */
+  function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyController nonReentrant {
+    MarketState memory state = _getUpdatedState();
 
-	function setLiquidityCoverageRatio(
-		uint16 _liquidityCoverageRatio
-	) public onlyController nonReentrant {
-		VaultState memory state = _getUpdatedState();
+    if (_maxTotalSupply < state.totalSupply()) {
+      revert NewMaxSupplyTooLow();
+    }
 
-		if (_liquidityCoverageRatio > BIP) {
-			revert LiquidityCoverageRatioTooHigh();
-		}
-		if (state.liquidityRequired() > totalAssets()) {
-			revert InsufficientCoverageForNewLiquidityRatio();
-		}
+    state.maxTotalSupply = _maxTotalSupply.toUint128();
+    _writeState(state);
+    emit MaxTotalSupplyUpdated(_maxTotalSupply);
+  }
 
-		state.liquidityCoverageRatio = _liquidityCoverageRatio;
-		_writeState(state);
-		emit LiquidityCoverageRatioUpdated(_liquidityCoverageRatio);
-	}
+  /**
+   * @dev Sets the annual interest rate earned by lenders in bips.
+   */
+  function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant {
+    if (_annualInterestBips > BIP) {
+      revert InterestRateTooHigh();
+    }
+
+    MarketState memory state = _getUpdatedState();
+
+    state.annualInterestBips = _annualInterestBips;
+    _writeState(state);
+    emit AnnualInterestBipsUpdated(_annualInterestBips);
+  }
+
+  /**
+   * @dev Adjust the market's reserve ratio.
+   *
+   *      If the new ratio is lower than the old ratio,
+   *      asserts that the market is not currently delinquent.
+   *
+   *      If the new ratio is higher than the old ratio,
+   *      asserts that the market will not become delinquent
+   *      because of the change.
+   */
+  function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant {
+    if (_reserveRatioBips > BIP) {
+      revert ReserveRatioBipsTooHigh();
+    }
+
+    MarketState memory state = _getUpdatedState();
+
+    uint256 initialReserveRatioBips = state.reserveRatioBips;
+
+    if (_reserveRatioBips < initialReserveRatioBips) {
+      if (state.liquidityRequired() > totalAssets()) {
+        revert InsufficientReservesForOldLiquidityRatio();
+      }
+    }
+    state.reserveRatioBips = _reserveRatioBips;
+    if (_reserveRatioBips > initialReserveRatioBips) {
+      if (state.liquidityRequired() > totalAssets()) {
+        revert InsufficientReservesForNewLiquidityRatio();
+      }
+    }
+    _writeState(state);
+    emit ReserveRatioBipsUpdated(_reserveRatioBips);
+  }
 }

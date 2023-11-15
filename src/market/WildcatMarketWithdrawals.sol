@@ -2,174 +2,215 @@
 pragma solidity >=0.8.20;
 
 import './WildcatMarketBase.sol';
-import '../libraries/VaultState.sol';
+import '../libraries/MarketState.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/FIFOQueue.sol';
-import '../interfaces/ISanctionsSentinel.sol';
+import '../interfaces/IWildcatSanctionsSentinel.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
 contract WildcatMarketWithdrawals is WildcatMarketBase {
-	using SafeTransferLib for address;
-	using MathUtils for uint256;
-	using SafeCastLib for uint256;
+  using SafeTransferLib for address;
+  using MathUtils for uint256;
+  using SafeCastLib for uint256;
+  using BoolUtils for bool;
 
-	function getUnpaidBatchExpiries() external view nonReentrantView returns (uint32[] memory) {
-		return _withdrawalData.unpaidBatches.values();
-	}
+  /* -------------------------------------------------------------------------- */
+  /*                             Withdrawal Queries                             */
+  /* -------------------------------------------------------------------------- */
 
-	function getWithdrawalBatch(
-		uint32 expiry
-	) external view nonReentrantView returns (WithdrawalBatch memory) {
-		(, uint32 expiredBatchExpiry, WithdrawalBatch memory expiredBatch) = _calculateCurrentState();
-		if (expiry == expiredBatchExpiry) {
-			return expiredBatch;
-		}
-		return _withdrawalData.batches[expiry];
-	}
+  /**
+   * @dev Returns the expiry timestamp of every unpaid withdrawal batch.
+   */
+  function getUnpaidBatchExpiries() external view nonReentrantView returns (uint32[] memory) {
+    return _withdrawalData.unpaidBatches.values();
+  }
 
-	function getAccountWithdrawalStatus(
-		address accountAddress,
-		uint32 expiry
-	) external view nonReentrantView returns (AccountWithdrawalStatus memory) {
-		return _withdrawalData.accountStatuses[expiry][accountAddress];
-	}
+  function getWithdrawalBatch(
+    uint32 expiry
+  ) external view nonReentrantView returns (WithdrawalBatch memory) {
+    (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
+    if ((expiry == pendingBatchExpiry).and(expiry > 0)) {
+      return pendingBatch;
+    }
+    return _withdrawalData.batches[expiry];
+  }
 
-	function getAvailableWithdrawalAmount(
-		address accountAddress,
-		uint32 expiry
-	) external view nonReentrantView returns (uint256) {
-		if (expiry > block.timestamp) {
-			revert WithdrawalBatchNotExpired();
-		}
-		(, uint32 expiredBatchExpiry, WithdrawalBatch memory expiredBatch) = _calculateCurrentState();
-		WithdrawalBatch memory batch;
-		if (expiry == expiredBatchExpiry) {
-			batch = expiredBatch;
-		} else {
-			batch = _withdrawalData.batches[expiry];
-		}
-		AccountWithdrawalStatus memory status = _withdrawalData.accountStatuses[expiry][accountAddress];
-		// Rounding errors will lead to some dust accumulating in the batch, but the cost of
-		// executing a withdrawal will be lower for users.
-		uint256 previousTotalWithdrawn = status.normalizedAmountWithdrawn;
-		uint256 newTotalWithdrawn = uint256(batch.normalizedAmountPaid).mulDiv(
-			status.scaledAmount,
-			batch.scaledTotalAmount
-		);
-		return newTotalWithdrawn - previousTotalWithdrawn;
-	}
+  function getAccountWithdrawalStatus(
+    address accountAddress,
+    uint32 expiry
+  ) external view nonReentrantView returns (AccountWithdrawalStatus memory) {
+    return _withdrawalData.accountStatuses[expiry][accountAddress];
+  }
 
-	/**
-	 * @dev Create a withdrawal request for a lender.
-	 */
-	function queueWithdrawal(uint256 amount) external nonReentrant {
-		VaultState memory state = _getUpdatedState();
+  function getAvailableWithdrawalAmount(
+    address accountAddress,
+    uint32 expiry
+  ) external view nonReentrantView returns (uint256) {
+    if (expiry >= block.timestamp) {
+      revert WithdrawalBatchNotExpired();
+    }
+    (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
+    WithdrawalBatch memory batch;
+    if (expiry == pendingBatchExpiry) {
+      batch = pendingBatch;
+    } else {
+      batch = _withdrawalData.batches[expiry];
+    }
+    AccountWithdrawalStatus memory status = _withdrawalData.accountStatuses[expiry][accountAddress];
+    // Rounding errors will lead to some dust accumulating in the batch, but the cost of
+    // executing a withdrawal will be lower for users.
+    uint256 previousTotalWithdrawn = status.normalizedAmountWithdrawn;
+    uint256 newTotalWithdrawn = uint256(batch.normalizedAmountPaid).mulDiv(
+      status.scaledAmount,
+      batch.scaledTotalAmount
+    );
+    return newTotalWithdrawn - previousTotalWithdrawn;
+  }
 
-		// Cache account data and revert if not authorized to withdraw.
-		Account memory account = _getAccountWithRole(msg.sender, AuthRole.WithdrawOnly);
+  /* -------------------------------------------------------------------------- */
+  /*                             Withdrawal Actions                             */
+  /* -------------------------------------------------------------------------- */
 
-		uint104 scaledAmount = state.scaleAmount(amount).toUint104();
-		if (scaledAmount == 0) {
-			revert NullBurnAmount();
-		}
+  /**
+   * @dev Create a withdrawal request for a lender.
+   */
+  function queueWithdrawal(uint256 amount) external nonReentrant {
 
-		// Reduce caller's balance and emit transfer event.
-		account.scaledBalance -= scaledAmount;
-		_accounts[msg.sender] = account;
-		emit Transfer(msg.sender, address(this), amount);
+    MarketState memory state = _getUpdatedState();
+    
+    uint104 scaledAmount = state.scaleAmount(amount).toUint104();
+    if (scaledAmount == 0) {
+      revert NullBurnAmount();
+    }
 
-		// If there is no pending withdrawal batch, create a new one.
-		if (state.pendingWithdrawalExpiry == 0) {
-			state.pendingWithdrawalExpiry = uint32(block.timestamp + withdrawalBatchDuration);
-			emit WithdrawalBatchCreated(state.pendingWithdrawalExpiry);
-		}
-		// Cache batch expiry on the stack for gas savings.
-		uint32 expiry = state.pendingWithdrawalExpiry;
+    // Cache account data and revert if not authorized to withdraw.
+    Account memory account = _getAccountWithRole(msg.sender, AuthRole.WithdrawOnly);
 
-		WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
+    // Reduce caller's balance and emit transfer event.
+    account.scaledBalance -= scaledAmount;
+    _accounts[msg.sender] = account;
+    emit Transfer(msg.sender, address(this), amount);
 
-		// Add scaled withdrawal amount to account withdrawal status, withdrawal batch and vault state.
-		_withdrawalData.accountStatuses[expiry][msg.sender].scaledAmount += scaledAmount;
-		batch.scaledTotalAmount += scaledAmount;
-		state.scaledPendingWithdrawals += scaledAmount;
+    // If there is no pending withdrawal batch, create a new one.
+    if (state.pendingWithdrawalExpiry == 0) {
+      state.pendingWithdrawalExpiry = uint32(block.timestamp + withdrawalBatchDuration);
+      emit WithdrawalBatchCreated(state.pendingWithdrawalExpiry);
+    }
+    // Cache batch expiry on the stack for gas savings.
+    uint32 expiry = state.pendingWithdrawalExpiry;
 
-		emit WithdrawalQueued(expiry, msg.sender, scaledAmount);
+    WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
-		// Burn as much of the withdrawal batch as possible with available liquidity.
-		uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
-		if (availableLiquidity > 0) {
-			_applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
-		}
+    // Add scaled withdrawal amount to account withdrawal status, withdrawal batch and market state.
+    _withdrawalData.accountStatuses[expiry][msg.sender].scaledAmount += scaledAmount;
+    batch.scaledTotalAmount += scaledAmount;
+    state.scaledPendingWithdrawals += scaledAmount;
 
-		// Update stored batch data
-		_withdrawalData.batches[expiry] = batch;
+    emit WithdrawalQueued(expiry, msg.sender, scaledAmount, amount);
 
-		// Update stored state
-		_writeState(state);
-	}
+    // Burn as much of the withdrawal batch as possible with available liquidity.
+    uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
+    if (availableLiquidity > 0) {
+      _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
+    }
 
-	function executeWithdrawal(
-		address accountAddress,
-		uint32 expiry
-	) external nonReentrant returns (uint256) {
-		if (expiry > block.timestamp) {
-			revert WithdrawalBatchNotExpired();
-		}
-		VaultState memory state = _getUpdatedState();
+    // Update stored batch data
+    _withdrawalData.batches[expiry] = batch;
 
-		WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
-		AccountWithdrawalStatus storage status = _withdrawalData.accountStatuses[expiry][
-			accountAddress
-		];
+    // Update stored state
+    _writeState(state);
+  }
 
-		uint128 newTotalWithdrawn = uint128(
-			MathUtils.mulDiv(batch.normalizedAmountPaid, status.scaledAmount, batch.scaledTotalAmount)
-		);
+  /**
+   * @dev Execute a pending withdrawal request for a batch that has expired.
+   *
+   *      Withdraws the proportional amount of the paid batch owed to
+   *      `accountAddress` which has not already been withdrawn.
+   *
+   *      If `accountAddress` is sanctioned, transfers the owed amount to
+   *      an escrow contract specific to the account and blocks the account.
+   *
+   *      Reverts if:
+   *      - `expiry >= block.timestamp`
+   *      -  `expiry` does not correspond to an existing withdrawal batch
+   *      - `accountAddress` has already withdrawn the full amount owed
+   */
+  function executeWithdrawal(
+    address accountAddress,
+    uint32 expiry
+  ) external nonReentrant returns (uint256) {
+    if (expiry >= block.timestamp) {
+      revert WithdrawalBatchNotExpired();
+    }
+    MarketState memory state = _getUpdatedState();
 
-		uint128 normalizedAmountWithdrawn = newTotalWithdrawn - status.normalizedAmountWithdrawn;
+    WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
+    AccountWithdrawalStatus storage status = _withdrawalData.accountStatuses[expiry][
+      accountAddress
+    ];
 
-		status.normalizedAmountWithdrawn = newTotalWithdrawn;
-		state.reservedAssets -= normalizedAmountWithdrawn;
+    uint128 newTotalWithdrawn = uint128(
+      MathUtils.mulDiv(batch.normalizedAmountPaid, status.scaledAmount, batch.scaledTotalAmount)
+    );
 
-    if (ISanctionsSentinel(sentinel).isSanctioned(accountAddress)) {
+    uint128 normalizedAmountWithdrawn = newTotalWithdrawn - status.normalizedAmountWithdrawn;
+
+    if (normalizedAmountWithdrawn == 0) {
+      revert NullWithdrawalAmount();
+    }
+
+    status.normalizedAmountWithdrawn = newTotalWithdrawn;
+    state.normalizedUnclaimedWithdrawals -= normalizedAmountWithdrawn;
+
+    if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       _blockAccount(state, accountAddress);
-      address escrow = ISanctionsSentinel(sentinel).createEscrow(accountAddress, borrower, address(asset));  
-      asset.safeTransfer(accountAddress, normalizedAmountWithdrawn);
-      emit SanctionedAccountWithdrawalSentToEscrow(accountAddress, escrow, expiry, normalizedAmountWithdrawn);
+      address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
+        borrower,
+        accountAddress,
+        address(asset)
+      );
+      asset.safeTransfer(escrow, normalizedAmountWithdrawn);
+      emit SanctionedAccountWithdrawalSentToEscrow(
+        accountAddress,
+        escrow,
+        expiry,
+        normalizedAmountWithdrawn
+      );
     } else {
       asset.safeTransfer(accountAddress, normalizedAmountWithdrawn);
     }
-		
-		emit WithdrawalExecuted(expiry, accountAddress, normalizedAmountWithdrawn);
 
-		// Update stored state
-		_writeState(state);
+    emit WithdrawalExecuted(expiry, accountAddress, normalizedAmountWithdrawn);
 
-		return normalizedAmountWithdrawn;
-	}
+    // Update stored state
+    _writeState(state);
 
-	function processUnpaidWithdrawalBatch() external nonReentrant {
-		VaultState memory state = _getUpdatedState();
+    return normalizedAmountWithdrawn;
+  }
 
-		// Get the next unpaid batch timestamp from storage (reverts if none)
-		uint32 expiry = _withdrawalData.unpaidBatches.first();
+  function processUnpaidWithdrawalBatch() external nonReentrant {
+    MarketState memory state = _getUpdatedState();
 
-		// Cache batch data in memory
-		WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
+    // Get the next unpaid batch timestamp from storage (reverts if none)
+    uint32 expiry = _withdrawalData.unpaidBatches.first();
 
-		// Calculate assets available to process the batch
-		uint256 availableLiquidity = totalAssets() - (state.reservedAssets + state.accruedProtocolFees);
+    // Cache batch data in memory
+    WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
-		_applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
+    // Calculate assets available to process the batch
+    uint256 availableLiquidity = totalAssets() -
+      (state.normalizedUnclaimedWithdrawals + state.accruedProtocolFees);
 
-		// Remove batch from unpaid set if fully paid
-		if (batch.scaledTotalAmount == batch.scaledAmountBurned) {
-			_withdrawalData.unpaidBatches.shift();
-			emit WithdrawalBatchClosed(expiry);
-		}
+    _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
 
-		// Update stored batch
-		_withdrawalData.batches[expiry] = batch;
-		_writeState(state);
-	}
+    // Remove batch from unpaid set if fully paid
+    if (batch.scaledTotalAmount == batch.scaledAmountBurned) {
+      _withdrawalData.unpaidBatches.shift();
+      emit WithdrawalBatchClosed(expiry);
+    }
+
+    // Update stored batch
+    _withdrawalData.batches[expiry] = batch;
+    _writeState(state);
+  }
 }
