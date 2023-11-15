@@ -5,9 +5,11 @@ import { IChainalysisSanctionsList } from './interfaces/IChainalysisSanctionsLis
 import { IWildcatArchController } from './interfaces/IWildcatArchController.sol';
 import { IWildcatSanctionsSentinel } from './interfaces/IWildcatSanctionsSentinel.sol';
 import { SanctionsList } from './libraries/Chainalysis.sol';
-import { WildcatSanctionsEscrow } from './WildcatSanctionsEscrow.sol';
+import { WildcatSanctionsEscrow } from './WildcatSanctionsEscrow.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
-contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
+contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel , SphereXProtected {
   bytes32 public constant override WildcatSanctionsEscrowInitcodeHash =
     keccak256(type(WildcatSanctionsEscrow).creationCode);
 
@@ -27,7 +29,7 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
     _resetTmpEscrowParams();
   }
 
-  function _resetTmpEscrowParams() internal {
+  function _resetTmpEscrowParams() internal sphereXGuardInternal(0x5a5545aa) {
     tmpEscrowParams = TmpEscrowParams(address(1), address(1), address(1));
   }
 
@@ -49,7 +51,7 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
   /**
    * @dev Overrides the sanction status of `account` for `borrower`.
    */
-  function overrideSanction(address account) public override {
+  function overrideSanction(address account) public override sphereXGuardPublic(0x7cc6eb71, 0x681909a0) {
     sanctionOverrides[msg.sender][account] = true;
     emit SanctionOverride(msg.sender, account);
   }
@@ -57,7 +59,7 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
   /**
    * @dev Removes the sanction override of `account` for `borrower`.
    */
-  function removeSanctionOverride(address account) public override {
+  function removeSanctionOverride(address account) public override sphereXGuardPublic(0x06340eae, 0x490a8653) {
     sanctionOverrides[msg.sender][account] = false;
     emit SanctionOverrideRemoved(msg.sender, account);
   }
@@ -100,7 +102,7 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
     address borrower,
     address account,
     address asset
-  ) public override returns (address escrowContract) {
+  ) public override sphereXGuardPublic(0x22f014bf, 0xa1054f6b) returns (address escrowContract) {
 
     escrowContract = getEscrowAddress(borrower, account, asset);
 

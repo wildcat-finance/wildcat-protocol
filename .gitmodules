@@ -16,3 +16,6 @@
 [submodule "lib/solady"]
 	path = lib/solady
 	url = https://github.com/Vectorized/solady
+[submodule "lib/spherex-protect-contracts"]
+	path = lib/spherex-protect-contracts
+	url = https://github.com/spherex-xyz/spherex-protect-contracts

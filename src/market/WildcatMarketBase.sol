@@ -9,7 +9,9 @@ import '../interfaces/IWildcatMarketController.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
 import { IERC20, IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
-import '../libraries/BoolUtils.sol';
+import '../libraries/BoolUtils.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
 contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
   using WithdrawalLib for MarketState;
@@ -160,7 +162,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *
    *      If the account is already blocked, this function does nothing.
    */
-  function _blockAccount(MarketState memory state, address accountAddress) internal {
+  function _blockAccount(MarketState memory state, address accountAddress) internal sphereXGuardInternal(0x4c77e603) {
     Account memory account = _accounts[accountAddress];
     if (account.approval != AuthRole.Blocked) {
       uint104 scaledBalance = account.scaledBalance;
@@ -197,7 +199,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
   function _getAccountWithRole(
     address accountAddress,
     AuthRole requiredRole
-  ) internal returns (Account memory account) {
+  ) internal sphereXGuardInternal(0x34aa4264) returns (Account memory account) {
     account = _getAccount(accountAddress);
     // If account role is null, see if it is authorized on controller.
     if (account.approval == AuthRole.Null) {
@@ -367,7 +369,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *
    * @return state Market state after interest is accrued.
    */
-  function _getUpdatedState() internal returns (MarketState memory state) {
+  function _getUpdatedState() internal sphereXGuardInternal(0xd43ccb27) returns (MarketState memory state) {
     state = _state;
     // Handle expired withdrawal batch
     if (state.hasPendingExpiredBatch()) {
@@ -505,7 +507,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    * @dev Writes the cached MarketState to storage and emits an event.
    *      Used at the end of all functions which modify `state`.
    */
-  function _writeState(MarketState memory state) internal {
+  function _writeState(MarketState memory state) internal sphereXGuardInternal(0xe4b993bf) {
     bool isDelinquent = state.liquidityRequired() > totalAssets();
     state.isDelinquent = isDelinquent;
     _state = state;
@@ -523,7 +525,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *        amount of scaled tokens is burned, ensuring borrowers do not continue paying interest
    *        on withdrawn assets.
    */
-  function _processExpiredWithdrawalBatch(MarketState memory state) internal {
+  function _processExpiredWithdrawalBatch(MarketState memory state) internal sphereXGuardInternal(0x0efe0e5b) {
     uint32 expiry = state.pendingWithdrawalExpiry;
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
@@ -562,7 +564,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     MarketState memory state,
     uint32 expiry,
     uint256 availableLiquidity
-  ) internal {
+  ) internal sphereXGuardInternal(0x358cb018) {
     uint104 scaledAmountOwed = batch.scaledTotalAmount - batch.scaledAmountBurned;
     // Do nothing if batch is already paid
     if (scaledAmountOwed == 0) {

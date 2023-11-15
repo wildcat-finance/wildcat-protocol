@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import './WildcatMarketBase.sol';
+import './WildcatMarketBase.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
 contract WildcatMarketToken is WildcatMarketBase {
   using SafeCastLib for uint256;
@@ -28,12 +30,12 @@ contract WildcatMarketToken is WildcatMarketBase {
   /*                                ERC20 Actions                               */
   /* -------------------------------------------------------------------------- */
 
-  function approve(address spender, uint256 amount) external virtual nonReentrant returns (bool) {
+  function approve(address spender, uint256 amount) external virtual nonReentrant sphereXGuardExternal(0xc1910e1a) returns (bool) {
     _approve(msg.sender, spender, amount);
     return true;
   }
 
-  function transfer(address to, uint256 amount) external virtual nonReentrant returns (bool) {
+  function transfer(address to, uint256 amount) external virtual nonReentrant sphereXGuardExternal(0xf0b6c5f7) returns (bool) {
     _transfer(msg.sender, to, amount);
     return true;
   }
@@ -42,7 +44,7 @@ contract WildcatMarketToken is WildcatMarketBase {
     address from,
     address to,
     uint256 amount
-  ) external virtual nonReentrant returns (bool) {
+  ) external virtual nonReentrant sphereXGuardExternal(0xe93822ca) returns (bool) {
     uint256 allowed = allowance[from][msg.sender];
 
     // Saves gas for unlimited approvals.
@@ -56,12 +58,12 @@ contract WildcatMarketToken is WildcatMarketBase {
     return true;
   }
 
-  function _approve(address approver, address spender, uint256 amount) internal virtual {
+  function _approve(address approver, address spender, uint256 amount) internal virtual sphereXGuardInternal(0x5ede8ef1) {
     allowance[approver][spender] = amount;
     emit Approval(approver, spender, amount);
   }
 
-  function _transfer(address from, address to, uint256 amount) internal virtual {
+  function _transfer(address from, address to, uint256 amount) internal virtual sphereXGuardInternal(0xae533ab5) {
     MarketState memory state = _getUpdatedState();
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 

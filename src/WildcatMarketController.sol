@@ -8,7 +8,9 @@ import './interfaces/IWildcatArchController.sol';
 import './interfaces/IWildcatMarketControllerEventsAndErrors.sol';
 import './interfaces/IWildcatMarketControllerFactory.sol';
 import './libraries/LibStoredInitCode.sol';
-import './libraries/MathUtils.sol';
+import './libraries/MathUtils.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
 struct TemporaryReserveRatio {
   uint16 originalAnnualInterestBips;
@@ -30,7 +32,7 @@ struct TmpMarketParameterStorage {
   uint32 delinquencyGracePeriod;
 }
 
-contract WildcatMarketController is IWildcatMarketController {
+contract WildcatMarketController is IWildcatMarketController , SphereXProtected {
   using EnumerableSet for EnumerableSet.AddressSet;
   using SafeCastLib for uint256;
   using SafeTransferLib for address;
@@ -111,6 +113,7 @@ contract WildcatMarketController is IWildcatMarketController {
     MaximumWithdrawalBatchDuration = parameters.maximumWithdrawalBatchDuration;
     MinimumAnnualInterestBips = parameters.minimumAnnualInterestBips;
     MaximumAnnualInterestBips = parameters.maximumAnnualInterestBips;
+     __SphereXProtectedBase_init(parameters.spherex_admin, parameters.spherex_operator, parameters.spherex_engine);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -152,7 +155,7 @@ contract WildcatMarketController is IWildcatMarketController {
    *      Must call `updateLenderAuthorization` to apply changes
    *      to existing market accounts
    */
-  function authorizeLenders(address[] memory lenders) external override onlyBorrower {
+  function authorizeLenders(address[] memory lenders) external override onlyBorrower sphereXGuardExternal(0x22265799) {
     for (uint256 i = 0; i < lenders.length; i++) {
       address lender = lenders[i];
       if (_authorizedLenders.add(lender)) {
@@ -168,7 +171,7 @@ contract WildcatMarketController is IWildcatMarketController {
    *      Must call `updateLenderAuthorization` to apply changes
    *      to existing market accounts
    */
-  function deauthorizeLenders(address[] memory lenders) external override onlyBorrower {
+  function deauthorizeLenders(address[] memory lenders) external override onlyBorrower sphereXGuardExternal(0xb907be30) {
     for (uint256 i = 0; i < lenders.length; i++) {
       address lender = lenders[i];
       if (_authorizedLenders.remove(lender)) {
@@ -181,7 +184,7 @@ contract WildcatMarketController is IWildcatMarketController {
    * @dev Update lender authorization for a set of markets to the current
    *      status.
    */
-  function updateLenderAuthorization(address lender, address[] memory markets) external override {
+  function updateLenderAuthorization(address lender, address[] memory markets) external override sphereXGuardExternal(0xa3425660) {
     for (uint256 i; i < markets.length; i++) {
       address market = markets[i];
       if (!_controlledMarkets.contains(market)) {
@@ -259,7 +262,7 @@ contract WildcatMarketController is IWildcatMarketController {
     parameters.delinquencyGracePeriod = _tmpMarketParameters.delinquencyGracePeriod;
   }
 
-  function _resetTmpMarketParameters() internal {
+  function _resetTmpMarketParameters() internal sphereXGuardInternal(0x07baf908) {
     _tmpMarketParameters.asset = address(1);
     _tmpMarketParameters.namePrefix = '_';
     _tmpMarketParameters.symbolPrefix = '_';
@@ -271,6 +274,12 @@ contract WildcatMarketController is IWildcatMarketController {
     _tmpMarketParameters.withdrawalBatchDuration = 1;
     _tmpMarketParameters.reserveRatioBips = 1;
     _tmpMarketParameters.delinquencyGracePeriod = 1;
+  }
+
+  struct DeployMarketLocals {
+    address originationFeeAsset;
+    uint80 originationFeeAmount;
+    bytes32 salt;
   }
 
   /**
@@ -305,7 +314,7 @@ contract WildcatMarketController is IWildcatMarketController {
     uint32 withdrawalBatchDuration,
     uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
-  ) external override returns (address market) {
+  ) external override sphereXGuardExternal(0xca0184a6) returns (address market) {
     if (msg.sender == borrower) {
       if (!IWildcatArchController(archController).isRegisteredBorrower(msg.sender)) {
         revert NotRegisteredBorrower();
@@ -313,6 +322,8 @@ contract WildcatMarketController is IWildcatMarketController {
     } else if (msg.sender != address(controllerFactory)) {
       revert CallerNotBorrowerOrControllerFactory();
     }
+
+    DeployMarketLocals memory locals;
 
     enforceParameterConstraints(
       namePrefix,
@@ -338,27 +349,27 @@ contract WildcatMarketController is IWildcatMarketController {
       delinquencyGracePeriod: delinquencyGracePeriod
     });
 
-    address originationFeeAsset;
-    uint80 originationFeeAmount;
+    locals.originationFeeAsset;
+    locals.originationFeeAmount;
     (
       parameters.feeRecipient,
-      originationFeeAsset,
-      originationFeeAmount,
+      locals.originationFeeAsset,
+      locals.originationFeeAmount,
       parameters.protocolFeeBips
     ) = IWildcatMarketControllerFactory(controllerFactory).getProtocolFeeConfiguration();
 
     _tmpMarketParameters = parameters;
 
-    if (originationFeeAsset != address(0)) {
-      originationFeeAsset.safeTransferFrom(borrower, parameters.feeRecipient, originationFeeAmount);
+    if (locals.originationFeeAsset != address(0)) {
+      locals.originationFeeAsset.safeTransferFrom(borrower, parameters.feeRecipient, locals.originationFeeAmount);
     }
 
-    bytes32 salt = _deriveSalt(asset, namePrefix, symbolPrefix);
-    market = LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, marketInitCodeHash);
+    locals.salt = _deriveSalt(asset, namePrefix, symbolPrefix);
+    market = LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, locals.salt, marketInitCodeHash);
     if (market.code.length != 0) {
       revert MarketAlreadyDeployed();
     }
-    LibStoredInitCode.create2WithStoredInitCode(marketInitCodeStorage, salt);
+    LibStoredInitCode.create2WithStoredInitCode(marketInitCodeStorage, locals.salt);
 
     IWildcatArchController(archController).registerMarket(market);
     _controlledMarkets.add(market);
@@ -510,7 +521,7 @@ contract WildcatMarketController is IWildcatMarketController {
    * @dev Close a market, setting interest rate to zero and returning all
    * outstanding debt.
    */
-  function closeMarket(address market) external override onlyBorrower onlyControlledMarket(market) {
+  function closeMarket(address market) external override onlyBorrower onlyControlledMarket(market) sphereXGuardExternal(0xdab91374) {
     if (WildcatMarket(market).isClosed()) {
       revertWithSelector(MarketAlreadyClosed.selector);
     }
@@ -527,7 +538,7 @@ contract WildcatMarketController is IWildcatMarketController {
   function setMaxTotalSupply(
     address market,
     uint256 maxTotalSupply
-  ) external override onlyBorrower onlyControlledMarket(market) {
+  ) external override onlyBorrower onlyControlledMarket(market) sphereXGuardExternal(0x4214ad6d) {
     if (WildcatMarket(market).isClosed()) {
       revertWithSelector(CapacityChangeOnClosedMarket.selector);
     }
@@ -576,7 +587,7 @@ contract WildcatMarketController is IWildcatMarketController {
   function setAnnualInterestBips(
     address market,
     uint16 annualInterestBips
-  ) external virtual override onlyBorrower onlyControlledMarket(market) {
+  ) external virtual override onlyBorrower onlyControlledMarket(market) sphereXGuardExternal(0x9edb053f) {
     if (WildcatMarket(market).isClosed()) {
       revertWithSelector(AprChangeOnClosedMarket.selector);
     }
@@ -648,7 +659,7 @@ contract WildcatMarketController is IWildcatMarketController {
     WildcatMarket(market).setAnnualInterestBips(annualInterestBips);
   }
 
-  function resetReserveRatio(address market) external virtual override {
+  function resetReserveRatio(address market) external virtual override sphereXGuardExternal(0xf364718a) {
     TemporaryReserveRatio memory tmp = temporaryExcessReserveRatio[market];
     if (tmp.expiry == 0) {
       revertWithSelector(AprChangeNotPending.selector);

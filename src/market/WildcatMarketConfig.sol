@@ -4,7 +4,9 @@ pragma solidity >=0.8.20;
 import '../interfaces/IWildcatSanctionsSentinel.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/SafeCastLib.sol';
-import './WildcatMarketBase.sol';
+import './WildcatMarketBase.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
 contract WildcatMarketConfig is WildcatMarketBase {
   using SafeCastLib for uint256;
@@ -79,7 +81,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
   //   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪       *
   //   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
   // ******************************************************************
-  function nukeFromOrbit(address accountAddress) external nonReentrant {
+  function nukeFromOrbit(address accountAddress) external nonReentrant sphereXGuardExternal(0x60f4e8f2) {
     if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       revert BadLaunchCode();
     }
@@ -93,7 +95,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      and has since been removed from the sanctions list or had
    *      their sanctioned status overridden by the borrower.
    */
-  function stunningReversal(address accountAddress) external nonReentrant {
+  function stunningReversal(address accountAddress) external nonReentrant sphereXGuardExternal(0x0fd4fa83) {
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       revert NotReversedOrStunning();
     }
@@ -122,7 +124,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
   function updateAccountAuthorization(
     address _account,
     bool _isAuthorized
-  ) external onlyController nonReentrant {
+  ) external onlyController nonReentrant sphereXGuardExternal(0xe0a58fb6) {
     MarketState memory state = _getUpdatedState();
     Account memory account = _getAccount(_account);
     if (_isAuthorized) {
@@ -141,7 +143,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *
    *      Can not be set lower than current total supply.
    */
-  function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyController nonReentrant {
+  function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyController nonReentrant sphereXGuardExternal(0xfd0bfd91) {
     MarketState memory state = _getUpdatedState();
 
     if (_maxTotalSupply < state.totalSupply()) {
@@ -156,7 +158,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
   /**
    * @dev Sets the annual interest rate earned by lenders in bips.
    */
-  function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant {
+  function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant sphereXGuardPublic(0x850ae35d, 0x5c559e14) {
     if (_annualInterestBips > BIP) {
       revert InterestRateTooHigh();
     }
@@ -178,7 +180,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      asserts that the market will not become delinquent
    *      because of the change.
    */
-  function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant {
+  function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant sphereXGuardPublic(0xc1a48714, 0x6dd4f521) {
     if (_reserveRatioBips > BIP) {
       revert ReserveRatioBipsTooHigh();
     }

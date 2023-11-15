@@ -43,6 +43,9 @@ struct MarketControllerParameters {
   uint32 maximumWithdrawalBatchDuration;
   uint16 minimumAnnualInterestBips;
   uint16 maximumAnnualInterestBips;
+  address spherex_admin;
+  address spherex_operator;
+  address spherex_engine;
 }
 
 struct ProtocolFeeConfiguration {

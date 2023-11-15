@@ -13,6 +13,7 @@ remappings = [
   'solady/=lib/solady/src/',
   'sol-utils/=lib/sol-utils/src/',
   'openzeppelin/=lib/openzeppelin-contracts/',
+  "@spherex-xyz/contracts/src/=lib/spherex-protect-contracts/src/",
 ]
 
 evm_version = 'shanghai'
