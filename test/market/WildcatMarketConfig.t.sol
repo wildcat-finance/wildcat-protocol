@@ -88,8 +88,41 @@ contract WildcatMarketConfigTest is BaseMarketTest {
   // }
 
   function test_nukeFromOrbit(address _account) external {
+    _deposit(_account, 1e18);
+    sanctionsSentinel.sanction(_account);
+    address escrow = sanctionsSentinel.getEscrowAddress(borrower, _account, address(market));
+
+    vm.expectEmit(address(market));
+    emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
+    vm.expectEmit(address(market));
+    emit Transfer(_account, escrow, 1e18);
+    vm.expectEmit(address(market));
+    emit SanctionedAccountAssetsSentToEscrow(_account, escrow, 1e18);
+    market.nukeFromOrbit(_account);
+    assertEq(
+      uint(market.getAccountRole(_account)),
+      uint(AuthRole.Blocked),
+      'account role should be Blocked'
+    );
+  }
+
+  function test_nukeFromOrbit_AlreadyNuked(address _account) external {
     sanctionsSentinel.sanction(_account);
 
+    vm.expectEmit(address(market));
+    emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
+    market.nukeFromOrbit(_account);
+    market.nukeFromOrbit(_account);
+    assertEq(
+      uint(market.getAccountRole(_account)),
+      uint(AuthRole.Blocked),
+      'account role should be Blocked'
+    );
+  }
+
+  function test_nukeFromOrbit_NullBalance(address _account) external {
+    sanctionsSentinel.sanction(_account);
+    address escrow = sanctionsSentinel.getEscrowAddress(borrower, _account, address(market));
     vm.expectEmit(address(market));
     emit AuthorizationStatusUpdated(_account, AuthRole.Blocked);
     market.nukeFromOrbit(_account);
@@ -98,6 +131,7 @@ contract WildcatMarketConfigTest is BaseMarketTest {
       uint(AuthRole.Blocked),
       'account role should be Blocked'
     );
+    assertEq(escrow.code.length, 0, 'escrow should not be deployed');
   }
 
   function test_nukeFromOrbit_WithBalance() external {
