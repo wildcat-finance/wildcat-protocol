@@ -129,17 +129,15 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
   }
 
   // ===================================================================== //
-  //                              Modifiers                                //
+  //                             'Modifiers'                               //
   // ===================================================================== //
 
-  modifier onlyBorrower() {
+  function _onlyBorrower() internal view {
     if (msg.sender != borrower) revert NotApprovedBorrower();
-    _;
   }
 
-  modifier onlyController() {
+  function _onlyController() internal view {
     if (msg.sender != controller) revert NotController();
-    _;
   }
 
   // ===================================================================== //

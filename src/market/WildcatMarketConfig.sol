@@ -124,7 +124,8 @@ contract WildcatMarketConfig is WildcatMarketBase {
   function updateAccountAuthorization(
     address _account,
     bool _isAuthorized
-  ) external onlyController nonReentrant sphereXGuardExternal(0xe0a58fb6) {
+  ) external nonReentrant sphereXGuardExternal(0xe0a58fb6) {
+    _onlyController();
     MarketState memory state = _getUpdatedState();
     Account memory account = _getAccount(_account);
     if (_isAuthorized) {
@@ -143,7 +144,8 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *
    *      Can not be set lower than current total supply.
    */
-  function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyController nonReentrant sphereXGuardExternal(0xfd0bfd91) {
+  function setMaxTotalSupply(uint256 _maxTotalSupply) external nonReentrant sphereXGuardExternal(0xfd0bfd91) {
+    _onlyController();
     MarketState memory state = _getUpdatedState();
 
     if (_maxTotalSupply < state.totalSupply()) {
@@ -158,7 +160,8 @@ contract WildcatMarketConfig is WildcatMarketBase {
   /**
    * @dev Sets the annual interest rate earned by lenders in bips.
    */
-  function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant sphereXGuardPublic(0x850ae35d, 0x5c559e14) {
+  function setAnnualInterestBips(uint16 _annualInterestBips) public nonReentrant sphereXGuardPublic(0x850ae35d, 0x5c559e14) {
+    _onlyController();
     if (_annualInterestBips > BIP) {
       revert InterestRateTooHigh();
     }
@@ -180,7 +183,8 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      asserts that the market will not become delinquent
    *      because of the change.
    */
-  function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant sphereXGuardPublic(0xc1a48714, 0x6dd4f521) {
+  function setReserveRatioBips(uint16 _reserveRatioBips) public nonReentrant sphereXGuardPublic(0xc1a48714, 0x6dd4f521) {
+    _onlyController();
     if (_reserveRatioBips > BIP) {
       revert ReserveRatioBipsTooHigh();
     }

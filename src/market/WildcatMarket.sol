@@ -126,8 +126,8 @@ contract WildcatMarket is
    *
    *      Reverts if the market is closed.
    */
-  function borrow(uint256 amount) external onlyBorrower nonReentrant sphereXGuardExternal(0x96d85436) {
-
+  function borrow(uint256 amount) external nonReentrant sphereXGuardExternal(0x96d85436) {
+    _onlyBorrower();
     if (WildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
       revert BorrowWhileSanctioned();
     }
@@ -194,7 +194,8 @@ contract WildcatMarket is
    *      collateralized; otherwise, transfers any assets in excess of
    *      debts to the borrower.
    */
-  function closeMarket() external onlyController nonReentrant sphereXGuardExternal(0xf04c79a3) {
+  function closeMarket() external nonReentrant sphereXGuardExternal(0xf04c79a3) {
+    _onlyController();
     if (_withdrawalData.unpaidBatches.length() > 0) {
       revert CloseMarketWithUnpaidWithdrawals();
     }
