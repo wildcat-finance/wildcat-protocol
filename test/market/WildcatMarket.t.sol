@@ -301,6 +301,32 @@ contract WildcatMarketTest is BaseMarketTest {
     market.repayDelinquentDebt();
   }
 
+  function test_repayDelinquentDebt2() public asAccount(borrower) {
+    assertEq(market.delinquencyGracePeriod(), 2000);
+    parameters.delinquencyGracePeriod = 86_400;
+    parameters.withdrawalBatchDuration = 0;
+    setUp();
+    assertEq(market.delinquencyGracePeriod(), 86_400, 'delinquencyGracePeriod');
+    assertEq(market.delinquencyFeeBips(), 1_000, 'delinquencyFeeBips');
+    _deposit(alice, 1e18);
+    _borrow(8e17);
+    _requestWithdrawal(alice, 1e18);
+    assertTrue(market.currentState().isDelinquent, 'should be delinquent');
+    fastForward(365 days);
+    market.updateState();
+    uint256 debt = 1.088e18 + uint(8e16 * 364) / 365;
+    uint256 delinquentDebt = debt - 2e17;
+    assertEq(market.totalDebts(), 1.088e18 + uint(8e16 * 364) / 365);
+    assertEq(market.delinquentDebt(), delinquentDebt);
+    asset.mint(borrower, delinquentDebt);
+    asset.approve(address(market), delinquentDebt);
+    vm.expectEmit(address(asset));
+    emit Transfer(borrower, address(market), delinquentDebt);
+    vm.expectEmit(address(market));
+    emit DebtRepaid(borrower, delinquentDebt);
+    market.repayDelinquentDebt();
+  }
+
   function test_repayDelinquentDebt_NullRepayAmount() external {
     vm.expectRevert(IMarketEventsAndErrors.NullRepayAmount.selector);
     market.repayDelinquentDebt();
