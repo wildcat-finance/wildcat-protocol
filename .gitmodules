@@ -19,3 +19,6 @@
 [submodule "lib/spherex-protect-contracts"]
 	path = lib/spherex-protect-contracts
 	url = https://github.com/spherex-xyz/spherex-protect-contracts
+[submodule "lib/vulcan"]
+	path = lib/vulcan
+	url = https://github.com/nomoixyz/vulcan
