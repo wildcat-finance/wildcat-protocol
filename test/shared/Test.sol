@@ -12,7 +12,7 @@ import '../helpers/MockControllerFactory.sol';
 import '../helpers/MockSanctionsSentinel.sol';
 import { deployMockChainalysis } from '../helpers/MockChainalysis.sol';
 
-contract Test is ForgeTest, Prankster {
+contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
   WildcatArchController internal archController;
   WildcatMarketControllerFactory internal controllerFactory;
   WildcatMarketController internal controller;
@@ -105,6 +105,32 @@ contract Test is ForgeTest, Prankster {
     MarketParameters memory parameters
   ) internal asAccount(parameters.borrower) {
     updateFeeConfiguration(parameters);
+    address expectedMarket = controller.computeMarketAddress(
+      parameters.asset,
+      parameters.namePrefix,
+      parameters.symbolPrefix
+    );
+    string memory expectedName = string.concat(
+      parameters.namePrefix,
+      IERC20Metadata(parameters.asset).name()
+    );
+    string memory expectedSymbol = string.concat(
+      parameters.symbolPrefix,
+      IERC20Metadata(parameters.asset).symbol()
+    );
+    vm.expectEmit(address(controller));
+    emit MarketDeployed(
+      expectedMarket,
+      expectedName,
+      expectedSymbol,
+      parameters.asset,
+      parameters.maxTotalSupply,
+      parameters.annualInterestBips,
+      parameters.delinquencyFeeBips,
+      parameters.withdrawalBatchDuration,
+      parameters.reserveRatioBips,
+      parameters.delinquencyGracePeriod
+    );
     market = WildcatMarket(
       controller.deployMarket(
         parameters.asset,
