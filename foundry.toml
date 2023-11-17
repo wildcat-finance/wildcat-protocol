@@ -3,6 +3,7 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 gas_reports = ["WildcatMarket"]
+fs_permissions = [{ access = "read-write", path = "./deployments.json"}]
 
 # via_ir = true
 
