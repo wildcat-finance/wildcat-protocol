@@ -45,7 +45,6 @@ struct MarketData {
   uint256 pendingWithdrawalExpiry;
   bool isDelinquent;
   uint256 timeDelinquent;
-  uint256 timeUntilDelinquent;
   uint256 lastInterestAccruedTimestamp;
   uint32[] unpaidWithdrawalBatchExpiries;
   uint256 coverageLiquidity;
@@ -176,9 +175,6 @@ library MarketDataLib {
     data.scaleFactor = state.scaleFactor;
     data.isDelinquent = state.isDelinquent;
     data.timeDelinquent = state.timeDelinquent;
-    data.timeUntilDelinquent =
-      state.timeDelinquent >  market.delinquencyGracePeriod()
-        ? 0 : market.delinquencyGracePeriod() - state.timeDelinquent;
     data.lastInterestAccruedTimestamp = state.lastInterestAccruedTimestamp;
 
     data.normalizedUnclaimedWithdrawals = state.normalizedUnclaimedWithdrawals;
