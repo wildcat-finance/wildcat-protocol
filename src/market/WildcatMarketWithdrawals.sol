@@ -188,29 +188,63 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     return normalizedAmountWithdrawn;
   }
 
-  function processUnpaidWithdrawalBatch() external nonReentrant {
-    MarketState memory state = _getUpdatedState();
+  function repayAndProcessUnpaidWithdrawalBatches(
+    uint256 repayAmount,
+    uint256 maxBatches
+  ) public nonReentrant {
+    if (repayAmount > 0) {
+      asset.safeTransferFrom(msg.sender, address(this), repayAmount);
+      emit DebtRepaid(msg.sender, repayAmount);
+    }
 
+    MarketState memory state = _getUpdatedState();
+    if (state.isClosed) {
+      revert RepayToClosedMarket();
+    }
+
+    // Calculate assets available to process the first batch - will be updated after each batch
+    uint256 availableLiquidity = totalAssets() -
+      (state.normalizedUnclaimedWithdrawals + state.accruedProtocolFees);
+
+    // Get the maximum number of batches to process
+    uint256 numBatches = MathUtils.min(maxBatches, _withdrawalData.unpaidBatches.length());
+
+    uint256 i;
+    // Process up to `maxBatches` unpaid batches while there is available liquidity
+    while (i++ < numBatches && availableLiquidity > 0) {
+      // Process the next unpaid batch using available liquidity
+      uint256 normalizedAmountPaid = _processUnpaidWithdrawalBatch(state, availableLiquidity);
+      // Reduce liquidity available to next batch
+      availableLiquidity = availableLiquidity.satSub(normalizedAmountPaid);
+    }
+    _writeState(state);
+  }
+
+  function _processUnpaidWithdrawalBatch(
+    MarketState memory state,
+    uint256 availableLiquidity
+  ) internal returns (uint256 normalizedAmountPaid) {
     // Get the next unpaid batch timestamp from storage (reverts if none)
     uint32 expiry = _withdrawalData.unpaidBatches.first();
 
     // Cache batch data in memory
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
-    // Calculate assets available to process the batch
-    uint256 availableLiquidity = totalAssets() -
-      (state.normalizedUnclaimedWithdrawals + state.accruedProtocolFees);
+    // Pay up to the available liquidity to the batch
+    (, normalizedAmountPaid) = _applyWithdrawalBatchPayment(
+      batch,
+      state,
+      expiry,
+      availableLiquidity
+    );
 
-    _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
+    // Update stored batch
+    _withdrawalData.batches[expiry] = batch;
 
     // Remove batch from unpaid set if fully paid
     if (batch.scaledTotalAmount == batch.scaledAmountBurned) {
       _withdrawalData.unpaidBatches.shift();
       emit WithdrawalBatchClosed(expiry);
     }
-
-    // Update stored batch
-    _withdrawalData.batches[expiry] = batch;
-    _writeState(state);
   }
 }
