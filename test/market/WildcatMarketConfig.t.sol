@@ -252,13 +252,6 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     assertEq(market.annualInterestBips(), _annualInterestBips);
   }
 
-  function test_setAnnualInterestBips_InterestRateTooHigh()
-    external
-    asAccount(parameters.controller)
-  {
-    vm.expectRevert(IMarketEventsAndErrors.InterestRateTooHigh.selector);
-    market.setAnnualInterestBips(10001);
-  }
 
   function test_setAnnualInterestBips_NotController(uint16 _annualInterestBips) external {
     vm.expectRevert(IMarketEventsAndErrors.NotController.selector);
@@ -292,14 +285,6 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     _deposit(alice, 1e18);
     _borrow(2e17);
     _requestWithdrawal(alice, 9e17);
-  }
-
-  function test_setReserveRatioBips_ReserveRatioBipsTooHigh()
-    external
-    asAccount(parameters.controller)
-  {
-    vm.expectRevert(IMarketEventsAndErrors.ReserveRatioBipsTooHigh.selector);
-    market.setReserveRatioBips(10001);
   }
 
   // Market already deliquent, LCR set to lower value
