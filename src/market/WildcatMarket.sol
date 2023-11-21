@@ -43,15 +43,13 @@ contract WildcatMarket is
   function depositUpTo(
     uint256 amount
   ) public virtual nonReentrant returns (uint256 /* actualAmount */) {
-
     // Get current state
     MarketState memory state = _getUpdatedState();
 
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, msg.sender)) {
       _blockAccount(state, msg.sender);
       _writeState(state);
-    }
-    else {
+    } else {
       if (state.isClosed) {
         revert DepositToClosedMarket();
       }
@@ -178,8 +176,14 @@ contract WildcatMarket is
    *      Reverts if the market is closed or `amount` is 0.
    */
   function repay(uint256 amount) external nonReentrant {
+    if (amount == 0) revert NullRepayAmount();
+    asset.safeTransferFrom(msg.sender, address(this), amount);
+    emit DebtRepaid(msg.sender, amount);
+
     MarketState memory state = _getUpdatedState();
-    _repay(state, amount);
+    if (state.isClosed) {
+      revert RepayToClosedMarket();
+    }
     _writeState(state);
   }
 
