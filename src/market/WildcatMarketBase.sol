@@ -562,18 +562,18 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     MarketState memory state,
     uint32 expiry,
     uint256 availableLiquidity
-  ) internal {
+  ) internal returns (uint104 scaledAmountBurned, uint128 normalizedAmountPaid) {
     uint104 scaledAmountOwed = batch.scaledTotalAmount - batch.scaledAmountBurned;
     // Do nothing if batch is already paid
     if (scaledAmountOwed == 0) {
-      return;
+      return (0, 0);
     }
 
     uint256 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity);
-    uint104 scaledAmountBurned = MathUtils
+    scaledAmountBurned = MathUtils
       .min(scaledAvailableLiquidity, scaledAmountOwed)
       .toUint104();
-    uint128 normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
+    normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
 
     batch.scaledAmountBurned += scaledAmountBurned;
     batch.normalizedAmountPaid += normalizedAmountPaid;
