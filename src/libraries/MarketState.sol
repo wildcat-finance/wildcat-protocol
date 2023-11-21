@@ -130,8 +130,8 @@ library MarketStateLib {
   function hasPendingExpiredBatch(MarketState memory state) internal view returns (bool result) {
     uint256 expiry = state.pendingWithdrawalExpiry;
     assembly {
-      // Equivalent to expiry > 0 && expiry <= block.timestamp
-      result := gt(timestamp(), sub(expiry, 1))
+      // Equivalent to expiry > 0 && expiry < block.timestamp
+      result := and(gt(expiry, 0), gt(timestamp(), expiry))
     }
   }
 
