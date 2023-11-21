@@ -23,18 +23,6 @@ interface IMarketEventsAndErrors {
   /// @notice Error thrown when new maxTotalSupply lower than totalSupply
   error NewMaxSupplyTooLow();
 
-  /// @notice Error thrown when reserve ratio set higher than 100%
-  error ReserveRatioBipsTooHigh();
-
-  /// @notice Error thrown when interest rate set higher than 100%
-  error InterestRateTooHigh();
-
-  /// @notice Error thrown when interest fee set higher than 100%
-  error InterestFeeTooHigh();
-
-  /// @notice Error thrown when penalty fee set higher than 100%
-  error PenaltyFeeTooHigh();
-
   /// @notice Error thrown when transfer target is blacklisted
   error AccountBlacklisted();
 
@@ -47,8 +35,6 @@ interface IMarketEventsAndErrors {
   error UnknownSymbolQueryError();
 
   error BorrowAmountTooHigh();
-
-  error FeeSetWithoutRecipient();
 
   error InsufficientReservesForFeeWithdrawal();
 

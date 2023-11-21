@@ -191,7 +191,8 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
     if (
       (protocolFeeBips > 0 && nullFeeRecipient) ||
       (hasOriginationFee && nullFeeRecipient) ||
-      (hasOriginationFee && nullOriginationFeeAsset)
+      (hasOriginationFee && nullOriginationFeeAsset) ||
+      protocolFeeBips > 10000
     ) {
       revert InvalidProtocolFeeConfiguration();
     }

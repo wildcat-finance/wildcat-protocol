@@ -76,22 +76,6 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
   constructor() {
     MarketParameters memory parameters = IWildcatMarketController(msg.sender).getMarketParameters();
 
-    if ((parameters.protocolFeeBips > 0).and(parameters.feeRecipient == address(0))) {
-      revert FeeSetWithoutRecipient();
-    }
-    if (parameters.annualInterestBips > BIP) {
-      revert InterestRateTooHigh();
-    }
-    if (parameters.reserveRatioBips > BIP) {
-      revert ReserveRatioBipsTooHigh();
-    }
-    if (parameters.protocolFeeBips > BIP) {
-      revert InterestFeeTooHigh();
-    }
-    if (parameters.delinquencyFeeBips > BIP) {
-      revert PenaltyFeeTooHigh();
-    }
-
     // Set asset metadata
     asset = parameters.asset;
     name = string.concat(parameters.namePrefix, queryName(parameters.asset));
