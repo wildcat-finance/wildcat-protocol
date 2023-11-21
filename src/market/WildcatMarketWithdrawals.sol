@@ -138,11 +138,41 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   function executeWithdrawal(
     address accountAddress,
     uint32 expiry
-  ) external nonReentrant returns (uint256) {
+  ) public nonReentrant returns (uint256) {
+    MarketState memory state = _getUpdatedState();
+    uint256 normalizedAmountWithdrawn = _executeWithdrawal(state, accountAddress, expiry);
+    // Update stored state
+    _writeState(state);
+    return normalizedAmountWithdrawn;
+  }
+
+  function executeWithdrawals(
+    address[] calldata accountAddresses,
+    uint32[] calldata expiries
+  ) external nonReentrant returns (uint256[] memory amounts) {
+    if (accountAddresses.length != expiries.length) {
+      revert InvalidArrayLength();
+    }
+    amounts = new uint256[](accountAddresses.length);
+
+    MarketState memory state = _getUpdatedState();
+
+    for (uint256 i = 0; i < accountAddresses.length; i++) {
+      amounts[i] = _executeWithdrawal(state, accountAddresses[i], expiries[i]);
+    }
+    // Update stored state
+    _writeState(state);
+    return amounts;
+  }
+
+  function _executeWithdrawal(
+    MarketState memory state,
+    address accountAddress,
+    uint32 expiry
+  ) internal returns (uint256 normalizedAmountWithdrawn) {
     if (expiry >= block.timestamp) {
       revert WithdrawalBatchNotExpired();
     }
-    MarketState memory state = _getUpdatedState();
 
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
     AccountWithdrawalStatus storage status = _withdrawalData.accountStatuses[expiry][
@@ -181,9 +211,6 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     }
 
     emit WithdrawalExecuted(expiry, accountAddress, normalizedAmountWithdrawn);
-
-    // Update stored state
-    _writeState(state);
 
     return normalizedAmountWithdrawn;
   }
