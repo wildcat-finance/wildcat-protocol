@@ -114,25 +114,27 @@ contract WildcatMarketConfig is WildcatMarketBase {
   /* -------------------------------------------------------------------------- */
 
   /**
-   * @dev Updates an account's authorization status based on whether the controller
-   *      has it marked as approved. Requires that the lender *had* full access (i.e.
+   * @dev Updates multiple accounts' authorization statuses based on whether the controller
+   *      has them marked as approved. Requires that the lender *had* full access (i.e.
    *      they were previously authorized) before dropping them down to WithdrawOnly,
    *      else arbitrary accounts could grant themselves Withdraw.
    */
-  function updateAccountAuthorization(
-    address _account,
-    bool _isAuthorized
+  function updateAccountAuthorizations(
+    address[] memory accounts,
+    bool authorize
   ) external onlyController nonReentrant {
     MarketState memory state = _getUpdatedState();
-    Account memory account = _getAccount(_account);
-    if (_isAuthorized) {
-      account.approval = AuthRole.DepositAndWithdraw;
-    } else if (account.approval == AuthRole.DepositAndWithdraw) {
-      account.approval = AuthRole.WithdrawOnly;
+    for (uint256 i = 0; i < accounts.length; i++) {
+      Account memory account = _getAccount(accounts[i]);
+      if (authorize) {
+        account.approval = AuthRole.DepositAndWithdraw;
+      } else if (account.approval == AuthRole.DepositAndWithdraw) {
+        account.approval = AuthRole.WithdrawOnly;
+      }
+      _accounts[accounts[i]] = account;
+      emit AuthorizationStatusUpdated(accounts[i], account.approval);
     }
-    _accounts[_account] = account;
     _writeState(state);
-    emit AuthorizationStatusUpdated(_account, account.approval);
   }
 
   /**
@@ -157,10 +159,6 @@ contract WildcatMarketConfig is WildcatMarketBase {
    * @dev Sets the annual interest rate earned by lenders in bips.
    */
   function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant {
-    if (_annualInterestBips > BIP) {
-      revert InterestRateTooHigh();
-    }
-
     MarketState memory state = _getUpdatedState();
 
     state.annualInterestBips = _annualInterestBips;
@@ -179,10 +177,6 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      because of the change.
    */
   function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant {
-    if (_reserveRatioBips > BIP) {
-      revert ReserveRatioBipsTooHigh();
-    }
-
     MarketState memory state = _getUpdatedState();
 
     uint256 initialReserveRatioBips = state.reserveRatioBips;
