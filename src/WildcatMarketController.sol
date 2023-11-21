@@ -162,6 +162,75 @@ contract WildcatMarketController is IWildcatMarketController {
   }
 
   /**
+   * @dev Grant authorization for a set of lenders and update their authorization
+   *      status for a set of markets.
+   */
+  function authorizeLendersAndUpdateMarkets(
+    address[] memory lenders,
+    address[] memory markets
+  ) external override onlyBorrower {
+    for (uint256 i = 0; i < lenders.length; i++) {
+      address lender = lenders[i];
+      if (_authorizedLenders.add(lender)) {
+        emit LenderAuthorized(lender);
+      }
+    }
+
+    bytes memory data = abi.encodeWithSelector(
+      WildcatMarketConfig.updateAccountAuthorizations.selector,
+      lenders,
+      true
+    );
+    for (uint256 i = 0; i < markets.length; i++) {
+      address market = markets[i];
+      if (!_controlledMarkets.contains(market)) {
+        revert NotControlledMarket();
+      }
+      assembly {
+        let success := call(gas(), market, 0, add(data, 0x20), mload(data), 0, 0)
+        if iszero(success) {
+          returndatacopy(0, 0, returndatasize())
+          revert(0, returndatasize())
+        }
+      }
+    }
+  }
+
+  /**
+   * @dev Revoke authorization for a set of lenders and update their authorization
+   *      status for a set of markets.
+   */
+  function deauthorizeLendersAndUpdateMarkets(
+    address[] memory lenders,
+    address[] memory markets
+  ) external override onlyBorrower {
+    for (uint256 i = 0; i < lenders.length; i++) {
+      address lender = lenders[i];
+      if (_authorizedLenders.remove(lender)) {
+        emit LenderDeauthorized(lender);
+      }
+    }
+    bytes memory data = abi.encodeWithSelector(
+      WildcatMarketConfig.updateAccountAuthorizations.selector,
+      lenders,
+      false
+    );
+    for (uint256 i = 0; i < markets.length; i++) {
+      address market = markets[i];
+      if (!_controlledMarkets.contains(market)) {
+        revert NotControlledMarket();
+      }
+      assembly {
+        let success := call(gas(), market, 0, add(data, 0x20), mload(data), 0, 0)
+        if iszero(success) {
+          returndatacopy(0, 0, returndatasize())
+          revert(0, returndatasize())
+        }
+      }
+    }
+  }
+
+  /**
    * @dev Revoke authorization for a set of lenders.
    *
    *      Note: Only updates the internal set of approved lenders.
@@ -187,7 +256,9 @@ contract WildcatMarketController is IWildcatMarketController {
       if (!_controlledMarkets.contains(market)) {
         revert NotControlledMarket();
       }
-      WildcatMarket(market).updateAccountAuthorization(lender, _authorizedLenders.contains(lender));
+      address[] memory lenders = new address[](1);
+      lenders[0] = lender;
+      WildcatMarket(market).updateAccountAuthorizations(lenders, _authorizedLenders.contains(lender));
     }
   }
 

@@ -90,6 +90,16 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    */
   function updateLenderAuthorization(address lender, address[] memory markets) external;
 
+  function authorizeLendersAndUpdateMarkets(
+    address[] memory markets,
+    address[] memory lenders
+  ) external;
+
+  function deauthorizeLendersAndUpdateMarkets(
+    address[] memory markets,
+    address[] memory lenders
+  ) external;
+
   /* -------------------------------------------------------------------------- */
   /*                               Market Registry                              */
   /* -------------------------------------------------------------------------- */
@@ -121,8 +131,8 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    */
   function closeMarket(address market) external;
 
-    /**
-   * @dev Sets the maximum total supply (capacity) of a market - this only limits 
+  /**
+   * @dev Sets the maximum total supply (capacity) of a market - this only limits
    *      deposits and does not affect interest accrual.
    *
    *      Can not be set lower than the market's current total supply.
