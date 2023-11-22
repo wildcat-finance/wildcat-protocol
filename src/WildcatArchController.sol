@@ -2,8 +2,10 @@
 pragma solidity >=0.8.20;
 
 import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
-import 'solady/auth/Ownable.sol';
-import './libraries/MathUtils.sol';
+import './Ownable.sol';
+import './libraries/MathUtils.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
 contract WildcatArchController is Ownable {
   using EnumerableSet for EnumerableSet.AddressSet;
@@ -60,14 +62,14 @@ contract WildcatArchController is Ownable {
   /*                                  Borrowers                                 */
   /* ========================================================================== */
 
-  function registerBorrower(address borrower) external onlyOwner {
+  function registerBorrower(address borrower) external onlyOwner sphereXGuardExternal(0xb69b9b98) {
     if (!_borrowers.add(borrower)) {
       revert BorrowerAlreadyExists();
     }
     emit BorrowerAdded(borrower);
   }
 
-  function removeBorrower(address borrower) external onlyOwner {
+  function removeBorrower(address borrower) external onlyOwner sphereXGuardExternal(0x399fda11) {
     if (!_borrowers.remove(borrower)) {
       revert BorrowerDoesNotExist();
     }
@@ -103,14 +105,14 @@ contract WildcatArchController is Ownable {
   /*                            Controller Factories                            */
   /* ========================================================================== */
 
-  function registerControllerFactory(address factory) external onlyOwner {
+  function registerControllerFactory(address factory) external onlyOwner sphereXGuardExternal(0xae5cb6bc) {
     if (!_controllerFactories.add(factory)) {
       revert ControllerFactoryAlreadyExists();
     }
     emit ControllerFactoryAdded(factory);
   }
 
-  function removeControllerFactory(address factory) external onlyOwner {
+  function removeControllerFactory(address factory) external onlyOwner sphereXGuardExternal(0x747aaceb) {
     if (!_controllerFactories.remove(factory)) {
       revert ControllerFactoryDoesNotExist();
     }
@@ -146,14 +148,14 @@ contract WildcatArchController is Ownable {
   /*                                 Controllers                                */
   /* ========================================================================== */
 
-  function registerController(address controller) external onlyControllerFactory {
+  function registerController(address controller) external onlyControllerFactory sphereXGuardExternal(0x932152bd) {
     if (!_controllers.add(controller)) {
       revert ControllerAlreadyExists();
     }
     emit ControllerAdded(msg.sender, controller);
   }
 
-  function removeController(address controller) external onlyOwner {
+  function removeController(address controller) external onlyOwner sphereXGuardExternal(0x7be05ec0) {
     if (!_controllers.remove(controller)) {
       revert ControllerDoesNotExist();
     }
@@ -189,14 +191,14 @@ contract WildcatArchController is Ownable {
   /*                                   Markets                                   */
   /* ========================================================================== */
 
-  function registerMarket(address market) external onlyController {
+  function registerMarket(address market) external onlyController sphereXGuardExternal(0xbea93bd1) {
     if (!_markets.add(market)) {
       revert MarketAlreadyExists();
     }
     emit MarketAdded(msg.sender, market);
   }
 
-  function removeMarket(address market) external onlyOwner {
+  function removeMarket(address market) external onlyOwner sphereXGuardExternal(0x640a3700) {
     if (!_markets.remove(market)) {
       revert MarketDoesNotExist();
     }

@@ -8,7 +8,7 @@ import 'src/libraries/SafeCastLib.sol';
 import 'src/libraries/MarketState.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
-contract WildcatMarketControllerTest is BaseMarketTest, IWildcatMarketControllerEventsAndErrors {
+contract WildcatMarketControllerTest is BaseMarketTest {
   function _check(
     uint256 annualInterestBips,
     uint256 originalAnnualInterestBips,

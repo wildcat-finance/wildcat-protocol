@@ -1,11 +1,103 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
+import {ISphereXEngine, ModifierLocals} from "@spherex-xyz/contracts/src/ISphereXEngine.sol";
+
+
 library LibStoredInitCode {
   error InitCodeDeploymentFailed();
   error DeploymentFailed();
 
-  function deployInitCode(bytes memory data) internal returns (address initCodeStorage) {
+  bytes32 private constant SPHEREX_ENGINE_STORAGE_SLOT =
+        bytes32(uint256(keccak256("eip1967.spherex.spherex_engine")) - 1);
+
+  /**
+     * Returns an address from an arbitrary slot.
+     * @param slot to read an address from
+     */
+    function _getAddress(bytes32 slot) internal view returns (address addr) {
+        // solhint-disable-next-line no-inline-assembly
+        // slither-disable-next-line assembly
+        assembly {
+            addr := sload(slot)
+        }
+    }
+
+  modifier returnsIfNotActivated() {
+        if (address(_sphereXEngine()) == address(0)) {
+            return;
+        }
+
+        _;
+    }
+
+  function _sphereXEngine() private view returns (ISphereXEngine) {
+        return ISphereXEngine(_getAddress(SPHEREX_ENGINE_STORAGE_SLOT));
+    }
+
+    /**
+     * @dev internal function for engine communication. We use it to reduce contract size.
+     *  Should be called before the code of a function.
+     * @param num function identifier
+     * @return locals ModifierLocals
+     */
+    function _sphereXValidateInternalPre(int256 num)
+        internal
+        returnsIfNotActivated
+        returns (ModifierLocals memory locals)
+    {
+        locals.storageSlots = _sphereXEngine().sphereXValidateInternalPre(num);
+        locals.valuesBefore = _readStorage(locals.storageSlots);
+        locals.gas = gasleft();
+        return locals;
+    }
+
+    /**
+     * @dev internal function for engine communication. We use it to reduce contract size.
+     *  Should be called after the code of a function.
+     * @param num function identifier
+     * @param locals ModifierLocals
+     */
+    function _sphereXValidateInternalPost(int256 num, ModifierLocals memory locals) internal returnsIfNotActivated {
+        bytes32[] memory valuesAfter;
+        valuesAfter = _readStorage(locals.storageSlots);
+        _sphereXEngine().sphereXValidateInternalPost(num, locals.gas - gasleft(), locals.valuesBefore, valuesAfter);
+    }
+
+    /**
+     *  @dev Modifier to be incorporated in all internal protected non-view functions
+     */
+    modifier sphereXGuardInternal(int256 num) {
+        ModifierLocals memory locals = _sphereXValidateInternalPre(num);
+        _;
+        _sphereXValidateInternalPost(-num, locals);
+    }
+
+    /**
+     * Internal function that reads values from given storage slots and returns them
+     * @param storageSlots list of storage slots to read
+     * @return list of values read from the various storage slots
+     */
+    function _readStorage(bytes32[] memory storageSlots) internal view returns (bytes32[] memory) {
+        uint256 arrayLength = storageSlots.length;
+        bytes32[] memory values = new bytes32[](arrayLength);
+        // create the return array data
+
+        for (uint256 i = 0; i < arrayLength; i++) {
+            bytes32 slot = storageSlots[i];
+            bytes32 temp_value;
+            // solhint-disable-next-line no-inline-assembly
+            // slither-disable-next-line assembly
+            assembly {
+                temp_value := sload(slot)
+            }
+
+            values[i] = temp_value;
+        }
+        return values;
+    }
+
+  function deployInitCode(bytes memory data) internal sphereXGuardInternal(0xc73b8fd0) returns (address initCodeStorage) {
     assembly {
       let size := mload(data)
       let createSize := add(size, 0x0b)
@@ -81,14 +173,14 @@ library LibStoredInitCode {
     }
   }
 
-  function createWithStoredInitCode(address initCodeStorage) internal returns (address deployment) {
+  function createWithStoredInitCode(address initCodeStorage) internal sphereXGuardInternal(0xb0868146) returns (address deployment) {
     deployment = createWithStoredInitCode(initCodeStorage, 0);
   }
 
   function createWithStoredInitCode(
     address initCodeStorage,
     uint256 value
-  ) internal returns (address deployment) {
+  ) internal sphereXGuardInternal(0xb0868147) returns (address deployment) {
     assembly {
       let initCodePointer := mload(0x40)
       let initCodeSize := sub(extcodesize(initCodeStorage), 1)
@@ -104,7 +196,7 @@ library LibStoredInitCode {
   function create2WithStoredInitCode(
     address initCodeStorage,
     bytes32 salt
-  ) internal returns (address deployment) {
+  ) internal sphereXGuardInternal(0xf5bfe1a7) returns (address deployment) {
     deployment = create2WithStoredInitCode(initCodeStorage, salt, 0);
   }
 
@@ -112,7 +204,7 @@ library LibStoredInitCode {
     address initCodeStorage,
     bytes32 salt,
     uint256 value
-  ) internal returns (address deployment) {
+  ) internal sphereXGuardInternal(0xf5bfe1a8) returns (address deployment) {
     assembly {
       let initCodePointer := mload(0x40)
       let initCodeSize := sub(extcodesize(initCodeStorage), 1)

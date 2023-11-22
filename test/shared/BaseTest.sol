@@ -59,7 +59,10 @@ contract BaseTest is Test {
       delinquencyFeeBips: inputs.delinquencyFeeBips,
       withdrawalBatchDuration: inputs.withdrawalBatchDuration,
       reserveRatioBips: inputs.reserveRatioBips,
-      delinquencyGracePeriod: inputs.delinquencyGracePeriod
+      delinquencyGracePeriod: inputs.delinquencyGracePeriod,
+      spherex_admin: address(0),
+      spherex_operator: address(0),
+      spherex_engine: address(0)
     });
   }
 

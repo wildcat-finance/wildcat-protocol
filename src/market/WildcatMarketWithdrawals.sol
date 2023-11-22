@@ -6,7 +6,9 @@ import '../libraries/MarketState.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/FIFOQueue.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
-import 'solady/utils/SafeTransferLib.sol';
+import 'solady/utils/SafeTransferLib.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
 contract WildcatMarketWithdrawals is WildcatMarketBase {
   using SafeTransferLib for address;
@@ -74,7 +76,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   /**
    * @dev Create a withdrawal request for a lender.
    */
-  function queueWithdrawal(uint256 amount) external nonReentrant {
+  function queueWithdrawal(uint256 amount) external nonReentrant sphereXGuardExternal(0x47bf4279) {
 
     MarketState memory state = _getUpdatedState();
     
@@ -138,7 +140,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   function executeWithdrawal(
     address accountAddress,
     uint32 expiry
-  ) external nonReentrant returns (uint256) {
+  ) external nonReentrant sphereXGuardExternal(0xb991546b) returns (uint256) {
     if (expiry >= block.timestamp) {
       revert WithdrawalBatchNotExpired();
     }
@@ -188,7 +190,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     return normalizedAmountWithdrawn;
   }
 
-  function processUnpaidWithdrawalBatch() external nonReentrant {
+  function processUnpaidWithdrawalBatch() external nonReentrant sphereXGuardExternal(0xf49c909d) {
     MarketState memory state = _getUpdatedState();
 
     // Get the next unpaid batch timestamp from storage (reverts if none)

@@ -20,7 +20,7 @@ contract BaseMarketTest is Test, ExpectedStateTracker {
   address internal wlUser = address(0x42);
   address internal nonwlUser = address(0x43);
 
-  function setUp() public {
+  function setUp() public virtual {
     setUpContracts(false);
   }
 

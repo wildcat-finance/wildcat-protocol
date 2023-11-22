@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.20;
+pragma solidity >=0.8.20; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
 /**
  * @title ReentrancyGuard
@@ -9,7 +11,7 @@ pragma solidity >=0.8.20;
  * @notice ReentrancyGuard contains a storage variable and related functionality
  *         for protecting against reentrancy.
  */
-contract ReentrancyGuard {
+contract ReentrancyGuard is SphereXProtected {
   /**
    * @dev Revert with an error when a caller attempts to reenter a protected
    *      function.
@@ -56,7 +58,7 @@ contract ReentrancyGuard {
    *      guard is not currently set and, if not, to set a sentinel value for
    *      the reentrancy guard.
    */
-  function _setReentrancyGuard() internal {
+  function _setReentrancyGuard() internal sphereXGuardInternal(0x873cfef3) {
     // Ensure that the reentrancy guard is not already set.
     _assertNonReentrant();
 
@@ -69,7 +71,7 @@ contract ReentrancyGuard {
   /**
    * @dev Internal function to unset the reentrancy guard sentinel value.
    */
-  function _clearReentrancyGuard() internal {
+  function _clearReentrancyGuard() internal sphereXGuardInternal(0xd6fa5285) {
     // Clear the reentrancy guard.
     _reentrancyGuard = _NOT_ENTERED;
   }

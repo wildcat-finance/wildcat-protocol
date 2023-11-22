@@ -8,9 +8,11 @@ import './interfaces/IWildcatMarketControllerFactory.sol';
 import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 import './market/WildcatMarket.sol';
-import './WildcatMarketController.sol';
+import './WildcatMarketController.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
-contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
+contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory , SphereXProtected {
   using EnumerableSet for EnumerableSet.AddressSet;
 
   // Returns immutable arch-controller
@@ -92,7 +94,7 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
   function _storeControllerInitCode()
     internal
     virtual
-    returns (address initCodeStorage, uint256 initCodeHash)
+    sphereXGuardInternal(0x0eee275d) returns (address initCodeStorage, uint256 initCodeHash)
   {
     bytes memory controllerInitCode = type(WildcatMarketController).creationCode;
     initCodeHash = uint256(keccak256(controllerInitCode));
@@ -102,7 +104,7 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
   function _storeMarketInitCode()
     internal
     virtual
-    returns (address initCodeStorage, uint256 initCodeHash)
+    sphereXGuardInternal(0x3351b929) returns (address initCodeStorage, uint256 initCodeHash)
   {
     bytes memory marketInitCode = type(WildcatMarket).creationCode;
     initCodeHash = uint256(keccak256(marketInitCode));
@@ -184,7 +186,7 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
     address originationFeeAsset,
     uint80 originationFeeAmount,
     uint16 protocolFeeBips
-  ) external override onlyArchControllerOwner {
+  ) external override onlyArchControllerOwner sphereXGuardExternal(0x490e86f1) {
     bool hasOriginationFee = originationFeeAmount > 0;
     bool nullFeeRecipient = feeRecipient == address(0);
     bool nullOriginationFeeAsset = originationFeeAsset == address(0);
@@ -259,6 +261,9 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
     parameters.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
     parameters.minimumAnnualInterestBips = MinimumAnnualInterestBips;
     parameters.maximumAnnualInterestBips = MaximumAnnualInterestBips;
+    parameters.spherex_admin = sphereXAdmin();
+    parameters.spherex_operator = sphereXOperator();
+    parameters.spherex_engine = sphereXEngine();
   }
 
   /**
@@ -274,7 +279,7 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
    *      Calls `archController.registerController(controller)` and emits
    *      `NewController(borrower, controller)`.
    */
-  function deployController() public override returns (address controller) {
+  function deployController() public override sphereXGuardPublic(0x45223233, 0x7cc9788e) returns (address controller) {
     if (!IWildcatArchController(archController).isRegisteredBorrower(msg.sender)) {
       revert NotRegisteredBorrower();
     }
@@ -294,6 +299,8 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
     _tmpMarketBorrowerParameter = address(1);
     IWildcatArchController(archController).registerController(controller);
     _deployedControllers.add(controller);
+
+    _addAllowedSenderOnChain(controller);
     emit NewController(msg.sender, controller);
   }
 
@@ -321,7 +328,7 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
     uint32 withdrawalBatchDuration,
     uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
-  ) external override returns (address controller, address market) {
+  ) external override sphereXGuardExternal(0x5e82b681) returns (address controller, address market) {
     controller = deployController();
     market = IWildcatMarketController(controller).deployMarket(
       asset,
@@ -334,6 +341,7 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
       reserveRatioBips,
       delinquencyGracePeriod
     );
+    _addAllowedSenderOnChain(market);
   }
 
   function computeControllerAddress(address borrower) external view override returns (address) {

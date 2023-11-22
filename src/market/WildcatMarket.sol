@@ -6,7 +6,9 @@ import './WildcatMarketBase.sol';
 import './WildcatMarketConfig.sol';
 import './WildcatMarketToken.sol';
 import './WildcatMarketWithdrawals.sol';
-import '../WildcatSanctionsSentinel.sol';
+import '../WildcatSanctionsSentinel.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
 contract WildcatMarket is
   WildcatMarketBase,
@@ -24,7 +26,7 @@ contract WildcatMarket is
    *      one exists and has expired, then update the market's
    *      delinquency status.
    */
-  function updateState() external nonReentrant {
+  function updateState() external nonReentrant sphereXGuardExternal(0x62dd19dd) {
     MarketState memory state = _getUpdatedState();
     _writeState(state);
   }
@@ -42,7 +44,7 @@ contract WildcatMarket is
    */
   function depositUpTo(
     uint256 amount
-  ) public virtual nonReentrant returns (uint256 /* actualAmount */) {
+  ) public virtual nonReentrant sphereXGuardPublic(0x9670047f, 0xb68ce7a2) returns (uint256 /* actualAmount */) {
 
     // Get current state
     MarketState memory state = _getUpdatedState();
@@ -91,7 +93,7 @@ contract WildcatMarket is
    *     Reverts if the deposit amount would cause the market to exceed the
    *     configured `maxTotalSupply`.
    */
-  function deposit(uint256 amount) external virtual {
+  function deposit(uint256 amount) external virtual sphereXGuardExternal(0xcb7659c6) {
     uint256 actualAmount = depositUpTo(amount);
     if (amount != actualAmount) {
       revert MaxSupplyExceeded();
@@ -101,7 +103,7 @@ contract WildcatMarket is
   /**
    * @dev Withdraw available protocol fees to the fee recipient.
    */
-  function collectFees() external nonReentrant {
+  function collectFees() external nonReentrant sphereXGuardExternal(0x24f21567) {
     MarketState memory state = _getUpdatedState();
     if (state.accruedProtocolFees == 0) {
       revert NullFeeAmount();
@@ -124,8 +126,8 @@ contract WildcatMarket is
    *
    *      Reverts if the market is closed.
    */
-  function borrow(uint256 amount) external onlyBorrower nonReentrant {
-
+  function borrow(uint256 amount) external nonReentrant sphereXGuardExternal(0x96d85436) {
+    _onlyBorrower();
     if (WildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
       revert BorrowWhileSanctioned();
     }
@@ -143,7 +145,7 @@ contract WildcatMarket is
     emit Borrow(amount);
   }
 
-  function _repay(MarketState memory state, uint256 amount) internal {
+  function _repay(MarketState memory state, uint256 amount) internal sphereXGuardInternal(0xbfd71108) {
     if (amount == 0) {
       revert NullRepayAmount();
     }
@@ -154,14 +156,14 @@ contract WildcatMarket is
     emit DebtRepaid(msg.sender, amount);
   }
 
-  function repayOutstandingDebt() external nonReentrant {
+  function repayOutstandingDebt() external nonReentrant sphereXGuardExternal(0x9e45ca10) {
     MarketState memory state = _getUpdatedState();
     uint256 outstandingDebt = state.totalDebts().satSub(totalAssets());
     _repay(state, outstandingDebt);
     _writeState(state);
   }
 
-  function repayDelinquentDebt() external nonReentrant {
+  function repayDelinquentDebt() external nonReentrant sphereXGuardExternal(0xf1ecbc53) {
     MarketState memory state = _getUpdatedState();
     uint256 delinquentDebt = state.liquidityRequired().satSub(totalAssets());
     _repay(state, delinquentDebt);
@@ -177,7 +179,7 @@ contract WildcatMarket is
    *
    *      Reverts if the market is closed or `amount` is 0.
    */
-  function repay(uint256 amount) external nonReentrant {
+  function repay(uint256 amount) external nonReentrant sphereXGuardExternal(0x24d04c7b) {
     MarketState memory state = _getUpdatedState();
     _repay(state, amount);
     _writeState(state);
@@ -192,7 +194,8 @@ contract WildcatMarket is
    *      collateralized; otherwise, transfers any assets in excess of
    *      debts to the borrower.
    */
-  function closeMarket() external onlyController nonReentrant {
+  function closeMarket() external nonReentrant sphereXGuardExternal(0xf04c79a3) {
+    _onlyController();
     if (_withdrawalData.unpaidBatches.length() > 0) {
       revert CloseMarketWithUnpaidWithdrawals();
     }

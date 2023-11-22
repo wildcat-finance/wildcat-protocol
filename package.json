@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.3",
+    "@spherex-xyz/contracts": "^1.0.8",
     "@types/node": "^20.4.2",
     "cli-barchart": "^0.2.3",
     "ethers": "^6.6.3"

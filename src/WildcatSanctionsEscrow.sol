@@ -6,10 +6,12 @@ import { IChainalysisSanctionsList } from './interfaces/IChainalysisSanctionsLis
 import { SanctionsList } from './libraries/Chainalysis.sol';
 import { WildcatSanctionsSentinel } from './WildcatSanctionsSentinel.sol';
 import { IWildcatSanctionsEscrow } from './interfaces/IWildcatSanctionsEscrow.sol';
-import 'solady/utils/SafeTransferLib.sol';
+import 'solady/utils/SafeTransferLib.sol'; 
+import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+ 
 
 
-contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
+contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow , SphereXProtected {
   using SafeTransferLib for address;
 
   address public immutable override sentinel;
@@ -34,7 +36,7 @@ contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
     return (asset, balance());
   }
 
-  function releaseEscrow() public override {
+  function releaseEscrow() public override sphereXGuardPublic(0x976b4ad1, 0x757a5543) {
     if (!canReleaseEscrow()) revert CanNotReleaseEscrow();
 
     uint256 amount = balance();
