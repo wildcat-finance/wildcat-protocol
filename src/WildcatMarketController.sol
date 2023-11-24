@@ -330,6 +330,8 @@ contract WildcatMarketController is IWildcatMarketController , SphereXProtected 
       }
     } else if (msg.sender != address(controllerFactory)) {
       revert CallerNotBorrowerOrControllerFactory();
+    } else if (IWildcatArchController(archController).isBlacklistedAsset(asset)) {
+      revert UnderlyingNotPermitted();
     }
 
     DeployMarketLocals memory locals;

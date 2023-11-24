@@ -15,17 +15,21 @@ contract WildcatArchController is Ownable {
   EnumerableSet.AddressSet internal _borrowers;
   EnumerableSet.AddressSet internal _controllers;
 
+  EnumerableSet.AddressSet internal _assetBlacklist;
+
   error NotControllerFactory();
   error NotController();
 
   error BorrowerAlreadyExists();
   error ControllerFactoryAlreadyExists();
   error ControllerAlreadyExists();
+  error AssetAlreadyBlacklisted();
   error MarketAlreadyExists();
 
   error BorrowerDoesNotExist();
   error ControllerFactoryDoesNotExist();
   error ControllerDoesNotExist();
+  error AssetNotBlacklisted();
   error MarketDoesNotExist();
 
   event MarketAdded(address indexed controller, address market);
@@ -36,6 +40,9 @@ contract WildcatArchController is Ownable {
 
   event BorrowerAdded(address borrower);
   event BorrowerRemoved(address borrower);
+
+  event AssetBlacklisted(address asset);
+  event AssetPermitted(address asset);
 
   event ControllerAdded(address indexed controllerFactory, address controller);
   event ControllerRemoved(address controller);
@@ -187,8 +194,52 @@ contract WildcatArchController is Ownable {
     return _controllers.length();
   }
 
+
   /* ========================================================================== */
-  /*                                   Markets                                   */
+  /*                               Asset Blacklist                              */
+  /* ========================================================================== */
+
+  function addBlacklist(address asset) external onlyOwner {
+    if (!_assetBlacklist.add(asset)) {
+      revert AssetAlreadyBlacklisted();
+    }
+    emit AssetBlacklisted(asset);
+  }
+
+  function removeBlacklist(address asset) external onlyOwner {
+    if (!_assetBlacklist.remove(asset)) {
+      revert AssetNotBlacklisted();
+    }
+    emit AssetPermitted(asset);
+  }
+
+  function isBlacklistedAsset(address asset) external view returns (bool) {
+    return _assetBlacklist.contains(asset);
+  }
+
+  function getBlacklistedAssets() external view returns (address[] memory) {
+    return _assetBlacklist.values();
+  }
+
+  function getBlacklistedAssets(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory arr) {
+    uint256 len = _assetBlacklist.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _assetBlacklist.at(start + i);
+    }
+  }
+
+  function getBlacklistedAssetsCount() external view returns (uint256) {
+    return _assetBlacklist.length();
+  }
+
+  /* ========================================================================== */
+  /*                                   Markets                                  */
   /* ========================================================================== */
 
   function registerMarket(address market) external onlyController sphereXGuardExternal(0xbea93bd1) {

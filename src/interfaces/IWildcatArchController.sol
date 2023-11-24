@@ -78,6 +78,29 @@ interface IWildcatArchController {
   function removeBorrower(address borrower) external;
 
   /* -------------------------------------------------------------------------- */
+  /*                           Asset Blacklist Registry                         */
+  /* -------------------------------------------------------------------------- */
+  
+  event AssetPermitted();
+
+  event AssetBlacklisted();
+
+  function addBlacklist(address asset) external;
+
+  function removeBlacklist(address asset) external;
+
+  function isBlacklistedAsset(address asset) external view returns (bool);
+
+  function getBlacklistedAssets() external view returns (address[] memory);
+
+  function getBlacklistedAssets(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory);
+
+  function getBlacklistedAssetsCount() external view returns (uint256);
+
+  /* -------------------------------------------------------------------------- */
   /*                               Markets Registry                              */
   /* -------------------------------------------------------------------------- */
 
