@@ -69,8 +69,8 @@ contract WildcatMarket is
       account.scaledBalance += scaledAmount;
       _accounts[msg.sender] = account;
 
-      emit Transfer(address(0), msg.sender, amount);
-      emit Deposit(msg.sender, amount, scaledAmount);
+      emit_Transfer(address(0), msg.sender, amount);
+      emit_Deposit(msg.sender, amount, scaledAmount);
 
       // Increase supply
       state.scaledTotalSupply += scaledAmount;
@@ -111,7 +111,7 @@ contract WildcatMarket is
     state.accruedProtocolFees -= withdrawableFees;
     asset.safeTransfer(feeRecipient, withdrawableFees);
     _writeState(state);
-    emit FeesCollected(withdrawableFees);
+    emit_FeesCollected(withdrawableFees);
   }
 
   /**
@@ -138,7 +138,7 @@ contract WildcatMarket is
     }
     asset.safeTransfer(msg.sender, amount);
     _writeState(state);
-    emit Borrow(amount);
+    emit_Borrow(amount);
   }
 
   function _repay(MarketState memory state, uint256 amount) internal {
@@ -149,7 +149,7 @@ contract WildcatMarket is
       revert RepayToClosedMarket();
     }
     asset.safeTransferFrom(msg.sender, address(this), amount);
-    emit DebtRepaid(msg.sender, amount);
+    emit_DebtRepaid(msg.sender, amount);
   }
 
   function repayOutstandingDebt() external nonReentrant {
@@ -178,7 +178,7 @@ contract WildcatMarket is
   function repay(uint256 amount) external nonReentrant {
     if (amount == 0) revert NullRepayAmount();
     asset.safeTransferFrom(msg.sender, address(this), amount);
-    emit DebtRepaid(msg.sender, amount);
+    emit_DebtRepaid(msg.sender, amount);
 
     MarketState memory state = _getUpdatedState();
     if (state.isClosed) {
@@ -220,6 +220,6 @@ contract WildcatMarket is
       asset.safeTransfer(borrower, currentlyHeld - totalDebts);
     }
     _writeState(state);
-    emit MarketClosed(block.timestamp);
+    emit_MarketClosed(block.timestamp);
   }
 }

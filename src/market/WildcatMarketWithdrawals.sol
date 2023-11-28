@@ -47,7 +47,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     uint32 expiry
   ) external view nonReentrantView returns (uint256) {
     if (expiry >= block.timestamp) {
-      revert WithdrawalBatchNotExpired();
+      revert_WithdrawalBatchNotExpired();
     }
     (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
     WithdrawalBatch memory batch;
@@ -80,21 +80,21 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
     if (scaledAmount == 0) {
-      revert NullBurnAmount();
+      revert_NullBurnAmount();
     }
 
-    // Cache account data and revert if not authorized to withdraw.
+    // Cache account data and revert_if not authorized to withdraw.
     Account memory account = _getAccountWithRole(msg.sender, AuthRole.WithdrawOnly);
 
     // Reduce caller's balance and emit transfer event.
     account.scaledBalance -= scaledAmount;
     _accounts[msg.sender] = account;
-    emit Transfer(msg.sender, address(this), amount);
+    emit_Transfer(msg.sender, address(this), amount);
 
     // If there is no pending withdrawal batch, create a new one.
     if (state.pendingWithdrawalExpiry == 0) {
       state.pendingWithdrawalExpiry = uint32(block.timestamp + withdrawalBatchDuration);
-      emit WithdrawalBatchCreated(state.pendingWithdrawalExpiry);
+      emit_WithdrawalBatchCreated(state.pendingWithdrawalExpiry);
     }
     // Cache batch expiry on the stack for gas savings.
     uint32 expiry = state.pendingWithdrawalExpiry;
@@ -106,7 +106,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     batch.scaledTotalAmount += scaledAmount;
     state.scaledPendingWithdrawals += scaledAmount;
 
-    emit WithdrawalQueued(expiry, msg.sender, scaledAmount, amount);
+    emit_WithdrawalQueued(expiry, msg.sender, scaledAmount, amount);
 
     // Burn as much of the withdrawal batch as possible with available liquidity.
     uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
@@ -151,7 +151,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     uint32[] calldata expiries
   ) external nonReentrant returns (uint256[] memory amounts) {
     if (accountAddresses.length != expiries.length) {
-      revert InvalidArrayLength();
+      revert_InvalidArrayLength();
     }
     amounts = new uint256[](accountAddresses.length);
 
@@ -171,7 +171,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     uint32 expiry
   ) internal returns (uint256 normalizedAmountWithdrawn) {
     if (expiry >= block.timestamp) {
-      revert WithdrawalBatchNotExpired();
+      revert_WithdrawalBatchNotExpired();
     }
 
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
@@ -186,7 +186,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     uint128 normalizedAmountWithdrawn = newTotalWithdrawn - status.normalizedAmountWithdrawn;
 
     if (normalizedAmountWithdrawn == 0) {
-      revert NullWithdrawalAmount();
+      revert_NullWithdrawalAmount();
     }
 
     status.normalizedAmountWithdrawn = newTotalWithdrawn;
@@ -200,7 +200,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
         address(asset)
       );
       asset.safeTransfer(escrow, normalizedAmountWithdrawn);
-      emit SanctionedAccountWithdrawalSentToEscrow(
+      emit_SanctionedAccountWithdrawalSentToEscrow(
         accountAddress,
         escrow,
         expiry,
@@ -210,7 +210,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
       asset.safeTransfer(accountAddress, normalizedAmountWithdrawn);
     }
 
-    emit WithdrawalExecuted(expiry, accountAddress, normalizedAmountWithdrawn);
+    emit_WithdrawalExecuted(expiry, accountAddress, normalizedAmountWithdrawn);
 
     return normalizedAmountWithdrawn;
   }
@@ -221,12 +221,12 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   ) public nonReentrant {
     if (repayAmount > 0) {
       asset.safeTransferFrom(msg.sender, address(this), repayAmount);
-      emit DebtRepaid(msg.sender, repayAmount);
+      emit_DebtRepaid(msg.sender, repayAmount);
     }
 
     MarketState memory state = _getUpdatedState();
     if (state.isClosed) {
-      revert RepayToClosedMarket();
+      revert_RepayToClosedMarket();
     }
 
     // Calculate assets available to process the first batch - will be updated after each batch
@@ -271,7 +271,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     // Remove batch from unpaid set if fully paid
     if (batch.scaledTotalAmount == batch.scaledAmountBurned) {
       _withdrawalData.unpaidBatches.shift();
-      emit WithdrawalBatchClosed(expiry);
+      emit_WithdrawalBatchClosed(expiry);
     }
   }
 }

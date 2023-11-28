@@ -58,7 +58,7 @@ contract WildcatMarketToken is WildcatMarketBase {
 
   function _approve(address approver, address spender, uint256 amount) internal virtual {
     allowance[approver][spender] = amount;
-    emit Approval(approver, spender, amount);
+    emit_Approval(approver, spender, amount);
   }
 
   function _transfer(address from, address to, uint256 amount) internal virtual {
@@ -66,7 +66,7 @@ contract WildcatMarketToken is WildcatMarketBase {
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 
     if (scaledAmount == 0) {
-      revert NullTransferAmount();
+      revert_NullTransferAmount();
     }
 
     Account memory fromAccount = _getAccount(from);
@@ -78,6 +78,6 @@ contract WildcatMarketToken is WildcatMarketBase {
     _accounts[to] = toAccount;
 
     _writeState(state);
-    emit Transfer(from, to, amount);
+    emit_Transfer(from, to, amount);
   }
 }

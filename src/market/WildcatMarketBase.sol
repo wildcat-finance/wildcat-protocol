@@ -9,6 +9,8 @@ import '../interfaces/IWildcatMarketController.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
 import { IERC20, IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
 import '../ReentrancyGuard.sol';
+import '../libraries/MarketEvents.sol';
+import '../libraries/MarketErrors.sol';
 import '../libraries/BoolUtils.sol';
 
 contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
@@ -149,7 +151,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     if (account.approval != AuthRole.Blocked) {
       uint104 scaledBalance = account.scaledBalance;
       account.approval = AuthRole.Blocked;
-      emit AuthorizationStatusUpdated(accountAddress, AuthRole.Blocked);
+      emit_AuthorizationStatusUpdated(accountAddress, AuthRole.Blocked);
 
       if (scaledBalance > 0) {
         account.scaledBalance = 0;
@@ -158,9 +160,9 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
           accountAddress,
           address(this)
         );
-        emit Transfer(accountAddress, escrow, state.normalizeAmount(scaledBalance));
+        emit_Transfer(accountAddress, escrow, state.normalizeAmount(scaledBalance));
         _accounts[escrow].scaledBalance += scaledBalance;
-        emit SanctionedAccountAssetsSentToEscrow(
+        emit_SanctionedAccountAssetsSentToEscrow(
           accountAddress,
           escrow,
           state.normalizeAmount(scaledBalance)
@@ -187,7 +189,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     if (account.approval == AuthRole.Null) {
       if (IWildcatMarketController(controller).isAuthorizedLender(accountAddress)) {
         account.approval = AuthRole.DepositAndWithdraw;
-        emit AuthorizationStatusUpdated(accountAddress, AuthRole.DepositAndWithdraw);
+        emit_AuthorizationStatusUpdated(accountAddress, AuthRole.DepositAndWithdraw);
       }
     }
     // If account role is insufficient, revert.
@@ -367,7 +369,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
             delinquencyGracePeriod,
             expiry
           );
-        emit InterestAndFeesAccrued(
+        emit_InterestAndFeesAccrued(
           lastInterestAccruedTimestamp,
           expiry,
           state.scaleFactor,
@@ -388,7 +390,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
           delinquencyGracePeriod,
           block.timestamp
         );
-      emit InterestAndFeesAccrued(
+      emit_InterestAndFeesAccrued(
         lastInterestAccruedTimestamp,
         block.timestamp,
         state.scaleFactor,
@@ -493,7 +495,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     bool isDelinquent = state.liquidityRequired() > totalAssets();
     state.isDelinquent = isDelinquent;
     _state = state;
-    emit StateUpdated(state.scaleFactor, isDelinquent);
+    emit_StateUpdated(state.scaleFactor, isDelinquent);
   }
 
   /**
@@ -519,7 +521,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
       }
     }
 
-    emit WithdrawalBatchExpired(
+    emit_WithdrawalBatchExpired(
       expiry,
       batch.scaledTotalAmount,
       batch.scaledAmountBurned,
@@ -529,7 +531,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     if (batch.scaledAmountBurned < batch.scaledTotalAmount) {
       _withdrawalData.unpaidBatches.push(expiry);
     } else {
-      emit WithdrawalBatchClosed(expiry);
+      emit_WithdrawalBatchClosed(expiry);
     }
 
     state.pendingWithdrawalExpiry = 0;
@@ -570,8 +572,8 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     state.scaledTotalSupply -= scaledAmountBurned;
 
     // Emit transfer for external trackers to indicate burn.
-    emit Transfer(address(this), address(0), normalizedAmountPaid);
-    emit WithdrawalBatchPayment(expiry, scaledAmountBurned, normalizedAmountPaid);
+    emit_Transfer(address(this), address(0), normalizedAmountPaid);
+    emit_WithdrawalBatchPayment(expiry, scaledAmountBurned, normalizedAmountPaid);
   }
 
   function _applyWithdrawalBatchPaymentView(

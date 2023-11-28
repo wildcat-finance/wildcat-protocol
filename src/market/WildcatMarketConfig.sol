@@ -104,7 +104,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
     }
 
     account.approval = AuthRole.WithdrawOnly;
-    emit AuthorizationStatusUpdated(accountAddress, account.approval);
+    emit_AuthorizationStatusUpdated(accountAddress, account.approval);
 
     _accounts[accountAddress] = account;
   }
@@ -132,7 +132,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
         account.approval = AuthRole.WithdrawOnly;
       }
       _accounts[accounts[i]] = account;
-      emit AuthorizationStatusUpdated(accounts[i], account.approval);
+      emit_AuthorizationStatusUpdated(accounts[i], account.approval);
     }
     _writeState(state);
   }
@@ -152,7 +152,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
 
     state.maxTotalSupply = _maxTotalSupply.toUint128();
     _writeState(state);
-    emit MaxTotalSupplyUpdated(_maxTotalSupply);
+    emit_MaxTotalSupplyUpdated(_maxTotalSupply);
   }
 
   /**
@@ -163,7 +163,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
 
     state.annualInterestBips = _annualInterestBips;
     _writeState(state);
-    emit AnnualInterestBipsUpdated(_annualInterestBips);
+    emit_AnnualInterestBipsUpdated(_annualInterestBips);
   }
 
   /**
@@ -193,6 +193,6 @@ contract WildcatMarketConfig is WildcatMarketBase {
       }
     }
     _writeState(state);
-    emit ReserveRatioBipsUpdated(_reserveRatioBips);
+    emit_ReserveRatioBipsUpdated(_reserveRatioBips);
   }
 }
