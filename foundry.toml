@@ -6,6 +6,8 @@ gas_reports = ["WildcatMarket"]
 fs_permissions = [{ access = "read-write", path = "./deployments.json"}]
 
 # via_ir = true
+optimizer = true
+optimizer_runs = 1
 
 remappings = [
   'forge-std/=lib/forge-std/src/',
@@ -32,3 +34,16 @@ call_override = false
 dictionary_weight = 80
 include_storage = true
 include_push_bytes = true
+
+
+# // Original SphereX code, 200 optimizer runs
+# IR: WildcatMarket | init: 34331 | runtime: 29500
+# Not IR: WildcatMarket | init: 28324 | runtime: 24009
+
+# // Original SphereX code, 1 optimizer run
+# IR: WildcatMarket | init: 33381 (-950) | runtime: 28645 (-855)
+# Not IR: WildcatMarket | init: 27904 (-420)  | runtime: 23581 (-428)
+
+# // Minimal SphereX code, 1 optimizer runs
+# IR: WildcatMarket | init: 25135 (-8246) | runtime: 20533 (-8112)
+# Not IR: WildcatMarket | init: 26346 (-1558)  | runtime: 22104 (-1477)
