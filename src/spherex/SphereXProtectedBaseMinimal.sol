@@ -30,14 +30,6 @@ abstract contract SphereXProtectedBaseMinimal {
   event NewAllowedSenderOnchain(address sender);
 
   /**
-   * @dev used when the client doesn't use a proxy
-   * @notice constructor visibility is required to support all compiler versions
-   */
-  constructor(address admin, address operator, address engine) {
-    __SphereXProtectedBase_init(admin, operator, engine);
-  }
-
-  /**
    * @dev used when the client uses a proxy - should be called by the inhereter initialization
    */
   function __SphereXProtectedBase_init(

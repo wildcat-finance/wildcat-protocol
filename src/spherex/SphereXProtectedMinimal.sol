@@ -9,6 +9,8 @@ import { ModifierLocals, SphereXProtectedBaseMinimal } from './SphereXProtectedB
  * @title SphereX base Customer contract template
  * @dev notice this is an abstract
  */
-abstract contract SphereXProtectedMinimal is SphereXProtectedBaseMinimal(msg.sender, address(0), address(0)) {
-
+abstract contract SphereXProtectedMinimal is SphereXProtectedBaseMinimal {
+  constructor() {
+    __SphereXProtectedBase_init(msg.sender, address(0), address(0));
+  }
 }
