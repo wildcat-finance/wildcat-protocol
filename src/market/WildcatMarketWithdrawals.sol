@@ -27,19 +27,25 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 
   function getWithdrawalBatch(
     uint32 expiry
-  ) external view nonReentrantView returns (WithdrawalBatch memory) {
+  ) external view nonReentrantView returns (WithdrawalBatch memory batch) {
     (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
     if ((expiry == pendingBatchExpiry).and(expiry > 0)) {
       return pendingBatch;
     }
-    return _withdrawalData.batches[expiry];
+    
+    WithdrawalBatch storage _batch = _withdrawalData.batches[expiry];
+    batch.scaledTotalAmount = _batch.scaledTotalAmount;
+    batch.scaledAmountBurned = _batch.scaledAmountBurned;
+    batch.normalizedAmountPaid = _batch.normalizedAmountPaid;
   }
 
   function getAccountWithdrawalStatus(
     address accountAddress,
     uint32 expiry
-  ) external view nonReentrantView returns (AccountWithdrawalStatus memory) {
-    return _withdrawalData.accountStatuses[expiry][accountAddress];
+  ) external view nonReentrantView returns (AccountWithdrawalStatus memory status) {
+    AccountWithdrawalStatus storage _status = _withdrawalData.accountStatuses[expiry][accountAddress];
+    status.scaledAmount = _status.scaledAmount;
+    status.normalizedAmountWithdrawn = _status.normalizedAmountWithdrawn;
   }
 
   function getAvailableWithdrawalAmount(
@@ -90,14 +96,16 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     account.scaledBalance -= scaledAmount;
     _accounts[msg.sender] = account;
     emit_Transfer(msg.sender, address(this), amount);
+    
+    // Cache batch expiry on the stack for gas savings.
+    uint32 expiry = state.pendingWithdrawalExpiry;
 
     // If there is no pending withdrawal batch, create a new one.
     if (state.pendingWithdrawalExpiry == 0) {
-      state.pendingWithdrawalExpiry = uint32(block.timestamp + withdrawalBatchDuration);
-      emit_WithdrawalBatchCreated(state.pendingWithdrawalExpiry);
+      expiry = uint32(block.timestamp + withdrawalBatchDuration);
+      emit_WithdrawalBatchCreated(expiry);
+      state.pendingWithdrawalExpiry = expiry;
     }
-    // Cache batch expiry on the stack for gas savings.
-    uint32 expiry = state.pendingWithdrawalExpiry;
 
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
