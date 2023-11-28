@@ -115,12 +115,12 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
   // ===================================================================== //
 
   modifier onlyBorrower() {
-    if (msg.sender != borrower) revert NotApprovedBorrower();
+    if (msg.sender != borrower) revert_NotApprovedBorrower();
     _;
   }
 
   modifier onlyController() {
-    if (msg.sender != controller) revert NotController();
+    if (msg.sender != controller) revert_NotController();
     _;
   }
 
@@ -136,7 +136,7 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
   function _getAccount(address accountAddress) internal view returns (Account memory account) {
     account = _accounts[accountAddress];
     if (account.approval == AuthRole.Blocked) {
-      revert AccountBlacklisted();
+      revert_AccountBlacklisted();
     }
   }
 

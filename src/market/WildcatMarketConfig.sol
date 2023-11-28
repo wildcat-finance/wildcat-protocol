@@ -81,7 +81,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
   // ******************************************************************
   function nukeFromOrbit(address accountAddress) external nonReentrant sphereXGuardExternal {
     if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
-      revert BadLaunchCode();
+      revert_BadLaunchCode();
     }
     MarketState memory state = _getUpdatedState();
     _blockAccount(state, accountAddress);
@@ -95,12 +95,12 @@ contract WildcatMarketConfig is WildcatMarketBase {
    */
   function stunningReversal(address accountAddress) external nonReentrant sphereXGuardExternal {
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
-      revert NotReversedOrStunning();
+      revert_NotReversedOrStunning();
     }
 
     Account memory account = _accounts[accountAddress];
     if (account.approval != AuthRole.Blocked) {
-      revert AccountNotBlocked();
+      revert_AccountNotBlocked();
     }
 
     account.approval = AuthRole.WithdrawOnly;
@@ -147,7 +147,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
     MarketState memory state = _getUpdatedState();
 
     if (_maxTotalSupply < state.totalSupply()) {
-      revert NewMaxSupplyTooLow();
+      revert_NewMaxSupplyTooLow();
     }
 
     state.maxTotalSupply = _maxTotalSupply.toUint128();
@@ -183,13 +183,13 @@ contract WildcatMarketConfig is WildcatMarketBase {
 
     if (_reserveRatioBips < initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientReservesForOldLiquidityRatio();
+        revert_InsufficientReservesForOldLiquidityRatio();
       }
     }
     state.reserveRatioBips = _reserveRatioBips;
     if (_reserveRatioBips > initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientReservesForNewLiquidityRatio();
+        revert_InsufficientReservesForNewLiquidityRatio();
       }
     }
     _writeState(state);
