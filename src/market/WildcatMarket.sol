@@ -24,7 +24,7 @@ contract WildcatMarket is
    *      one exists and has expired, then update the market's
    *      delinquency status.
    */
-  function updateState() external nonReentrant {
+  function updateState() external nonReentrant sphereXGuardExternal {
     MarketState memory state = _getUpdatedState();
     _writeState(state);
   }
@@ -40,9 +40,9 @@ contract WildcatMarket is
    *      Reverts if the market is closed or if the scaled token amount
    *      that would be minted for the deposit is zero.
    */
-  function depositUpTo(
+  function _depositUpTo(
     uint256 amount
-  ) public virtual nonReentrant returns (uint256 /* actualAmount */) {
+  ) internal virtual nonReentrant returns (uint256 /* actualAmount */) {
     // Get current state
     MarketState memory state = _getUpdatedState();
 
@@ -82,6 +82,29 @@ contract WildcatMarket is
     }
   }
 
+  
+  /**
+   * @dev Deposit up to `amount` underlying assets and mint market tokens
+   *      for `msg.sender`.
+   *
+   *      The actual deposit amount is limited by the market's maximum deposit
+   *      amount, which is the configured `maxTotalSupply` minus the current
+   *      total supply.
+   *
+   *      Reverts if the market is closed or if the scaled token amount
+   *      that would be minted for the deposit is zero.
+   */
+   function depositUpTo(
+    uint256 amount
+  )
+    external
+    virtual
+    sphereXGuardExternal
+    returns (uint256 /* actualAmount */)
+  {
+    return _depositUpTo(amount);
+  }
+
   /**
    * @dev Deposit exactly `amount` underlying assets and mint market tokens
    *      for `msg.sender`.
@@ -89,8 +112,8 @@ contract WildcatMarket is
    *     Reverts if the deposit amount would cause the market to exceed the
    *     configured `maxTotalSupply`.
    */
-  function deposit(uint256 amount) external virtual {
-    uint256 actualAmount = depositUpTo(amount);
+  function deposit(uint256 amount) external virtual sphereXGuardExternal {
+    uint256 actualAmount = _depositUpTo(amount);
     if (amount != actualAmount) {
       revert MaxSupplyExceeded();
     }
@@ -99,7 +122,7 @@ contract WildcatMarket is
   /**
    * @dev Withdraw available protocol fees to the fee recipient.
    */
-  function collectFees() external nonReentrant {
+  function collectFees() external nonReentrant sphereXGuardExternal {
     MarketState memory state = _getUpdatedState();
     if (state.accruedProtocolFees == 0) {
       revert NullFeeAmount();
@@ -122,7 +145,7 @@ contract WildcatMarket is
    *
    *      Reverts if the market is closed.
    */
-  function borrow(uint256 amount) external onlyBorrower nonReentrant {
+  function borrow(uint256 amount) external onlyBorrower nonReentrant sphereXGuardExternal {
 
     if (WildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
       revert BorrowWhileSanctioned();
@@ -152,14 +175,14 @@ contract WildcatMarket is
     emit_DebtRepaid(msg.sender, amount);
   }
 
-  function repayOutstandingDebt() external nonReentrant {
+  function repayOutstandingDebt() external nonReentrant sphereXGuardExternal {
     MarketState memory state = _getUpdatedState();
     uint256 outstandingDebt = state.totalDebts().satSub(totalAssets());
     _repay(state, outstandingDebt);
     _writeState(state);
   }
 
-  function repayDelinquentDebt() external nonReentrant {
+  function repayDelinquentDebt() external nonReentrant sphereXGuardExternal {
     MarketState memory state = _getUpdatedState();
     uint256 delinquentDebt = state.liquidityRequired().satSub(totalAssets());
     _repay(state, delinquentDebt);
@@ -175,7 +198,7 @@ contract WildcatMarket is
    *
    *      Reverts if the market is closed or `amount` is 0.
    */
-  function repay(uint256 amount) external nonReentrant {
+  function repay(uint256 amount) external nonReentrant sphereXGuardExternal {
     if (amount == 0) revert NullRepayAmount();
     asset.safeTransferFrom(msg.sender, address(this), amount);
     emit_DebtRepaid(msg.sender, amount);
@@ -196,7 +219,7 @@ contract WildcatMarket is
    *      collateralized; otherwise, transfers any assets in excess of
    *      debts to the borrower.
    */
-  function closeMarket() external onlyController nonReentrant {
+  function closeMarket() external onlyController nonReentrant sphereXGuardExternal {
     if (_withdrawalData.unpaidBatches.length() > 0) {
       revert CloseMarketWithUnpaidWithdrawals();
     }

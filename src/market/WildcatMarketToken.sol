@@ -14,26 +14,24 @@ contract WildcatMarketToken is WildcatMarketBase {
 
   /// @notice Returns the normalized balance of `account` with interest.
   function balanceOf(address account) public view virtual nonReentrantView returns (uint256) {
-    (MarketState memory state, , ) = _calculateCurrentState();
-    return state.normalizeAmount(_accounts[account].scaledBalance);
+    return _castReturnMarketState(_calculateCurrentStatePointers)().normalizeAmount(_accounts[account].scaledBalance);
   }
 
   /// @notice Returns the normalized total supply with interest.
   function totalSupply() external view virtual nonReentrantView returns (uint256) {
-    (MarketState memory state, , ) = _calculateCurrentState();
-    return state.totalSupply();
+    return _castReturnMarketState(_calculateCurrentStatePointers)().totalSupply();
   }
 
   /* -------------------------------------------------------------------------- */
   /*                                ERC20 Actions                               */
   /* -------------------------------------------------------------------------- */
 
-  function approve(address spender, uint256 amount) external virtual nonReentrant returns (bool) {
+  function approve(address spender, uint256 amount) external virtual nonReentrant sphereXGuardExternal returns (bool) {
     _approve(msg.sender, spender, amount);
     return true;
   }
 
-  function transfer(address to, uint256 amount) external virtual nonReentrant returns (bool) {
+  function transfer(address to, uint256 amount) external virtual nonReentrant sphereXGuardExternal returns (bool) {
     _transfer(msg.sender, to, amount);
     return true;
   }
@@ -42,7 +40,7 @@ contract WildcatMarketToken is WildcatMarketBase {
     address from,
     address to,
     uint256 amount
-  ) external virtual nonReentrant returns (bool) {
+  ) external virtual nonReentrant sphereXGuardExternal returns (bool) {
     uint256 allowed = allowance[from][msg.sender];
 
     // Saves gas for unlimited approvals.

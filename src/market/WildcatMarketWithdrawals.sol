@@ -74,7 +74,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   /**
    * @dev Create a withdrawal request for a lender.
    */
-  function queueWithdrawal(uint256 amount) external nonReentrant {
+  function queueWithdrawal(uint256 amount) external nonReentrant sphereXGuardExternal {
 
     MarketState memory state = _getUpdatedState();
     
@@ -138,7 +138,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   function executeWithdrawal(
     address accountAddress,
     uint32 expiry
-  ) public nonReentrant returns (uint256) {
+  ) public nonReentrant sphereXGuardExternal returns (uint256) {
     MarketState memory state = _getUpdatedState();
     uint256 normalizedAmountWithdrawn = _executeWithdrawal(state, accountAddress, expiry);
     // Update stored state
@@ -149,7 +149,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   function executeWithdrawals(
     address[] calldata accountAddresses,
     uint32[] calldata expiries
-  ) external nonReentrant returns (uint256[] memory amounts) {
+  ) external nonReentrant sphereXGuardExternal returns (uint256[] memory amounts) {
     if (accountAddresses.length != expiries.length) {
       revert_InvalidArrayLength();
     }
@@ -218,7 +218,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   function repayAndProcessUnpaidWithdrawalBatches(
     uint256 repayAmount,
     uint256 maxBatches
-  ) public nonReentrant {
+  ) public nonReentrant sphereXGuardExternal {
     if (repayAmount > 0) {
       asset.safeTransferFrom(msg.sender, address(this), repayAmount);
       emit_DebtRepaid(msg.sender, repayAmount);
