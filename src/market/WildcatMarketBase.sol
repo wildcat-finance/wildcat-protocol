@@ -80,10 +80,8 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
 
     // Set asset metadata
     asset = parameters.asset;
-    // name = string.concat(parameters.namePrefix, queryName(parameters.asset));
-    // symbol = string.concat(parameters.symbolPrefix, querySymbol(parameters.asset));
-    name = parameters.namePrefix;
-    symbol = parameters.symbolPrefix;
+    name = string.concat(parameters.namePrefix, queryName(parameters.asset));
+    symbol = string.concat(parameters.symbolPrefix, querySymbol(parameters.asset));
     decimals = IERC20Metadata(parameters.asset).decimals();
 
     _state = MarketState({
