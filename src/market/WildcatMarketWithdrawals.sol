@@ -84,7 +84,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     }
 
     // Cache account data and revert_if not authorized to withdraw.
-    Account memory account = _getAccountWithRole(msg.sender, AuthRole.WithdrawOnly);
+    Account memory account = _castReturnAccount(_getAccountWithRole)(msg.sender, AuthRole.WithdrawOnly);
 
     // Reduce caller's balance and emit transfer event.
     account.scaledBalance -= scaledAmount;

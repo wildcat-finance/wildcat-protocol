@@ -65,7 +65,7 @@ contract WildcatMarket is
       asset.safeTransferFrom(msg.sender, address(this), amount);
 
       // Cache account data and revert if not authorized to deposit.
-      Account memory account = _getAccountWithRole(msg.sender, AuthRole.DepositAndWithdraw);
+      Account memory account = _castReturnAccount(_getAccountWithRole)(msg.sender, AuthRole.DepositAndWithdraw);
       account.scaledBalance += scaledAmount;
       _accounts[msg.sender] = account;
 
