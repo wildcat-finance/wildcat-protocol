@@ -232,8 +232,26 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
   /**
    * @dev Total balance in underlying asset.
    */
-  function totalAssets() public view returns (uint256) {
-    return IERC20(asset).balanceOf(address(this));
+  function totalAssets() public view returns (uint256 _totalAssets) {
+    address assetAddress = asset;
+    assembly {
+      // Write selector for `balanceOf(address)` to the end of the first word
+      // of scratch space, then write `address(this)` to the second word.
+      mstore(0, 0x70a08231)
+      mstore(0x20, address())
+      // Call `asset.balanceOf(address(this))`, writing up to 32 bytes of returndata
+      // to scratch space, overwriting calldata.
+      // Reverts if the call fails or does not return exactly 32 bytes.
+      if iszero(
+        and(eq(returndatasize(), 0x20), staticcall(gas(), assetAddress, 0x1c, 0x24, 0, 0x20))
+      ) {
+        // Revert with error message from the call.
+        returndatacopy(0, 0, returndatasize())
+        revert(0, returndatasize())
+      }
+      // Read the return value from scratch space
+      _totalAssets := mload(0)
+    }
   }
 
   /**
