@@ -30,6 +30,7 @@ struct MarketData {
   uint256 reserveRatioBips;
   uint256 annualInterestBips;
   bool temporaryReserveRatio; // reserveRatioBips increased by APR reduction
+  uint256 originalAnnualInterestBips;
   uint256 originalReserveRatioBips;
   uint256 temporaryReserveRatioExpiry;
   // -- Market state --
@@ -128,11 +129,9 @@ library MarketDataLib {
     data.delinquencyGracePeriod = market.delinquencyGracePeriod();
     data.withdrawalBatchDuration = market.withdrawalBatchDuration();
 
-    (, uint256 reserveRatioBips, uint256 expiry) = WildcatMarketController(market.controller())
+    (data.originalAnnualInterestBips, data.originalReserveRatioBips, data.temporaryReserveRatioExpiry) = WildcatMarketController(market.controller())
       .temporaryExcessReserveRatio(address(market));
-    data.temporaryReserveRatio = expiry > 0;
-    data.originalReserveRatioBips = reserveRatioBips;
-    data.temporaryReserveRatioExpiry = expiry;
+    data.temporaryReserveRatio = data.temporaryReserveRatioExpiry > 0;
 
     data.unpaidWithdrawalBatchExpiries = market.getUnpaidBatchExpiries();
 
@@ -260,7 +259,7 @@ library MarketDataLib {
     data.scaledTotalAmount = batch.scaledTotalAmount;
     data.scaledAmountBurned = batch.scaledAmountBurned;
     data.normalizedAmountPaid = batch.normalizedAmountPaid;
-    if (expiry > block.timestamp) {
+    if (expiry >= block.timestamp) {
       data.status = BatchStatus.Pending;
     } else if (expiry > market.previousState().lastInterestAccruedTimestamp) {
       data.status = BatchStatus.Expired;
