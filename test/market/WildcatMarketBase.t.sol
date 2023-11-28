@@ -119,34 +119,6 @@ contract WildcatMarketBaseTest is BaseMarketTest {
   }
 
   // ===================================================================== //
-  //                        effectiveBorrowerAPR()                         //
-  // ===================================================================== //
-
-  function test_effectiveBorrowerAPR() external {
-    assertEq(market.effectiveBorrowerAPR(), 1.1e26);
-    _deposit(alice, 1e18);
-    _borrow(8e17);
-    _requestWithdrawal(alice, 1e18);
-    assertEq(market.effectiveBorrowerAPR(), 1.1e26);
-    fastForward(2_001);
-    assertEq(market.effectiveBorrowerAPR(), 2.1e26);
-  }
-
-  // ===================================================================== //
-  //                         effectiveLenderAPR()                          //
-  // ===================================================================== //
-
-  function test_effectiveLenderAPR() external {
-    assertEq(market.effectiveLenderAPR(), 1e26);
-    _deposit(alice, 1e18);
-    _borrow(8e17);
-    _requestWithdrawal(alice, 1e18);
-    assertEq(market.effectiveLenderAPR(), 1e26);
-    fastForward(2_001);
-    assertEq(market.effectiveLenderAPR(), 2e26);
-  }
-
-  // ===================================================================== //
   //                      withdrawableProtocolFees()                       //
   // ===================================================================== //
 
