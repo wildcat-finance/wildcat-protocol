@@ -363,11 +363,11 @@ contract MarketLensTest is BaseMarketTest {
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
     uint32 expiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
     checkWithdrawalBatchData(lens.getWithdrawalBatchData(address(market), expiry), expiry);
-    fastForward(parameters.withdrawalBatchDuration);
+    fastForward(parameters.withdrawalBatchDuration + 1);
     market.updateState();
     checkWithdrawalBatchData(lens.getWithdrawalBatchData(address(market), expiry), expiry);
     asset.mint(address(market), 1e18);
-    market.processUnpaidWithdrawalBatch();
+    market.repayAndProcessUnpaidWithdrawalBatches(0, 1);
     checkWithdrawalBatchData(lens.getWithdrawalBatchData(address(market), expiry), expiry);
   }
 
@@ -429,7 +429,7 @@ contract MarketLensTest is BaseMarketTest {
     );
 
     asset.mint(address(market), 1e18);
-    market.processUnpaidWithdrawalBatch();
+    market.repayAndProcessUnpaidWithdrawalBatches(0, 1);
     checkWithdrawalBatchDataWithLenderStatus(
       lens.getWithdrawalBatchDataWithLenderStatus(address(market), uint32(expiry), address(alice)),
       expiry

@@ -195,6 +195,153 @@ contract WildcatMarketControllerTest is BaseMarketTest {
     controller.updateLenderAuthorization(address(1), markets);
   }
 
+  function _trackAccountAuthorization(
+    address account,
+    WildcatMarket _market,
+    AuthRole previousRole,
+    bool approve
+  ) internal {
+    if (approve) {
+      vm.expectEmit(address(_market));
+      emit IMarketEventsAndErrors.AuthorizationStatusUpdated(account, AuthRole.DepositAndWithdraw);
+    } else if (previousRole == AuthRole.DepositAndWithdraw) {
+      vm.expectEmit(address(_market));
+      emit IMarketEventsAndErrors.AuthorizationStatusUpdated(account, AuthRole.WithdrawOnly);
+    }
+  }
+
+  function _getAccountToRole(WildcatMarket market, address account, AuthRole role) internal {
+    if (role == AuthRole.Null) return;
+    if (role == AuthRole.Blocked) {
+      sanctionsSentinel.sanction(account);
+      market.nukeFromOrbit(account);
+    } else if (role == AuthRole.WithdrawOnly) {
+      address[] memory accounts = new address[](1);
+      accounts[0] = account;
+      address[] memory markets = new address[](1);
+      markets[0] = address(market);
+      controller.authorizeLendersAndUpdateMarkets(accounts, markets);
+      controller.deauthorizeLendersAndUpdateMarkets(accounts, markets);
+    } else if (role == AuthRole.DepositAndWithdraw) {
+      address[] memory accounts = new address[](1);
+      accounts[0] = account;
+      address[] memory markets = new address[](1);
+      markets[0] = address(market);
+      controller.authorizeLendersAndUpdateMarkets(accounts, markets);
+    }
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                     authorizeLendersAndUpdateMarkets()                     */
+  /* -------------------------------------------------------------------------- */
+
+  function test_authorizeLendersAndUpdateMarkets() external asAccount(borrower) {
+    address[] memory lenders = _aliceAndBob();
+
+    address[] memory markets = _twoMarkets();
+
+    vm.expectEmit(address(controller));
+    emit LenderAuthorized(bob);
+    _trackAccountAuthorization(alice, WildcatMarket(markets[0]), AuthRole.Null, true);
+    _trackAccountAuthorization(bob, WildcatMarket(markets[0]), AuthRole.Null, true);
+    _trackAccountAuthorization(alice, WildcatMarket(markets[1]), AuthRole.Null, true);
+    _trackAccountAuthorization(bob, WildcatMarket(markets[1]), AuthRole.Null, true);
+    controller.authorizeLendersAndUpdateMarkets(lenders, markets);
+  }
+
+  function test_authorizeLendersAndUpdateMarkets_NotControlledMarket()
+    external
+    asAccount(borrower)
+  {
+    address[] memory lenders = _aliceAndBob();
+    address[] memory markets = new address[](2);
+    markets[0] = address(market);
+    markets[1] = address(2);
+    vm.expectRevert(NotControlledMarket.selector);
+    controller.authorizeLendersAndUpdateMarkets(lenders, markets);
+  }
+
+  function test_authorizeLendersAndUpdateMarkets_AccountBlacklisted() external asAccount(borrower) {
+    address[] memory lenders = _aliceAndBob();
+    address[] memory markets = _twoMarkets();
+    sanctionsSentinel.sanction(alice);
+    WildcatMarket(markets[1]).nukeFromOrbit(alice);
+    vm.expectRevert(AccountBlacklisted.selector);
+    controller.authorizeLendersAndUpdateMarkets(lenders, markets);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                    deauthorizeLendersAndUpdateMarkets()                    */
+  /* -------------------------------------------------------------------------- */
+
+  function test_deauthorizeLendersAndUpdateMarkets() external asAccount(borrower) {
+    address[] memory lenders = _aliceAndBob();
+
+    address[] memory markets = _twoMarkets();
+
+    controller.authorizeLenders(lenders);
+    controller.updateLenderAuthorization(alice, markets);
+    vm.expectEmit(address(controller));
+    emit LenderDeauthorized(alice);
+    vm.expectEmit(address(controller));
+    emit LenderDeauthorized(bob);
+    _trackAccountAuthorization(
+      alice,
+      WildcatMarket(markets[0]),
+      AuthRole.DepositAndWithdraw,
+      false
+    );
+    _trackAccountAuthorization(bob, WildcatMarket(markets[0]), AuthRole.Null, false);
+    _trackAccountAuthorization(
+      alice,
+      WildcatMarket(markets[1]),
+      AuthRole.DepositAndWithdraw,
+      false
+    );
+    _trackAccountAuthorization(bob, WildcatMarket(markets[1]), AuthRole.Null, false);
+    controller.deauthorizeLendersAndUpdateMarkets(lenders, markets);
+  }
+
+  function test_deauthorizeLendersAndUpdateMarkets_AccountBlacklisted()
+    external
+    asAccount(borrower)
+  {
+    address[] memory lenders = _aliceAndBob();
+    address[] memory markets = _twoMarkets();
+    controller.authorizeLendersAndUpdateMarkets(lenders, markets);
+    sanctionsSentinel.sanction(alice);
+    WildcatMarket(markets[1]).nukeFromOrbit(alice);
+    vm.expectRevert(AccountBlacklisted.selector);
+    controller.deauthorizeLendersAndUpdateMarkets(lenders, markets);
+  }
+
+  function test_deauthorizeLendersAndUpdateMarkets_NotControlledMarket()
+    external
+    asAccount(borrower)
+  {
+    address[] memory lenders = _aliceAndBob();
+    address[] memory markets = new address[](2);
+    markets[0] = address(market);
+    markets[1] = address(2);
+    vm.expectRevert(NotControlledMarket.selector);
+    controller.deauthorizeLendersAndUpdateMarkets(lenders, markets);
+  }
+
+  function _aliceAndBob() internal view returns (address[] memory) {
+    address[] memory lenders = new address[](2);
+    lenders[0] = alice;
+    lenders[1] = bob;
+    return lenders;
+  }
+
+  function _twoMarkets() internal returns (address[] memory markets) {
+    markets = new address[](2);
+    markets[0] = address(market);
+    parameters.asset = address(new MockERC20('nam', 'sym', 18));
+    markets[1] = _callDeployMarket(borrower);
+    return markets;
+  }
+
   function test_updateLenderAuthorization() external asAccount(borrower) {
     address[] memory markets = new address[](1);
     markets[0] = address(market);
