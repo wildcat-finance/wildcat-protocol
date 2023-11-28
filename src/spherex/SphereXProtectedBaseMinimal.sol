@@ -275,7 +275,7 @@ abstract contract SphereXProtectedBaseMinimal {
       let size := add(0xc4, calldatasize())
 
       if iszero(
-        and(eq(mload(0), 0x20), staticcall(gas(), engineAddress, add(pointer, 28), size, 0, 0x40))
+        and(eq(mload(0), 0x20), call(gas(), engineAddress, 0, add(pointer, 28), size, 0, 0x40))
       ) {
         returndatacopy(0, 0, returndatasize())
         revert(0, returndatasize())
