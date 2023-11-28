@@ -2,8 +2,7 @@
 pragma solidity >=0.8.20;
 
 import './WildcatMarketBase.sol'; 
-import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
- 
+import {ModifierLocals, SphereXProtectedMinimal} from "../spherex/SphereXProtectedMinimal.sol";
 
 contract WildcatMarketToken is WildcatMarketBase {
   using SafeCastLib for uint256;
@@ -58,17 +57,17 @@ contract WildcatMarketToken is WildcatMarketBase {
     return true;
   }
 
-  function _approve(address approver, address spender, uint256 amount) internal virtual sphereXGuardInternal(0x5ede8ef1) {
+  function _approve(address approver, address spender, uint256 amount) internal virtual /* sphereXGuardInternal(0x5ede8ef1) */ {
     allowance[approver][spender] = amount;
-    emit Approval(approver, spender, amount);
+    emit_Approval(approver, spender, amount);
   }
 
-  function _transfer(address from, address to, uint256 amount) internal virtual sphereXGuardInternal(0xae533ab5) {
+  function _transfer(address from, address to, uint256 amount) internal virtual /* sphereXGuardInternal(0xae533ab5) */ {
     MarketState memory state = _getUpdatedState();
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 
     if (scaledAmount == 0) {
-      revert NullTransferAmount();
+      revert_NullTransferAmount();
     }
 
     Account memory fromAccount = _getAccount(from);
@@ -80,6 +79,6 @@ contract WildcatMarketToken is WildcatMarketBase {
     _accounts[to] = toAccount;
 
     _writeState(state);
-    emit Transfer(from, to, amount);
+    emit_Transfer(from, to, amount);
   }
 }

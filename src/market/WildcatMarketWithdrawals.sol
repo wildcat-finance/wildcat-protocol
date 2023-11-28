@@ -6,9 +6,8 @@ import '../libraries/MarketState.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/FIFOQueue.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
-import 'solady/utils/SafeTransferLib.sol'; 
-import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
- 
+import 'solady/utils/SafeTransferLib.sol';
+import { SphereXProtectedMinimal } from '../spherex/SphereXProtectedMinimal.sol';
 
 contract WildcatMarketWithdrawals is WildcatMarketBase {
   using SafeTransferLib for address;
@@ -29,19 +28,24 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 
   function getWithdrawalBatch(
     uint32 expiry
-  ) external view nonReentrantView returns (WithdrawalBatch memory) {
+  ) external view nonReentrantView returns (WithdrawalBatch memory batch) {
     (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
     if ((expiry == pendingBatchExpiry).and(expiry > 0)) {
       return pendingBatch;
     }
-    return _withdrawalData.batches[expiry];
+    WithdrawalBatch storage _batch = _withdrawalData.batches[expiry];
+    batch.scaledTotalAmount = _batch.scaledTotalAmount;
+    batch.scaledAmountBurned = _batch.scaledAmountBurned;
+    batch.normalizedAmountPaid = _batch.normalizedAmountPaid;
   }
 
   function getAccountWithdrawalStatus(
     address accountAddress,
     uint32 expiry
-  ) external view nonReentrantView returns (AccountWithdrawalStatus memory) {
-    return _withdrawalData.accountStatuses[expiry][accountAddress];
+  ) external view nonReentrantView returns (AccountWithdrawalStatus memory status) {
+    AccountWithdrawalStatus storage _status = _withdrawalData.accountStatuses[expiry][accountAddress];
+    status.scaledAmount = _status.scaledAmount;
+    status.normalizedAmountWithdrawn = _status.normalizedAmountWithdrawn;
   }
 
   function getAvailableWithdrawalAmount(
@@ -49,7 +53,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     uint32 expiry
   ) external view nonReentrantView returns (uint256) {
     if (expiry >= block.timestamp) {
-      revert WithdrawalBatchNotExpired();
+      revert_WithdrawalBatchNotExpired();
     }
     (, uint32 pendingBatchExpiry, WithdrawalBatch memory pendingBatch) = _calculateCurrentState();
     WithdrawalBatch memory batch;
@@ -77,12 +81,11 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
    * @dev Create a withdrawal request for a lender.
    */
   function queueWithdrawal(uint256 amount) external nonReentrant sphereXGuardExternal(0x47bf4279) {
-
     MarketState memory state = _getUpdatedState();
-    
+
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
     if (scaledAmount == 0) {
-      revert NullBurnAmount();
+      revert_NullBurnAmount();
     }
 
     // Cache account data and revert if not authorized to withdraw.
@@ -91,15 +94,17 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     // Reduce caller's balance and emit transfer event.
     account.scaledBalance -= scaledAmount;
     _accounts[msg.sender] = account;
-    emit Transfer(msg.sender, address(this), amount);
+    emit_Transfer(msg.sender, address(this), amount);
 
-    // If there is no pending withdrawal batch, create a new one.
-    if (state.pendingWithdrawalExpiry == 0) {
-      state.pendingWithdrawalExpiry = uint32(block.timestamp + withdrawalBatchDuration);
-      emit WithdrawalBatchCreated(state.pendingWithdrawalExpiry);
-    }
     // Cache batch expiry on the stack for gas savings.
     uint32 expiry = state.pendingWithdrawalExpiry;
+
+    // If there is no pending withdrawal batch, create a new one.
+    if (expiry == 0) {
+      expiry = uint32(block.timestamp + withdrawalBatchDuration);
+      emit_WithdrawalBatchCreated(expiry);
+      state.pendingWithdrawalExpiry = expiry;
+    }
 
     WithdrawalBatch memory batch = _withdrawalData.batches[expiry];
 
@@ -108,13 +113,11 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     batch.scaledTotalAmount += scaledAmount;
     state.scaledPendingWithdrawals += scaledAmount;
 
-    emit WithdrawalQueued(expiry, msg.sender, scaledAmount, amount);
+    emit_WithdrawalQueued(expiry, msg.sender, scaledAmount, amount);
 
     // Burn as much of the withdrawal batch as possible with available liquidity.
     uint256 availableLiquidity = batch.availableLiquidityForPendingBatch(state, totalAssets());
-    if (availableLiquidity > 0) {
-      _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
-    }
+    _applyWithdrawalBatchPayment(batch, state, expiry, availableLiquidity);
 
     // Update stored batch data
     _withdrawalData.batches[expiry] = batch;
@@ -140,9 +143,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   function executeWithdrawal(
     address accountAddress,
     uint32 expiry
-  ) external nonReentrant sphereXGuardExternal(0xb991546b) returns (uint256) {
+  ) public nonReentrant sphereXGuardExternal(0xb991546b) returns (uint256) {
     if (expiry >= block.timestamp) {
-      revert WithdrawalBatchNotExpired();
+      revert_WithdrawalBatchNotExpired();
     }
     MarketState memory state = _getUpdatedState();
 
@@ -158,7 +161,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     uint128 normalizedAmountWithdrawn = newTotalWithdrawn - status.normalizedAmountWithdrawn;
 
     if (normalizedAmountWithdrawn == 0) {
-      revert NullWithdrawalAmount();
+      revert_NullWithdrawalAmount();
     }
 
     status.normalizedAmountWithdrawn = newTotalWithdrawn;
@@ -166,13 +169,16 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
 
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
       _blockAccount(state, accountAddress);
-      address escrow = IWildcatSanctionsSentinel(sentinel).createEscrow(
+      address escrow = _createEscrow(
+        accountAddress,
+        address(asset)
+      ); /*  IWildcatSanctionsSentinel(sentinel).createEscrow(
         borrower,
         accountAddress,
         address(asset)
-      );
+      ); */
       asset.safeTransfer(escrow, normalizedAmountWithdrawn);
-      emit SanctionedAccountWithdrawalSentToEscrow(
+      emit_SanctionedAccountWithdrawalSentToEscrow(
         accountAddress,
         escrow,
         expiry,
@@ -182,12 +188,26 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
       asset.safeTransfer(accountAddress, normalizedAmountWithdrawn);
     }
 
-    emit WithdrawalExecuted(expiry, accountAddress, normalizedAmountWithdrawn);
+    emit_WithdrawalExecuted(expiry, accountAddress, normalizedAmountWithdrawn);
 
     // Update stored state
     _writeState(state);
 
     return normalizedAmountWithdrawn;
+  }
+
+  function executeWithdrawals(
+    address[] calldata accountAddresses,
+    uint32[] calldata expiries
+  ) external nonReentrant sphereXGuardExternal(0xf49c909f) returns (uint256[] memory) {
+    if (accountAddresses.length != expiries.length) {
+      revert_InvalidArrayLength();
+    }
+    uint256[] memory amounts = new uint256[](accountAddresses.length);
+    for (uint256 i = 0; i < accountAddresses.length; i++) {
+      amounts[i] = executeWithdrawal(accountAddresses[i], expiries[i]);
+    }
+    return amounts;
   }
 
   function processUnpaidWithdrawalBatch() external nonReentrant sphereXGuardExternal(0xf49c909d) {
@@ -208,7 +228,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     // Remove batch from unpaid set if fully paid
     if (batch.scaledTotalAmount == batch.scaledAmountBurned) {
       _withdrawalData.unpaidBatches.shift();
-      emit WithdrawalBatchClosed(expiry);
+      emit_WithdrawalBatchClosed(expiry);
     }
 
     // Update stored batch

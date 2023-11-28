@@ -4,9 +4,8 @@ pragma solidity >=0.8.20;
 import '../interfaces/IWildcatSanctionsSentinel.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/SafeCastLib.sol';
-import './WildcatMarketBase.sol'; 
-import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
- 
+import './WildcatMarketBase.sol';
+import { SphereXProtectedMinimal } from '../spherex/SphereXProtectedMinimal.sol';
 
 contract WildcatMarketConfig is WildcatMarketBase {
   using SafeCastLib for uint256;
@@ -20,8 +19,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    * @dev Returns whether or not a market has been closed.
    */
   function isClosed() external view returns (bool) {
-    MarketState memory state = currentState();
-    return state.isClosed;
+    return _state.isClosed;
   }
 
   /**
@@ -29,7 +27,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      currently be deposited to the market.
    */
   function maximumDeposit() external view returns (uint256) {
-    MarketState memory state = currentState();
+    MarketState memory state = _castReturnMarketState(_calculateCurrentStatePointers)();
     return state.maximumDeposit();
   }
 
@@ -81,9 +79,11 @@ contract WildcatMarketConfig is WildcatMarketBase {
   //   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪       *
   //   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
   // ******************************************************************
-  function nukeFromOrbit(address accountAddress) external nonReentrant sphereXGuardExternal(0x60f4e8f2) {
+  function nukeFromOrbit(
+    address accountAddress
+  ) external nonReentrant sphereXGuardExternal(0x60f4e8f2) {
     if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
-      revert BadLaunchCode();
+      revert_BadLaunchCode();
     }
     MarketState memory state = _getUpdatedState();
     _blockAccount(state, accountAddress);
@@ -95,20 +95,20 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      and has since been removed from the sanctions list or had
    *      their sanctioned status overridden by the borrower.
    */
-  function stunningReversal(address accountAddress) external nonReentrant sphereXGuardExternal(0x0fd4fa83) {
+  function stunningReversal(
+    address accountAddress
+  ) external nonReentrant sphereXGuardExternal(0x0fd4fa83) {
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
-      revert NotReversedOrStunning();
+      revert_NotReversedOrStunning();
     }
 
-    Account memory account = _accounts[accountAddress];
+    Account storage account = _accounts[accountAddress];
     if (account.approval != AuthRole.Blocked) {
-      revert AccountNotBlocked();
+      revert_AccountNotBlocked();
     }
 
     account.approval = AuthRole.WithdrawOnly;
-    emit AuthorizationStatusUpdated(accountAddress, account.approval);
-
-    _accounts[accountAddress] = account;
+    emit_AuthorizationStatusUpdated(accountAddress, AuthRole.WithdrawOnly);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -134,7 +134,7 @@ contract WildcatMarketConfig is WildcatMarketBase {
     }
     _accounts[_account] = account;
     _writeState(state);
-    emit AuthorizationStatusUpdated(_account, account.approval);
+    emit_AuthorizationStatusUpdated(_account, account.approval);
   }
 
   /**
@@ -143,31 +143,35 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *
    *      Can not be set lower than current total supply.
    */
-  function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyController nonReentrant sphereXGuardExternal(0xfd0bfd91) {
+  function setMaxTotalSupply(
+    uint256 _maxTotalSupply
+  ) external onlyController nonReentrant sphereXGuardExternal(0xfd0bfd91) {
     MarketState memory state = _getUpdatedState();
 
     if (_maxTotalSupply < state.totalSupply()) {
-      revert NewMaxSupplyTooLow();
+      revert_NewMaxSupplyTooLow();
     }
 
     state.maxTotalSupply = _maxTotalSupply.toUint128();
     _writeState(state);
-    emit MaxTotalSupplyUpdated(_maxTotalSupply);
+    emit_MaxTotalSupplyUpdated(_maxTotalSupply);
   }
 
   /**
    * @dev Sets the annual interest rate earned by lenders in bips.
    */
-  function setAnnualInterestBips(uint16 _annualInterestBips) public onlyController nonReentrant sphereXGuardPublic(0x850ae35d, 0x5c559e14) {
+  function setAnnualInterestBips(
+    uint16 _annualInterestBips
+  ) external onlyController nonReentrant sphereXGuardExternal(0x5c559e14) {
     if (_annualInterestBips > BIP) {
-      revert InterestRateTooHigh();
+      revert_InterestRateTooHigh();
     }
 
     MarketState memory state = _getUpdatedState();
 
     state.annualInterestBips = _annualInterestBips;
     _writeState(state);
-    emit AnnualInterestBipsUpdated(_annualInterestBips);
+    emit_AnnualInterestBipsUpdated(_annualInterestBips);
   }
 
   /**
@@ -180,9 +184,11 @@ contract WildcatMarketConfig is WildcatMarketBase {
    *      asserts that the market will not become delinquent
    *      because of the change.
    */
-  function setReserveRatioBips(uint16 _reserveRatioBips) public onlyController nonReentrant sphereXGuardPublic(0xc1a48714, 0x6dd4f521) {
+  function setReserveRatioBips(
+    uint16 _reserveRatioBips
+  ) external onlyController nonReentrant sphereXGuardExternal(0x6dd4f521) {
     if (_reserveRatioBips > BIP) {
-      revert ReserveRatioBipsTooHigh();
+      revert_ReserveRatioBipsTooHigh();
     }
 
     MarketState memory state = _getUpdatedState();
@@ -191,16 +197,16 @@ contract WildcatMarketConfig is WildcatMarketBase {
 
     if (_reserveRatioBips < initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientReservesForOldLiquidityRatio();
+        revert_InsufficientReservesForOldLiquidityRatio();
       }
     }
     state.reserveRatioBips = _reserveRatioBips;
     if (_reserveRatioBips > initialReserveRatioBips) {
       if (state.liquidityRequired() > totalAssets()) {
-        revert InsufficientReservesForNewLiquidityRatio();
+        revert_InsufficientReservesForNewLiquidityRatio();
       }
     }
     _writeState(state);
-    emit ReserveRatioBipsUpdated(_reserveRatioBips);
+    emit_ReserveRatioBipsUpdated(_reserveRatioBips);
   }
 }

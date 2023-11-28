@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4; 
-import {SphereXProtected} from "@spherex-xyz/contracts/src/SphereXProtected.sol";
+import {SphereXProtected} from "./spherex/SphereXProtected.sol";
  
 
 /// @notice Simple single owner authorization mixin.
