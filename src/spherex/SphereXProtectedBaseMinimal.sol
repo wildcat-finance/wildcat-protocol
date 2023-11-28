@@ -379,7 +379,7 @@ abstract contract SphereXProtectedBaseMinimal {
   /**
    *  @dev Modifier to be incorporated in all external protected non-view functions
    */
-  modifier sphereXGuardExternal(int256 num) {
+  modifier sphereXGuardExternal() {
     uint256 localsPointer = _sphereXValidateExternalPre();
     _;
     _sphereXValidateExternalPost(localsPointer);
