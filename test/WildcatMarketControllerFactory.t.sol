@@ -62,8 +62,63 @@ contract WildcatMarketControllerFactoryTest is Test {
     _expectRevertInvalidConstraints();
   }
 
+  function test_getParameterConstraints() external {
+    MarketParameterConstraints memory constraints = controllerFactory.getParameterConstraints();
+    assertEq(
+      constraints.minimumDelinquencyGracePeriod,
+      MinimumDelinquencyGracePeriod,
+      'minimumDelinquencyGracePeriod'
+    );
+    assertEq(
+      constraints.maximumDelinquencyGracePeriod,
+      MaximumDelinquencyGracePeriod,
+      'maximumDelinquencyGracePeriod'
+    );
+    assertEq(
+      constraints.minimumReserveRatioBips,
+      MinimumReserveRatioBips,
+      'minimumReserveRatioBips'
+    );
+    assertEq(
+      constraints.maximumReserveRatioBips,
+      MaximumReserveRatioBips,
+      'maximumReserveRatioBips'
+    );
+    assertEq(
+      constraints.minimumDelinquencyFeeBips,
+      MinimumDelinquencyFeeBips,
+      'minimumDelinquencyFeeBips'
+    );
+    assertEq(
+      constraints.maximumDelinquencyFeeBips,
+      MaximumDelinquencyFeeBips,
+      'maximumDelinquencyFeeBips'
+    );
+    assertEq(
+      constraints.minimumWithdrawalBatchDuration,
+      MinimumWithdrawalBatchDuration,
+      'minimumWithdrawalBatchDuration'
+    );
+    assertEq(
+      constraints.maximumWithdrawalBatchDuration,
+      MaximumWithdrawalBatchDuration,
+      'maximumWithdrawalBatchDuration'
+    );
+    assertEq(
+      constraints.minimumAnnualInterestBips,
+      MinimumAnnualInterestBips,
+      'minimumAnnualInterestBips'
+    );
+    assertEq(
+      constraints.maximumAnnualInterestBips,
+      MaximumAnnualInterestBips,
+      'maximumAnnualInterestBips'
+    );
+  }
+
   function test_getMarketControllerParameters() external {
-    MarketControllerParameters memory parameters = controllerFactory.getMarketControllerParameters();
+    MarketControllerParameters memory parameters = controllerFactory
+      .getMarketControllerParameters();
     assertEq(parameters.archController, address(archController));
     assertEq(parameters.borrower, address(1), 'borrower');
     assertEq(parameters.sentinel, address(0), 'sentinel');
