@@ -74,7 +74,10 @@ library LibStoredInitCode {
       // Calculate create2 hash for token0, token1
       // The EVM only looks at the last 20 bytes, so the dirty
       // bits at the beginning do not need to be cleaned
-      create2Address := keccak256(0x0b, 0x55)
+      create2Address := and(
+        keccak256(0x0b, 0x55),
+        0xffffffffffffffffffffffffffffffffffffffff
+      )
 
       // Restore the free memory pointer
       mstore(0x40, ptr)
