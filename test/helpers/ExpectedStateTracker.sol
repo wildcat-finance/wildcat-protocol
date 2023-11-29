@@ -44,7 +44,10 @@ contract ExpectedStateTracker is Test, Assertions, IMarketEventsAndErrors {
       delinquencyFeeBips: DefaultDelinquencyFee,
       withdrawalBatchDuration: DefaultWithdrawalBatchDuration,
       reserveRatioBips: DefaultReserveRatio,
-      delinquencyGracePeriod: DefaultGracePeriod
+      delinquencyGracePeriod: DefaultGracePeriod,
+      sphereXAdmin: address(0),
+      sphereXOperator: address(0),
+      sphereXEngine: address(0)
     });
   }
 

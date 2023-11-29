@@ -62,8 +62,11 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
       annualInterestBips: 0,
       delinquencyFeeBips: DefaultDelinquencyFee,
       withdrawalBatchDuration: 0,
+      reserveRatioBips: DefaultReserveRatio,
       delinquencyGracePeriod: DefaultGracePeriod,
-      reserveRatioBips: DefaultReserveRatio
+      sphereXAdmin: address(0),
+      sphereXOperator: address(0),
+      sphereXEngine: address(0)
     });
     deployControllerAndMarket(marketParameters, true, true);
     token = IERC20Metadata(address(market));
