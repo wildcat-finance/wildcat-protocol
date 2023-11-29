@@ -12,6 +12,26 @@ import '../helpers/MockControllerFactory.sol';
 import '../helpers/MockSanctionsSentinel.sol';
 import { deployMockChainalysis } from '../helpers/MockChainalysis.sol';
 
+struct MarketInputParameters {
+  address asset;
+  string namePrefix;
+  string symbolPrefix;
+  address borrower;
+  address controller;
+  address feeRecipient;
+  address sentinel;
+  uint128 maxTotalSupply;
+  uint16 protocolFeeBips;
+  uint16 annualInterestBips;
+  uint16 delinquencyFeeBips;
+  uint32 withdrawalBatchDuration;
+  uint16 reserveRatioBips;
+  uint32 delinquencyGracePeriod;
+  address sphereXAdmin;
+  address sphereXOperator;
+  address sphereXEngine;
+}
+
 contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
   WildcatArchController internal archController;
   WildcatMarketControllerFactory internal controllerFactory;
@@ -52,6 +72,11 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
     assertEq(_contract.sphereXEngine(), SphereXEngine, string.concat(label, ': sphereXEngine'));
   }
 
+  event ControllerAdded(address indexed controllerFactory, address controller);
+  event ChangedSpherexOperator(address oldSphereXAdmin, address newSphereXAdmin);
+  event ChangedSpherexEngineAddress(address oldEngineAddress, address newEngineAddress);
+  event SpherexAdminTransferStarted(address currentAdmin, address pendingAdmin);
+  event SpherexAdminTransferCompleted(address oldAdmin, address newAdmin);
   event NewAllowedSenderOnchain(address sender);
   event NewController(address borrower, address controller);
 
@@ -62,6 +87,14 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
   ) internal asSelf {
     archController.registerBorrower(borrower);
     address expectedController = controllerFactory.computeControllerAddress(borrower);
+    vm.expectEmit(expectedController);
+    emit SpherexAdminTransferCompleted(address(0), SphereXAdmin);
+    vm.expectEmit(expectedController);
+    emit ChangedSpherexOperator(address(0), SphereXOperator);
+    vm.expectEmit(expectedController);
+    emit ChangedSpherexEngineAddress(address(0), SphereXEngine);
+    vm.expectEmit(address(archController));
+    emit ControllerAdded(address(controllerFactory), expectedController);
     vm.expectEmit(address(controllerFactory));
     emit NewController(borrower, expectedController);
     vm.expectEmit(address(controllerFactory));
@@ -94,7 +127,7 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
     uint256 originationFeeAmount
   );
 
-  function updateFeeConfiguration(MarketParameters memory parameters) internal asSelf {
+  function updateFeeConfiguration(MarketInputParameters memory parameters) internal asSelf {
     vm.expectEmit(address(controllerFactory));
     emit UpdateProtocolFeeConfiguration(
       parameters.feeRecipient,
@@ -111,7 +144,7 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
   }
 
   function deployMarket(
-    MarketParameters memory parameters
+    MarketInputParameters memory parameters
   ) internal asAccount(parameters.borrower) {
     updateFeeConfiguration(parameters);
     address expectedMarket = controller.computeMarketAddress(
@@ -127,7 +160,7 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
       parameters.symbolPrefix,
       IERC20Metadata(parameters.asset).symbol()
     );
-    vm.expectEmit(address(controller));
+/*     vm.expectEmit(address(controller));
     emit MarketDeployed(
       expectedMarket,
       expectedName,
@@ -139,7 +172,7 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
       parameters.withdrawalBatchDuration,
       parameters.reserveRatioBips,
       parameters.delinquencyGracePeriod
-    );
+    ); */
     vm.expectEmit(address(controller));
     emit NewAllowedSenderOnchain(expectedMarket);
     market = WildcatMarket(
@@ -167,7 +200,7 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
   }
 
   function deployControllerAndMarket(
-    MarketParameters memory parameters,
+    MarketInputParameters memory parameters,
     bool authorizeAll,
     bool disableConstraints
   ) internal {

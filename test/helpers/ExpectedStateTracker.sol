@@ -18,7 +18,7 @@ contract ExpectedStateTracker is Test, Assertions, IMarketEventsAndErrors {
   bytes32 public constant WildcatSanctionsEscrowInitcodeHash =
     keccak256(type(WildcatSanctionsEscrow).creationCode);
 
-  MarketParameters internal parameters;
+  MarketInputParameters internal parameters;
 
   MarketState internal previousState;
   WithdrawalData internal _withdrawalData;
@@ -30,7 +30,7 @@ contract ExpectedStateTracker is Test, Assertions, IMarketEventsAndErrors {
   mapping(address => MarketAccount) private accounts;
 
   constructor() Test() {
-    parameters = MarketParameters({
+    parameters = MarketInputParameters({
       asset: address(0),
       namePrefix: 'Wildcat ',
       symbolPrefix: 'WC',
@@ -50,7 +50,6 @@ contract ExpectedStateTracker is Test, Assertions, IMarketEventsAndErrors {
       sphereXEngine: address(0)
     });
   }
-
 
   function calculateEscrowAddress(
     address accountAddress,

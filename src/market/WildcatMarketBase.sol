@@ -80,8 +80,8 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
 
     // Set asset metadata
     asset = parameters.asset;
-    name = string.concat(parameters.namePrefix, queryName(parameters.asset));
-    symbol = string.concat(parameters.symbolPrefix, querySymbol(parameters.asset));
+    name = parameters.name;
+    symbol = parameters.symbol;
     decimals = IERC20Metadata(parameters.asset).decimals();
 
     _state = MarketState({
@@ -185,7 +185,7 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
    *      determine if it is an approved lender; if it is, its role
    *      is initialized to DepositAndWithdraw.
    */
-   function _getAccountWithRole(
+  function _getAccountWithRole(
     address accountAddress,
     AuthRole requiredRole /* sphereXGuardInternal(0x34aa4264) */
   ) internal returns (uint256 accountPointer) {
@@ -286,11 +286,15 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
   }
 
   function outstandingDebt() external view nonReentrantView returns (uint256) {
-    return _castReturnMarketState(_calculateCurrentStatePointers)().totalDebts().satSub(totalAssets());
+    return
+      _castReturnMarketState(_calculateCurrentStatePointers)().totalDebts().satSub(totalAssets());
   }
 
   function delinquentDebt() external view nonReentrantView returns (uint256) {
-    return _castReturnMarketState(_calculateCurrentStatePointers)().liquidityRequired().satSub(totalAssets());
+    return
+      _castReturnMarketState(_calculateCurrentStatePointers)().liquidityRequired().satSub(
+        totalAssets()
+      );
   }
 
   /**
@@ -300,14 +304,12 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
     return _state;
   }
 
-
-
   /**
    * @dev Return the state the market would have at the current block after applying
    *      interest and fees accrued since the last update and processing the pending
    *      withdrawal batch if it is expired.
    */
-   function currentState() public view nonReentrantView returns (MarketState memory state) {
+  function currentState() public view nonReentrantView returns (MarketState memory state) {
     state = _castReturnMarketState(_calculateCurrentStatePointers)();
   }
 
@@ -316,10 +318,8 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
   }
 
   function _castReturnMarketState(
-    function () internal view returns (uint256) fnIn
-  ) internal pure returns (
-    function () internal view returns (MarketState memory) fnOut
-  ) {
+    function() internal view returns (uint256) fnIn
+  ) internal pure returns (function() internal view returns (MarketState memory) fnOut) {
     assembly {
       fnOut := fnIn
     }
@@ -361,7 +361,10 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
    *      withdrawable by the fee recipient.
    */
   function withdrawableProtocolFees() external view returns (uint128) {
-    return _castReturnMarketState(_calculateCurrentStatePointers)().withdrawableProtocolFees(totalAssets());
+    return
+      _castReturnMarketState(_calculateCurrentStatePointers)().withdrawableProtocolFees(
+        totalAssets()
+      );
   }
 
   // /*//////////////////////////////////////////////////////////////
@@ -582,9 +585,7 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
     }
 
     uint256 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity);
-    scaledAmountBurned = MathUtils
-      .min(scaledAvailableLiquidity, scaledAmountOwed)
-      .toUint104();
+    scaledAmountBurned = MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed).toUint104();
     normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
 
     batch.scaledAmountBurned += scaledAmountBurned;

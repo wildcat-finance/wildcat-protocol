@@ -49,7 +49,7 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
   function setUp() public override {
     asset = new MockERC20('Token', 'TKN', 18);
 
-    MarketParameters memory marketParameters = MarketParameters({
+    MarketInputParameters memory marketParameters = MarketInputParameters({
       asset: address(asset),
       namePrefix: 'Wildcat ',
       symbolPrefix: 'WC',

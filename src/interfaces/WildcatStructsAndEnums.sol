@@ -12,8 +12,8 @@ enum AuthRole {
 
 struct MarketParameters {
   address asset;
-  string namePrefix;
-  string symbolPrefix;
+  string name;
+  string symbol;
   address borrower;
   address controller;
   address feeRecipient;

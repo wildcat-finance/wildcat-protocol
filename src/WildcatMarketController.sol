@@ -9,6 +9,7 @@ import './interfaces/IWildcatMarketControllerEventsAndErrors.sol';
 import './interfaces/IWildcatMarketControllerFactory.sol';
 import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
+import { queryName, querySymbol } from './libraries/StringQuery.sol';
 import './spherex/SphereXProtectedBaseMinimal.sol';
 
 struct TemporaryReserveRatio {
@@ -19,8 +20,8 @@ struct TemporaryReserveRatio {
 
 struct TmpMarketParameterStorage {
   address asset;
-  string namePrefix;
-  string symbolPrefix;
+  string name;
+  string symbol;
   address feeRecipient;
   uint16 protocolFeeBips;
   uint128 maxTotalSupply;
@@ -331,8 +332,8 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
     returns (MarketParameters memory parameters)
   {
     parameters.asset = _tmpMarketParameters.asset;
-    parameters.namePrefix = _tmpMarketParameters.namePrefix;
-    parameters.symbolPrefix = _tmpMarketParameters.symbolPrefix;
+    parameters.name = _tmpMarketParameters.name;
+    parameters.symbol = _tmpMarketParameters.symbol;
     parameters.borrower = borrower;
     parameters.controller = address(this);
     parameters.feeRecipient = _tmpMarketParameters.feeRecipient;
@@ -351,8 +352,8 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
 
   function _resetTmpMarketParameters() internal {
     _tmpMarketParameters.asset = address(1);
-    _tmpMarketParameters.namePrefix = '_';
-    _tmpMarketParameters.symbolPrefix = '_';
+    _tmpMarketParameters.name = '_';
+    _tmpMarketParameters.symbol = '_';
     _tmpMarketParameters.feeRecipient = address(1);
     _tmpMarketParameters.protocolFeeBips = 1;
     _tmpMarketParameters.maxTotalSupply = 1;
@@ -416,8 +417,8 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
 
     TmpMarketParameterStorage memory parameters = TmpMarketParameterStorage({
       asset: asset,
-      namePrefix: namePrefix,
-      symbolPrefix: symbolPrefix,
+      name: string.concat(namePrefix, queryName(asset)),
+      symbol: string.concat(symbolPrefix, querySymbol(asset)),
       feeRecipient: address(0),
       maxTotalSupply: maxTotalSupply,
       protocolFeeBips: 0,
@@ -457,8 +458,8 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
 
     emit MarketDeployed(
       market,
-      WildcatMarket(market).name(),
-      WildcatMarket(market).symbol(),
+      parameters.name,
+      parameters.symbol,
       parameters.asset,
       parameters.maxTotalSupply,
       parameters.annualInterestBips,
