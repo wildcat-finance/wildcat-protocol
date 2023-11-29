@@ -1,13 +1,5 @@
 pragma solidity ^0.8.17;
 
-function emit_SpherexAdminTransferCompleted(address oldAdmin, address newAdmin) {
-  assembly {
-    mstore(0, oldAdmin)
-    mstore(0x20, newAdmin)
-    log1(0, 0x40, 0x67ebaebcd2ca5a91a404e898110f221747e8d15567f2388a34794aab151cf3e6)
-  }
-}
-
 function emit_ChangedSpherexOperator(address oldSphereXAdmin, address newSphereXAdmin) {
   assembly {
     mstore(0, oldSphereXAdmin)
@@ -29,6 +21,14 @@ function emit_SpherexAdminTransferStarted(address currentAdmin, address pendingA
     mstore(0, currentAdmin)
     mstore(0x20, pendingAdmin)
     log1(0, 0x40, 0x5778f1547abbbb86090a43c32aec38334b31df4beeb6f8f3fa063f593b53a526)
+  }
+}
+
+function emit_SpherexAdminTransferCompleted(address oldAdmin, address newAdmin) {
+  assembly {
+    mstore(0, oldAdmin)
+    mstore(0x20, newAdmin)
+    log1(0, 0x40, 0x67ebaebcd2ca5a91a404e898110f221747e8d15567f2388a34794aab151cf3e6)
   }
 }
 

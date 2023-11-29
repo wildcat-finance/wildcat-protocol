@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 
 import { ISphereXEngine, ModifierLocals } from './ISphereXEngine.sol';
 import './SphereXProtectedEvents.sol';
+import './SphereXProtectedErrors.sol';
 
 /**
  * @title SphereX base Customer contract template
@@ -88,14 +89,14 @@ abstract contract SphereXProtectedBaseMinimal {
 
   modifier onlySphereXAdmin() {
     if (msg.sender != _getAddress(SPHEREX_ADMIN_STORAGE_SLOT)) {
-      revert SphereXAdminRequired();
+      revert_SphereXAdminRequired();
     }
     _;
   }
 
   modifier spherexOnlyOperator() {
     if (msg.sender != _getAddress(SPHEREX_OPERATOR_STORAGE_SLOT)) {
-      revert SphereXOperatorRequired();
+      revert_SphereXOperatorRequired();
     }
     _;
   }
@@ -164,7 +165,7 @@ abstract contract SphereXProtectedBaseMinimal {
    */
   function acceptSphereXAdminRole() public virtual {
     if (msg.sender != pendingSphereXAdmin()) {
-      revert SphereXNotPendingAdmin();
+      revert_SphereXNotPendingAdmin();
     }
     address oldAdmin = sphereXAdmin();
     _setAddress(SPHEREX_ADMIN_STORAGE_SLOT, msg.sender);
@@ -191,7 +192,7 @@ abstract contract SphereXProtectedBaseMinimal {
       newSphereXEngine != address(0) &&
       !ISphereXEngine(newSphereXEngine).supportsInterface(type(ISphereXEngine).interfaceId)
     ) {
-      revert SphereXNotEngine();
+      revert_SphereXNotEngine();
     }
   }
 
@@ -215,7 +216,7 @@ abstract contract SphereXProtectedBaseMinimal {
     if (address(engine) != address(0)) {
       engine.addAllowedSenderOnChain(newSender);
     }
-    emit NewAllowedSenderOnchain(newSender);
+    emit_NewAllowedSenderOnchain(newSender);
   }
 
   // ============ Hooks ============
