@@ -18,6 +18,9 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
   WildcatMarketController internal controller;
   WildcatMarket internal market;
   MockSanctionsSentinel internal sanctionsSentinel;
+  address internal SphereXAdmin = address(this);
+  address internal SphereXOperator = address(0x08374708);
+  address internal SphereXEngine;
 
   modifier asSelf() {
     startPrank(address(this));
@@ -26,14 +29,7 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
   }
 
   constructor() {
-    deployMockChainalysis();
-    archController = new WildcatArchController();
-    sanctionsSentinel = new MockSanctionsSentinel(address(archController));
-    controllerFactory = new MockControllerFactory(
-      address(archController),
-      address(sanctionsSentinel)
-    );
-    archController.registerControllerFactory(address(controllerFactory));
+    deployBaseContracts();
   }
 
   function deployBaseContracts() internal asSelf {
@@ -44,9 +40,19 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
       address(archController),
       address(sanctionsSentinel)
     );
+    controllerFactory.changeSphereXOperator(SphereXOperator);
     archController.registerControllerFactory(address(controllerFactory));
+    _checkSphereXConfig(address(controllerFactory), 'WildcatMarketControllerFactory');
   }
 
+  function _checkSphereXConfig(address contractAddress, string memory label) internal asSelf {
+    SphereXProtectedBaseMinimal _contract = SphereXProtectedBaseMinimal(contractAddress);
+    assertEq(_contract.sphereXAdmin(), SphereXAdmin, string.concat(label, ': sphereXAdmin'));
+    assertEq(_contract.sphereXOperator(), SphereXOperator, string.concat(label, ': sphereXOperator'));
+    assertEq(_contract.sphereXEngine(), SphereXEngine, string.concat(label, ': sphereXEngine'));
+  }
+
+  event NewAllowedSenderOnchain(address sender);
   event NewController(address borrower, address controller);
 
   function deployController(
@@ -58,6 +64,8 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
     address expectedController = controllerFactory.computeControllerAddress(borrower);
     vm.expectEmit(address(controllerFactory));
     emit NewController(borrower, expectedController);
+    vm.expectEmit(address(controllerFactory));
+    emit NewAllowedSenderOnchain(expectedController);
     startPrank(borrower);
     MockController _controller = MockController(controllerFactory.deployController());
     assertTrue(
@@ -68,6 +76,7 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
       archController.isRegisteredController(address(_controller)),
       'controller not recognized by arch controller'
     );
+    _checkSphereXConfig(address(_controller), 'WildcatMarketController');
     stopPrank();
     if (disableConstraints) {
       _controller.toggleParameterChecks();
@@ -131,6 +140,8 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
       parameters.reserveRatioBips,
       parameters.delinquencyGracePeriod
     );
+    vm.expectEmit(address(controller));
+    emit NewAllowedSenderOnchain(expectedMarket);
     market = WildcatMarket(
       controller.deployMarket(
         parameters.asset,
@@ -152,6 +163,7 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
       archController.isRegisteredMarket(address(market)),
       'deployed market is not recognized by the arch controller'
     );
+    _checkSphereXConfig(address(market), 'WildcatMarket');
   }
 
   function deployControllerAndMarket(
