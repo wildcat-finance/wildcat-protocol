@@ -108,6 +108,11 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
     delinquencyFeeBips = parameters.delinquencyFeeBips;
     delinquencyGracePeriod = parameters.delinquencyGracePeriod;
     withdrawalBatchDuration = parameters.withdrawalBatchDuration;
+    __SphereXProtectedBase_init(
+      parameters.sphereXAdmin,
+      parameters.sphereXOperator,
+      parameters.sphereXEngine
+    );
   }
 
   // ===================================================================== //
