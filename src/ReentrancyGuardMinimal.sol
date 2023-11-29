@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20; 
-import {SphereXProtectedMinimal} from "./spherex/SphereXProtectedMinimal.sol";
+import {SphereXProtectedBaseMinimal} from "./spherex/SphereXProtectedBaseMinimal.sol";
  
 
 /**
@@ -11,7 +11,7 @@ import {SphereXProtectedMinimal} from "./spherex/SphereXProtectedMinimal.sol";
  * @notice ReentrancyGuard contains a storage variable and related functionality
  *         for protecting against reentrancy.
  */
-contract ReentrancyGuardMinimal is SphereXProtectedMinimal {
+contract ReentrancyGuardMinimal is SphereXProtectedBaseMinimal {
   /**
    * @dev Revert with an error when a caller attempts to reenter a protected
    *      function.
