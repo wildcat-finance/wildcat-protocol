@@ -9,8 +9,12 @@ import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 import './market/WildcatMarket.sol';
 import './WildcatMarketController.sol';
+import './spherex/SphereXProtectedMinimal.sol';
 
-contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
+contract WildcatMarketControllerFactory is
+  IWildcatMarketControllerFactory,
+  SphereXProtectedMinimal
+{
   using EnumerableSet for EnumerableSet.AddressSet;
 
   // Returns immutable arch-controller
@@ -184,7 +188,7 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
     address originationFeeAsset,
     uint80 originationFeeAmount,
     uint16 protocolFeeBips
-  ) external override onlyArchControllerOwner {
+  ) external override onlyArchControllerOwner sphereXGuardExternal {
     bool hasOriginationFee = originationFeeAmount > 0;
     bool nullFeeRecipient = feeRecipient == address(0);
     bool nullOriginationFeeAsset = originationFeeAsset == address(0);
@@ -260,6 +264,9 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
     parameters.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
     parameters.minimumAnnualInterestBips = MinimumAnnualInterestBips;
     parameters.maximumAnnualInterestBips = MaximumAnnualInterestBips;
+    parameters.sphereXAdmin = sphereXAdmin();
+    parameters.sphereXOperator = sphereXOperator();
+    parameters.sphereXEngine = sphereXEngine();
   }
 
   /**
@@ -275,27 +282,8 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
    *      Calls `archController.registerController(controller)` and emits
    *      `NewController(borrower, controller)`.
    */
-  function deployController() public override returns (address controller) {
-    if (!IWildcatArchController(archController).isRegisteredBorrower(msg.sender)) {
-      revert NotRegisteredBorrower();
-    }
-    _tmpMarketBorrowerParameter = msg.sender;
-    // Salt is borrower address
-    bytes32 salt = bytes32(uint256(uint160(msg.sender)));
-    controller = LibStoredInitCode.calculateCreate2Address(
-      ownCreate2Prefix,
-      salt,
-      controllerInitCodeHash
-    );
-
-    if (controller.code.length != 0) {
-      revert ControllerAlreadyDeployed();
-    }
-    LibStoredInitCode.create2WithStoredInitCode(controllerInitCodeStorage, salt);
-    _tmpMarketBorrowerParameter = address(1);
-    IWildcatArchController(archController).registerController(controller);
-    _deployedControllers.add(controller);
-    emit NewController(msg.sender, controller);
+  function deployController() external override sphereXGuardExternal returns (address) {
+    return _deployController();
   }
 
   /**
@@ -322,8 +310,8 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
     uint32 withdrawalBatchDuration,
     uint16 reserveRatioBips,
     uint32 delinquencyGracePeriod
-  ) external override returns (address controller, address market) {
-    controller = deployController();
+  ) external override sphereXGuardExternal returns (address controller, address market) {
+    controller = _deployController();
     market = IWildcatMarketController(controller).deployMarket(
       asset,
       namePrefix,
@@ -335,6 +323,34 @@ contract WildcatMarketControllerFactory is IWildcatMarketControllerFactory {
       reserveRatioBips,
       delinquencyGracePeriod
     );
+  }
+
+  function _deployController() internal returns (address controller) {
+    if (!IWildcatArchController(archController).isRegisteredBorrower(msg.sender)) {
+      revert NotRegisteredBorrower();
+    }
+
+    // Temporarily write borrower to storage so the controller's constructor  can query it.
+    _tmpMarketBorrowerParameter = msg.sender;
+
+    // Salt is borrower address
+    bytes32 salt = bytes32(uint256(uint160(msg.sender)));
+    controller = LibStoredInitCode.calculateCreate2Address(
+      ownCreate2Prefix,
+      salt,
+      controllerInitCodeHash
+    );
+
+    if (controller.code.length != 0) {
+      revert ControllerAlreadyDeployed();
+    }
+    LibStoredInitCode.create2WithStoredInitCode(controllerInitCodeStorage, salt);
+    // Clear temporary borrower - reset to 1 to minimize SSTORE costs
+    _tmpMarketBorrowerParameter = address(1);
+    IWildcatArchController(archController).registerController(controller);
+    _deployedControllers.add(controller);
+    emit NewController(msg.sender, controller);
+    _addAllowedSenderOnChain(controller);
   }
 
   function computeControllerAddress(address borrower) external view override returns (address) {
