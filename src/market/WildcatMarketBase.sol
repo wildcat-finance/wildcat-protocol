@@ -184,10 +184,13 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
    *      If the account's role is not set, queries the controller to
    *      determine if it is an approved lender; if it is, its role
    *      is initialized to DepositAndWithdraw.
+   * 
+   *      Return parameter is declared as a pointer rather than `Account`
+   *      to avoid unnecessary zeroing and allocation of memory.
    */
   function _getAccountWithRole(
     address accountAddress,
-    AuthRole requiredRole /* sphereXGuardInternal(0x34aa4264) */
+    AuthRole requiredRole
   ) internal returns (uint256 accountPointer) {
     Account memory account = _getAccount(accountAddress);
     // If account role is null, see if it is authorized on controller.
@@ -206,6 +209,11 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
     }
   }
 
+  /**
+   * @dev Function type cast to avoid duplicate declaration of Account return parameter.
+   * 
+   *      With `viaIR` enabled, calling this function is a noop.
+   */
   function _castReturnAccount(
     function(address, AuthRole) internal returns (uint256) fnIn
   ) internal pure returns (function(address, AuthRole) internal returns (Account memory) fnOut) {
@@ -313,10 +321,22 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
     state = _castReturnMarketState(_calculateCurrentStatePointers)();
   }
 
+  /**
+   * @dev Call `_calculateCurrentState()` and return only the `state` parameter.
+   *
+   *      Casting the function type prevents a duplicate declaration of the MarketState
+   *      return parameter, which would cause unnecessary zeroing and allocation of memory.
+   *      With `viaIR` enabled, the cast is a noop.
+   */
   function _calculateCurrentStatePointers() internal view returns (uint256 state) {
     (state, , ) = _castReturnPointers(_calculateCurrentState)();
   }
 
+  /**
+   * @dev Function type cast to avoid duplicate declaration of MarketState return parameter.
+   * 
+   *      With `viaIR` enabled, calling this function is a noop.
+   */
   function _castReturnMarketState(
     function() internal view returns (uint256) fnIn
   ) internal pure returns (function() internal view returns (MarketState memory) fnOut) {
@@ -325,6 +345,12 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
     }
   }
 
+  /**
+   * @dev Function type cast to avoid duplicate declaration of MarketState and WithdrawalBatch
+   *      return parameters.
+   * 
+   *      With `viaIR` enabled, calling this function is a noop.
+   */
   function _castReturnPointers(
     function() internal view returns (MarketState memory, uint32, WithdrawalBatch memory) fnIn
   ) internal pure returns (function() internal view returns (uint256, uint32, uint256) fnOut) {
