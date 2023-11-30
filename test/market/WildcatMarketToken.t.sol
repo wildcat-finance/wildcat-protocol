@@ -64,8 +64,6 @@ contract WildcatMarketTokenTest is BaseERC20Test, Test {
       withdrawalBatchDuration: 0,
       reserveRatioBips: DefaultReserveRatio,
       delinquencyGracePeriod: DefaultGracePeriod,
-      sphereXAdmin: address(0),
-      sphereXOperator: address(0),
       sphereXEngine: address(0)
     });
     deployControllerAndMarket(marketParameters, true, true);
