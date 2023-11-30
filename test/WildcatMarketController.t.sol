@@ -501,6 +501,13 @@ contract WildcatMarketControllerTest is BaseMarketTest {
     _callDeployMarket(address(this));
   }
 
+  function test_deployMarket_UnderlyingNotPermitted() external {
+    parameters.asset = address(new MockERC20('n', 's', 18));
+    archController.addBlacklist(parameters.asset);
+    vm.expectRevert(UnderlyingNotPermitted.selector);
+    _callDeployMarket(borrower);
+  }
+
   function test_deployMarket_NotRegisteredBorrower() external {
     archController.removeBorrower(borrower);
     vm.expectRevert(NotRegisteredBorrower.selector);
