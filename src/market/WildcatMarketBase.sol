@@ -8,12 +8,17 @@ import '../interfaces/IMarketEventsAndErrors.sol';
 import '../interfaces/IWildcatMarketController.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
 import { IERC20, IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
-import '../ReentrancyGuardMinimal.sol';
+import '../ReentrancyGuard.sol';
 import '../libraries/MarketEvents.sol';
 import '../libraries/MarketErrors.sol';
 import '../libraries/BoolUtils.sol';
+import '../spherex/SphereXProtectedRegisteredBase.sol';
 
-contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
+contract WildcatMarketBase is
+  SphereXProtectedRegisteredBase,
+  ReentrancyGuard,
+  IMarketEventsAndErrors
+{
   using WithdrawalLib for MarketState;
   using SafeCastLib for uint256;
   using MathUtils for uint256;
@@ -60,6 +65,11 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
 
   /// @dev Token symbol (prefixed symbol of underlying asset).
   string public symbol;
+
+  /// @dev Returns immutable arch-controller address.
+  function archController() external view returns (address) {
+    return _archController;
+  }
 
   // ===================================================================== //
   //                             Market State                               //
@@ -108,11 +118,8 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
     delinquencyFeeBips = parameters.delinquencyFeeBips;
     delinquencyGracePeriod = parameters.delinquencyGracePeriod;
     withdrawalBatchDuration = parameters.withdrawalBatchDuration;
-    __SphereXProtectedBase_init(
-      parameters.sphereXAdmin,
-      parameters.sphereXOperator,
-      parameters.sphereXEngine
-    );
+    _archController = parameters.archController;
+    __SphereXProtectedRegisteredBase_init(parameters.sphereXEngine);
   }
 
   // ===================================================================== //
