@@ -19,6 +19,18 @@ contract WildcatMarketControllerFactoryTest is Test {
       address(0),
       constraints
     );
+    archController.registerControllerFactory(address(controllerFactory));
+    assertEq(
+      controllerFactory.archController(),
+      address(archController),
+      'archController'
+    );
+    assertEq(
+      controllerFactory.sentinel(),
+      address(0),
+      'sentinel'
+    );
+
   }
 
   function _resetConstraints() internal {
@@ -189,5 +201,35 @@ contract WildcatMarketControllerFactoryTest is Test {
       MaximumAnnualInterestBips,
       'maximumAnnualInterestBips'
     );
+  }
+
+  function test_setProtocolFeeConfiguration_InvalidProtocolFeeConfiguration() external {
+    address notNullFeeRecipient = address(1);
+    address nullAddress = address(0);
+
+    vm.expectRevert(IWildcatMarketControllerFactory.InvalidProtocolFeeConfiguration.selector);
+    controllerFactory.setProtocolFeeConfiguration(nullAddress, nullAddress, 0, 1);
+
+    vm.expectRevert(IWildcatMarketControllerFactory.InvalidProtocolFeeConfiguration.selector);
+    controllerFactory.setProtocolFeeConfiguration(nullAddress, nullAddress, 1, 0);
+
+    vm.expectRevert(IWildcatMarketControllerFactory.InvalidProtocolFeeConfiguration.selector);
+    controllerFactory.setProtocolFeeConfiguration(nullAddress, notNullFeeRecipient, 1, 0);
+
+    vm.expectRevert(IWildcatMarketControllerFactory.InvalidProtocolFeeConfiguration.selector);
+    controllerFactory.setProtocolFeeConfiguration(nullAddress, nullAddress, 0, 10001);
+  }
+
+  function test_deployController_NotRegisteredBorrower() external {
+    vm.expectRevert(IWildcatMarketControllerFactory.NotRegisteredBorrower.selector);
+    controllerFactory.deployController();
+  }
+
+  function test_deployController_ControllerAlreadyDeployed() external {
+    archController.registerBorrower(address(1));
+    vm.startPrank(address(1));
+    controllerFactory.deployController();
+    vm.expectRevert(IWildcatMarketControllerFactory.ControllerAlreadyDeployed.selector);
+    controllerFactory.deployController();
   }
 }
