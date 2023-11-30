@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
+import 'src/interfaces/IChainalysisSanctionsList.sol';
+
 address constant alice = address(0xa11ce);
 address constant bob = address(0xb0b);
 address constant feeRecipient = address(0xfee);
@@ -28,3 +30,7 @@ uint32 constant MaximumWithdrawalBatchDuration = 365 days;
 
 uint16 constant MinimumAnnualInterestBips = 0;
 uint16 constant MaximumAnnualInterestBips = 10_000;
+
+IChainalysisSanctionsList constant SanctionsList = IChainalysisSanctionsList(
+  0x40C57923924B5c5c5455c48D93317139ADDaC8fb
+);
