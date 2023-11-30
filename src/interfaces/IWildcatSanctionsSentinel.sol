@@ -33,6 +33,9 @@ interface IWildcatSanctionsSentinel {
     returns (address borrower, address account, address asset);
 
   // Returns result of `chainalysisSanctionsList().isSanctioned(account)`
+  function isFlaggedByChainalysis(address account) external view returns (bool);
+
+  // Returns result of `chainalysisSanctionsList().isSanctioned(account)`
   // if borrower has not overridden the status of `account`
   function isSanctioned(address borrower, address account) external view returns (bool);
 
@@ -45,10 +48,10 @@ interface IWildcatSanctionsSentinel {
   function removeSanctionOverride(address account) external;
 
   // Returns create2 address of sanctions escrow contract for
-  // combination of `account,borrower,asset`
+  // combination of `borrower,account,asset`
   function getEscrowAddress(
-    address account,
     address borrower,
+    address account,
     address asset
   ) external view returns (address escrowContract);
 
@@ -64,8 +67,8 @@ interface IWildcatSanctionsSentinel {
    *      sanctioned status is lifted or the assets are released by the borrower.
    */
   function createEscrow(
-    address account,
     address borrower,
+    address account,
     address asset
   ) external returns (address escrowContract);
 }
