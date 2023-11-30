@@ -331,22 +331,6 @@ abstract contract SphereXProtectedRegisteredBase {
     }
   }
 
-  /**
-   * @dev Returns an array of values read from the given storage slots.
-   *
-   * @param storageSlots array of storage slots to read
-   * @return values array of values read from the storage slots
-   */
-  function _readStorage(
-    bytes32[] memory storageSlots
-  ) internal view returns (bytes32[] memory values) {
-    assembly {
-      values := mload(0x40)
-      mstore(0x40, add(values, add(shl(5, mload(storageSlots)), 0x20)))
-    }
-    _readStorageTo(storageSlots, values);
-  }
-
   // ========================================================================== //
   //                             Function Type Casts                            //
   // ========================================================================== //
