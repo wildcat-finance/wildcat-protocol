@@ -8,101 +8,69 @@ import './SphereXProtectedEvents.sol';
 import './SphereXProtectedErrors.sol';
 
 /**
- * @title SphereX base Customer contract template
+ * @title Modified version of SphereXProtectedBase for contracts registered
+ *        on Wildcat's arch controller.
+ *
+ * @dev In this version, the WildcatArchController deployment is effectively
+ *      the SphereX operator. There is no admin because the arch controller
+ *      address can not be modified.
+ *
+ *      All admin functions/events/errors have been removed to reduce contract size.
+ *
+ *      SphereX engine address validation is delegated to the arch controller.
  */
-abstract contract SphereXProtectedBaseMinimal {
-  /**
-   * @dev we would like to avoid occupying storage slots
-   * @dev to easily incorporate with existing contracts
-   */
-  bytes32 private constant SPHEREX_ADMIN_STORAGE_SLOT =
-    bytes32(uint256(keccak256('eip1967.spherex.spherex')) - 1);
-  bytes32 private constant SPHEREX_PENDING_ADMIN_STORAGE_SLOT =
-    bytes32(uint256(keccak256('eip1967.spherex.pending')) - 1);
-  bytes32 private constant SPHEREX_OPERATOR_STORAGE_SLOT =
-    bytes32(uint256(keccak256('eip1967.spherex.operator')) - 1);
+abstract contract SphereXProtectedRegisteredBase {
+  // ========================================================================== //
+  //                                  Constants                                 //
+  // ========================================================================== //
+
+  /// @dev Storage slot with the address of the SphereX engine contract.
   bytes32 private constant SPHEREX_ENGINE_STORAGE_SLOT =
     bytes32(uint256(keccak256('eip1967.spherex.spherex_engine')) - 1);
 
-  event ChangedSpherexOperator(address oldSphereXAdmin, address newSphereXAdmin);
-  event ChangedSpherexEngineAddress(address oldEngineAddress, address newEngineAddress);
-  event SpherexAdminTransferStarted(address currentAdmin, address pendingAdmin);
-  event SpherexAdminTransferCompleted(address oldAdmin, address newAdmin);
-  event NewAllowedSenderOnchain(address sender);
+  /**
+   * @dev Address of the WildcatArchController deployment.
+   *      The arch controller is able to set the SphereX engine address.
+   *      The inheriting contract must assign this in the constructor.
+   */
+  address internal immutable _archController;
+
+  // ========================================================================== //
+  //                                 Initializer                                //
+  // ========================================================================== //
 
   /**
-   * @dev used when the client uses a proxy - should be called by the inhereter initialization
+   * @dev Initializes the SphereXEngine and emits events for the initial
+   *      engine and operator (arch controller).
    */
-  function __SphereXProtectedBase_init(
-    address admin,
-    address operator,
-    address engine
-  ) internal virtual {
-    _setAddress(SPHEREX_ADMIN_STORAGE_SLOT, admin);
-    emit_SpherexAdminTransferCompleted(address(0), admin);
-
-    _setAddress(SPHEREX_OPERATOR_STORAGE_SLOT, operator);
-    emit_ChangedSpherexOperator(address(0), operator);
-
-    _checkSphereXEngine(engine);
+  function __SphereXProtectedRegisteredBase_init(address engine) internal virtual {
+    emit_ChangedSpherexOperator(address(0), _archController);
     _setAddress(SPHEREX_ENGINE_STORAGE_SLOT, engine);
     emit_ChangedSpherexEngineAddress(address(0), engine);
   }
 
-  // ============ Helper functions ============
-
-  function _sphereXEngine() internal view returns (ISphereXEngine) {
-    return ISphereXEngine(_getAddress(SPHEREX_ENGINE_STORAGE_SLOT));
-  }
-
-  /**
-   * Stores a new address in an arbitrary slot
-   * @param slot where to store the address
-   * @param newAddress address to store in given slot
-   */
-  function _setAddress(bytes32 slot, address newAddress) internal {
-    // solhint-disable-next-line no-inline-assembly
-    // slither-disable-next-line assembly
-    assembly {
-      sstore(slot, newAddress)
-    }
-  }
-
-  /**
-   * Returns an address from an arbitrary slot.
-   * @param slot to read an address from
-   */
-  function _getAddress(bytes32 slot) internal view returns (address addr) {
-    // solhint-disable-next-line no-inline-assembly
-    // slither-disable-next-line assembly
-    assembly {
-      addr := sload(slot)
-    }
-  }
+  // ========================================================================== //
+  //                              Events and Errors                             //
+  // ========================================================================== //
 
   error SphereXOperatorRequired();
-  error SphereXAdminRequired();
-  error SphereXNotPendingAdmin();
-  error SphereXNotEngine();
 
-  // ============ Local modifiers ============
+  event ChangedSpherexOperator(address oldSphereXAdmin, address newSphereXAdmin);
+  event ChangedSpherexEngineAddress(address oldEngineAddress, address newEngineAddress);
 
-  modifier onlySphereXAdmin() {
-    if (msg.sender != _getAddress(SPHEREX_ADMIN_STORAGE_SLOT)) {
-      revert_SphereXAdminRequired();
-    }
-    _;
-  }
+  // ========================================================================== //
+  //                               Local Modifiers                              //
+  // ========================================================================== //
 
   modifier spherexOnlyOperator() {
-    if (msg.sender != _getAddress(SPHEREX_OPERATOR_STORAGE_SLOT)) {
+    if (msg.sender != _archController) {
       revert_SphereXOperatorRequired();
     }
     _;
   }
 
   modifier returnsIfNotActivatedPre(ModifierLocals memory locals) {
-    locals.engine = address(_sphereXEngine());
+    locals.engine = sphereXEngine();
     if (locals.engine == address(0)) {
       return;
     }
@@ -118,115 +86,50 @@ abstract contract SphereXProtectedBaseMinimal {
     _;
   }
 
-  // ============ Management ============
+  // ========================================================================== //
+  //                                 Management                                 //
+  // ========================================================================== //
 
-  /**
-   * Returns the currently pending admin address, the one that can call acceptSphereXAdminRole to become the admin.
-   * @dev Could not use OZ Ownable2Step because the client's contract might use it.
-   */
-  function pendingSphereXAdmin() public view returns (address) {
-    return _getAddress(SPHEREX_PENDING_ADMIN_STORAGE_SLOT);
-  }
-
-  /**
-   * Returns the current admin address, the one that can call acceptSphereXAdminRole to become the admin.
-   * @dev Could not use OZ Ownable2Step because the client's contract might use it.
-   */
-  function sphereXAdmin() public view returns (address) {
-    return _getAddress(SPHEREX_ADMIN_STORAGE_SLOT);
-  }
-
-  /**
-   * Returns the current operator address.
-   */
+  /// @dev Returns the current operator address.
   function sphereXOperator() public view returns (address) {
-    return _getAddress(SPHEREX_OPERATOR_STORAGE_SLOT);
+    return _archController;
   }
 
-  /**
-   * Returns the current engine address.
-   */
+  /// @dev Returns the current engine address.
   function sphereXEngine() public view returns (address) {
     return _getAddress(SPHEREX_ENGINE_STORAGE_SLOT);
   }
 
   /**
-   * Setting the address of the next admin. this address will have to accept the role to become the new admin.
-   * @dev Could not use OZ Ownable2Step because the client's contract might use it.
-   */
-  function transferSphereXAdminRole(address newAdmin) public virtual onlySphereXAdmin {
-    _setAddress(SPHEREX_PENDING_ADMIN_STORAGE_SLOT, newAdmin);
-    emit_SpherexAdminTransferStarted(sphereXAdmin(), newAdmin);
-  }
-
-  /**
-   * Accepting the admin role and completing the transfer.
-   * @dev Could not use OZ Ownable2Step because the client's contract might use it.
-   */
-  function acceptSphereXAdminRole() public virtual {
-    if (msg.sender != pendingSphereXAdmin()) {
-      revert_SphereXNotPendingAdmin();
-    }
-    address oldAdmin = sphereXAdmin();
-    _setAddress(SPHEREX_ADMIN_STORAGE_SLOT, msg.sender);
-    _setAddress(SPHEREX_PENDING_ADMIN_STORAGE_SLOT, address(0));
-    emit_SpherexAdminTransferCompleted(oldAdmin, msg.sender);
-  }
-
-  /**
+   * @dev  Change the address of the SphereX engine.
    *
-   * @param newSphereXOperator new address of the new operator account
-   */
-  function changeSphereXOperator(address newSphereXOperator) external onlySphereXAdmin {
-    address oldSphereXOperator = _getAddress(SPHEREX_OPERATOR_STORAGE_SLOT);
-    _setAddress(SPHEREX_OPERATOR_STORAGE_SLOT, newSphereXOperator);
-    emit_ChangedSpherexOperator(oldSphereXOperator, newSphereXOperator);
-  }
-
-  /**
-   * Checks the given address implements ISphereXEngine or is address(0)
-   * @param newSphereXEngine new address of the spherex engine
-   */
-  function _checkSphereXEngine(address newSphereXEngine) internal view {
-    if (
-      newSphereXEngine != address(0) &&
-      !ISphereXEngine(newSphereXEngine).supportsInterface(type(ISphereXEngine).interfaceId)
-    ) {
-      revert_SphereXNotEngine();
-    }
-  }
-
-  /**
+   *       This is also used to enable SphereX protection, which is disabled
+   *       when the engine address is 0.
    *
-   * @param newSphereXEngine new address of the spherex engine
-   * @dev this is also used to actually enable the defense
-   * (because as long is this address is 0, the protection is disabled).
+   * Note: The new engine is not validated as it would be in `SphereXProtectedBase`
+   *       because the operator is the arch controller, which validates the engine
+   *       address prior to updating it here.
    */
   function changeSphereXEngine(address newSphereXEngine) external spherexOnlyOperator {
-    _checkSphereXEngine(newSphereXEngine);
     address oldEngine = _getAddress(SPHEREX_ENGINE_STORAGE_SLOT);
     _setAddress(SPHEREX_ENGINE_STORAGE_SLOT, newSphereXEngine);
     emit_ChangedSpherexEngineAddress(oldEngine, newSphereXEngine);
   }
 
-  // ============ Engine interaction ============
-
-  function _addAllowedSenderOnChain(address newSender) internal {
-    ISphereXEngine engine = _sphereXEngine();
-    if (address(engine) != address(0)) {
-      engine.addAllowedSenderOnChain(newSender);
-    }
-    emit_NewAllowedSenderOnchain(newSender);
-  }
-
-  // ============ Hooks ============
+  // ========================================================================== //
+  //                                    Hooks                                   //
+  // ========================================================================== //
 
   /**
-   * @dev The return type is a pointer rather than a struct because solidity
-   *      will always allocate and zero memory for the full size of every
-   *      variable declaration. Having a struct return type that gets reassigned
-   *      to the return value of another function wastes the first allocation.
+   * @dev Wrapper for `_getStorageSlotsAndPreparePostCalldata` that returns
+   *      a `uint256` pointer to `locals` rather than the struct itself.
    *
+   *      Declaring a return parameter for a struct will always zero and
+   *      allocate memory for every field in the struct. If the parameter
+   *      is always reassigned, the gas and memory used on this are wasted.
+   *
+   *      Using a `uint256` pointer instead of a struct declaration avoids
+   *      this waste while being functionally identical.
    */
   function _sphereXValidateExternalPre() internal returns (uint256 localsPointer) {
     return _castFunctionToPointerOutput(_getStorageSlotsAndPreparePostCalldata)(_getSelector());
@@ -257,8 +160,7 @@ abstract contract SphereXProtectedBaseMinimal {
       // and the future calldata to `sphereXValidatePost`
       let pointer := mload(0x40)
 
-      // Call:
-      // `sphereXValidatePre(num, msg.sender, msg.data)`
+      // Call `sphereXValidatePre(num, msg.sender, msg.data)`
       mstore(pointer, 0x8925ca5a)
       mstore(add(pointer, 0x20), num)
       mstore(add(pointer, 0x40), caller())
@@ -274,6 +176,7 @@ abstract contract SphereXProtectedBaseMinimal {
         revert(0, returndatasize())
       }
       let length := mload(0x20)
+
       // Set up the memory after the allocation `locals` struct as:
       // [0x00:0x20]: `storageSlots.length`
       // [0x20:0x20+(length * 0x20)]: `storageSlots` data
@@ -329,6 +232,10 @@ abstract contract SphereXProtectedBaseMinimal {
     _readStorageTo(locals.storageSlots, locals.valuesBefore);
   }
 
+  /**
+   * @dev Wrapper for `_callSphereXValidatePost` that takes a pointer
+   *      instead of a struct.
+   */
   function _sphereXValidateExternalPost(uint256 locals) internal {
     _castFunctionToPointerInput(_callSphereXValidatePost)(locals);
   }
@@ -360,44 +267,49 @@ abstract contract SphereXProtectedBaseMinimal {
         returndatacopy(0, 0, returndatasize())
         revert(0, returndatasize())
       }
+      mstore(slotBefore, slotBeforeCache)
     }
   }
 
+  /// @dev Returns the function selector from the current calldata.
   function _getSelector() internal pure returns (int256 selector) {
     assembly {
       selector := shr(224, calldataload(0))
     }
   }
 
-  /**
-   *  @dev Modifier to be incorporated in all external protected non-view functions
-   */
+  /// @dev Modifier to be incorporated in all external protected non-view functions
   modifier sphereXGuardExternal() {
     uint256 localsPointer = _sphereXValidateExternalPre();
     _;
     _sphereXValidateExternalPost(localsPointer);
   }
 
-  // ============ Function Type Casts ============
+  // ========================================================================== //
+  //                          Internal Storage Helpers                          //
+  // ========================================================================== //
 
-  function _castFunctionToPointerInput(
-    function(ModifierLocals memory) internal fnIn
-  ) internal pure returns (function(uint256) internal fnOut) {
+  /// @dev Stores an address in an arbitrary slot
+  function _setAddress(bytes32 slot, address newAddress) internal {
     assembly {
-      fnOut := fnIn
+      sstore(slot, newAddress)
     }
   }
 
-  function _castFunctionToPointerOutput(
-    function(int256) internal returns (ModifierLocals memory) fnIn
-  ) internal pure returns (function(int256) internal returns (uint256) fnOut) {
+  /// @dev Returns an address from an arbitrary slot.
+  function _getAddress(bytes32 slot) internal view returns (address addr) {
     assembly {
-      fnOut := fnIn
+      addr := sload(slot)
     }
   }
 
-  // ============ Internal Storage logic ============
-
+  /**
+   * @dev Internal function that reads values from given storage slots
+   *      and writes them to a particular memory location.
+   *
+   * @param storageSlots array of storage slots to read
+   * @param values array of values to write values to
+   */
   function _readStorageTo(bytes32[] memory storageSlots, bytes32[] memory values) internal view {
     assembly {
       let length := mload(storageSlots)
@@ -419,9 +331,10 @@ abstract contract SphereXProtectedBaseMinimal {
   }
 
   /**
-   * Internal function that reads values from given storage slots and returns them
-   * @param storageSlots list of storage slots to read
-   * @return values list of values read from the various storage slots
+   * @dev Returns an array of values read from the given storage slots.
+   *
+   * @param storageSlots array of storage slots to read
+   * @return values array of values read from the storage slots
    */
   function _readStorage(
     bytes32[] memory storageSlots
@@ -431,5 +344,25 @@ abstract contract SphereXProtectedBaseMinimal {
       mstore(0x40, add(values, add(shl(5, mload(storageSlots)), 0x20)))
     }
     _readStorageTo(storageSlots, values);
+  }
+
+  // ========================================================================== //
+  //                             Function Type Casts                            //
+  // ========================================================================== //
+
+  function _castFunctionToPointerInput(
+    function(ModifierLocals memory) internal fnIn
+  ) internal pure returns (function(uint256) internal fnOut) {
+    assembly {
+      fnOut := fnIn
+    }
+  }
+
+  function _castFunctionToPointerOutput(
+    function(int256) internal returns (ModifierLocals memory) fnIn
+  ) internal pure returns (function(int256) internal returns (uint256) fnOut) {
+    assembly {
+      fnOut := fnIn
+    }
   }
 }
