@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import 'src/libraries/Chainalysis.sol';
+import { SanctionsList } from '../shared/TestConstants.sol';
 import './VmUtils.sol' as VmUtils;
 
 contract MockChainalysis {

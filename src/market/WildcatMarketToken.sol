@@ -6,34 +6,41 @@ import './WildcatMarketBase.sol';
 contract WildcatMarketToken is WildcatMarketBase {
   using SafeCastLib for uint256;
 
-  /* -------------------------------------------------------------------------- */
-  /*                                ERC20 Queries                               */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                ERC20 Queries                               //
+  // ========================================================================== //
 
   mapping(address => mapping(address => uint256)) public allowance;
 
   /// @notice Returns the normalized balance of `account` with interest.
   function balanceOf(address account) public view virtual nonReentrantView returns (uint256) {
-    (MarketState memory state, , ) = _calculateCurrentState();
-    return state.normalizeAmount(_accounts[account].scaledBalance);
+    return
+      _castReturnMarketState(_calculateCurrentStatePointers)().normalizeAmount(
+        _accounts[account].scaledBalance
+      );
   }
 
   /// @notice Returns the normalized total supply with interest.
   function totalSupply() external view virtual nonReentrantView returns (uint256) {
-    (MarketState memory state, , ) = _calculateCurrentState();
-    return state.totalSupply();
+    return _castReturnMarketState(_calculateCurrentStatePointers)().totalSupply();
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                                ERC20 Actions                               */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                ERC20 Actions                               //
+  // ========================================================================== //
 
-  function approve(address spender, uint256 amount) external virtual nonReentrant returns (bool) {
+  function approve(
+    address spender,
+    uint256 amount
+  ) external virtual nonReentrant sphereXGuardExternal returns (bool) {
     _approve(msg.sender, spender, amount);
     return true;
   }
 
-  function transfer(address to, uint256 amount) external virtual nonReentrant returns (bool) {
+  function transfer(
+    address to,
+    uint256 amount
+  ) external virtual nonReentrant sphereXGuardExternal returns (bool) {
     _transfer(msg.sender, to, amount);
     return true;
   }
@@ -42,7 +49,7 @@ contract WildcatMarketToken is WildcatMarketBase {
     address from,
     address to,
     uint256 amount
-  ) external virtual nonReentrant returns (bool) {
+  ) external virtual nonReentrant sphereXGuardExternal returns (bool) {
     uint256 allowed = allowance[from][msg.sender];
 
     // Saves gas for unlimited approvals.
@@ -58,7 +65,7 @@ contract WildcatMarketToken is WildcatMarketBase {
 
   function _approve(address approver, address spender, uint256 amount) internal virtual {
     allowance[approver][spender] = amount;
-    emit Approval(approver, spender, amount);
+    emit_Approval(approver, spender, amount);
   }
 
   function _transfer(address from, address to, uint256 amount) internal virtual {
@@ -66,7 +73,7 @@ contract WildcatMarketToken is WildcatMarketBase {
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
 
     if (scaledAmount == 0) {
-      revert NullTransferAmount();
+      revert_NullTransferAmount();
     }
 
     Account memory fromAccount = _getAccount(from);
@@ -78,6 +85,6 @@ contract WildcatMarketToken is WildcatMarketBase {
     _accounts[to] = toAccount;
 
     _writeState(state);
-    emit Transfer(from, to, amount);
+    emit_Transfer(from, to, amount);
   }
 }

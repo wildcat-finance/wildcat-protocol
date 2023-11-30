@@ -61,4 +61,15 @@ contract Assertions is StdAssertions {
   function assertEq(MarketState memory actual, MarketState memory expected) internal {
     assertEq(actual, expected, 'MarketState');
   }
+
+  function assertEq(uint32[] memory actual, uint32[] memory expected, string memory key) internal {
+    assertEq(actual.length, expected.length, string.concat(key, '.length'));
+    for (uint256 i = 0; i < actual.length; i++) {
+      assertEq(actual[i], expected[i], string.concat(key, '[', i.toString(), ']'));
+    }
+  }
+
+  function assertEq(uint32[] memory actual, uint32[] memory expected) internal {
+    assertEq(actual, expected, 'uint32[]');
+  }
 }

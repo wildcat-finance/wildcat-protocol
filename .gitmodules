@@ -16,3 +16,6 @@
 [submodule "lib/solady"]
 	path = lib/solady
 	url = https://github.com/Vectorized/solady
+[submodule "lib/vulcan"]
+	path = lib/vulcan
+	url = https://github.com/nomoixyz/vulcan

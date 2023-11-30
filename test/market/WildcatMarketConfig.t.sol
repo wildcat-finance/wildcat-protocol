@@ -35,57 +35,80 @@ contract WildcatMarketConfigTest is BaseMarketTest {
 
   function test_reserveRatioBips() external returns (uint256) {}
 
-  // function test_revokeAccountAuthorization(
-  //   address _account
-  // ) external asAccount(parameters.controller) {
-  //   vm.expectEmit(address(market));
-  //   emit AuthorizationStatusUpdated(_account, AuthRole.WithdrawOnly);
-  //   market.revokeAccountAuthorization(_account);
-  //   assertEq(
-  //     uint(market.getAccountRole(_account)),
-  //     uint(AuthRole.WithdrawOnly),
-  //     'account role should be WithdrawOnly'
-  //   );
-  // }
+  /* -------------------------------------------------------------------------- */
+  /*                        updateAccountAuthorization()                        */
+  /* -------------------------------------------------------------------------- */
 
-  // function test_revokeAccountAuthorization_NotController(address _account) external {
-  //   vm.expectRevert(IMarketEventsAndErrors.NotController.selector);
-  //   market.revokeAccountAuthorization(_account);
-  // }
+  function _updateAccountAuthorization(address _account, bool _isAuthorized) internal {
+    address[] memory accounts = new address[](1);
+    accounts[0] = _account;
+    market.updateAccountAuthorizations(accounts, _isAuthorized);
+  }
 
-  // function test_revokeAccountAuthorization_AccountBlacklisted(address _account) external {
-  //   MockSanctionsSentinel(sentinel).sanction(_account);
-  //   market.nukeFromOrbit(_account);
-  //   vm.startPrank(parameters.controller);
-  //   vm.expectRevert(IMarketEventsAndErrors.AccountBlacklisted.selector);
-  //   market.revokeAccountAuthorization(_account);
-  // }
+  function test_updateAccountAuthorization_Revoke_NoInitialRole(
+    address _account
+  ) external asAccount(parameters.controller) {
+    _updateAccountAuthorization(_account, false);
+    assertEq(
+      uint(market.getAccountRole(_account)),
+      uint(AuthRole.Null),
+      'account role should be null'
+    );
+  }
 
-  // function test_grantAccountAuthorization(
-  //   address _account
-  // ) external asAccount(parameters.controller) {
-  //   vm.expectEmit(address(market));
-  //   emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
-  //   market.grantAccountAuthorization(_account);
-  //   assertEq(
-  //     uint(market.getAccountRole(_account)),
-  //     uint(AuthRole.DepositAndWithdraw),
-  //     'account role should be DepositAndWithdraw'
-  //   );
-  // }
+  function test_updateAccountAuthorization_Revoke_WithInitialRole(
+    address _account
+  ) external asAccount(parameters.controller) {
+    vm.expectEmit(address(market));
+    emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
+    _updateAccountAuthorization(_account, true);
 
-  // function test_grantAccountAuthorization_NotController(address _account) external {
-  //   vm.expectRevert(IMarketEventsAndErrors.NotController.selector);
-  //   market.grantAccountAuthorization(_account);
-  // }
+    vm.expectEmit(address(market));
+    emit AuthorizationStatusUpdated(_account, AuthRole.WithdrawOnly);
+    _updateAccountAuthorization(_account, false);
 
-  // function test_grantAccountAuthorization_AccountBlacklisted(address _account) external {
-  //   MockSanctionsSentinel(sentinel).sanction(_account);
-  //   market.nukeFromOrbit(_account);
-  //   vm.startPrank(parameters.controller);
-  //   vm.expectRevert(IMarketEventsAndErrors.AccountBlacklisted.selector);
-  //   market.grantAccountAuthorization(_account);
-  // }
+    assertEq(
+      uint(market.getAccountRole(_account)),
+      uint(AuthRole.WithdrawOnly),
+      'account role should be WithdrawOnly'
+    );
+  }
+
+  function test_updateAccountAuthorization_Revoke_AccountBlocked(address _account) external {
+    sanctionsSentinel.sanction(_account);
+    market.nukeFromOrbit(_account);
+    vm.startPrank(parameters.controller);
+    vm.expectRevert(IMarketEventsAndErrors.AccountBlocked.selector);
+    _updateAccountAuthorization(_account, false);
+  }
+
+  function test_updateAccountAuthorization(
+    address _account
+  ) external asAccount(parameters.controller) {
+    vm.expectEmit(address(market));
+    emit AuthorizationStatusUpdated(_account, AuthRole.DepositAndWithdraw);
+    _updateAccountAuthorization(_account, true);
+    assertEq(
+      uint(market.getAccountRole(_account)),
+      uint(AuthRole.DepositAndWithdraw),
+      'account role should be DepositAndWithdraw'
+    );
+  }
+
+  function test_updateAccountAuthorization_NotController(address _account) external {
+    vm.expectRevert(IMarketEventsAndErrors.NotController.selector);
+    _updateAccountAuthorization(_account, true);
+    vm.expectRevert(IMarketEventsAndErrors.NotController.selector);
+    _updateAccountAuthorization(_account, false);
+  }
+
+  function test_updateAccountAuthorization_AccountBlocked(address _account) external {
+    sanctionsSentinel.sanction(_account);
+    market.nukeFromOrbit(_account);
+    vm.startPrank(parameters.controller);
+    vm.expectRevert(IMarketEventsAndErrors.AccountBlocked.selector);
+    _updateAccountAuthorization(_account, true);
+  }
 
   function test_nukeFromOrbit(address _account) external {
     _deposit(_account, 1e18);
@@ -171,7 +194,11 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     vm.expectEmit(address(market)); // this line causing the test fail
     emit AuthorizationStatusUpdated(alice, AuthRole.WithdrawOnly);
     market.stunningReversal(alice);
-    assertEq(uint(market.getAccountRole(alice)), uint(AuthRole.WithdrawOnly), 'account role should be WithdrawOnly');
+    assertEq(
+      uint(market.getAccountRole(alice)),
+      uint(AuthRole.WithdrawOnly),
+      'account role should be WithdrawOnly'
+    );
   }
 
   function test_stunningReversal_AccountNotBlocked(address _account) external {
@@ -206,15 +233,15 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     market.setMaxTotalSupply(_maxTotalSupply);
   }
 
-  function test_setMaxTotalSupply_NewMaxSupplyTooLow(
+  function test_setMaxTotalSupply_BelowCurrentSupply(
     uint256 _totalSupply,
     uint256 _maxTotalSupply
   ) external asAccount(parameters.controller) {
     _totalSupply = bound(_totalSupply, 1, DefaultMaximumSupply - 1);
     _maxTotalSupply = bound(_maxTotalSupply, 0, _totalSupply - 1);
     _deposit(alice, _totalSupply);
-    vm.expectRevert(IMarketEventsAndErrors.NewMaxSupplyTooLow.selector);
     market.setMaxTotalSupply(_maxTotalSupply);
+    assertEq(market.maxTotalSupply(), _maxTotalSupply, 'maxTotalSupply should be _maxTotalSupply');
   }
 
   function test_setAnnualInterestBips(
@@ -223,14 +250,6 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     _annualInterestBips = uint16(bound(_annualInterestBips, 0, 10000));
     market.setAnnualInterestBips(_annualInterestBips);
     assertEq(market.annualInterestBips(), _annualInterestBips);
-  }
-
-  function test_setAnnualInterestBips_InterestRateTooHigh()
-    external
-    asAccount(parameters.controller)
-  {
-    vm.expectRevert(IMarketEventsAndErrors.InterestRateTooHigh.selector);
-    market.setAnnualInterestBips(10001);
   }
 
   function test_setAnnualInterestBips_NotController(uint16 _annualInterestBips) external {
@@ -265,14 +284,6 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     _deposit(alice, 1e18);
     _borrow(2e17);
     _requestWithdrawal(alice, 9e17);
-  }
-
-  function test_setReserveRatioBips_ReserveRatioBipsTooHigh()
-    external
-    asAccount(parameters.controller)
-  {
-    vm.expectRevert(IMarketEventsAndErrors.ReserveRatioBipsTooHigh.selector);
-    market.setReserveRatioBips(10001);
   }
 
   // Market already deliquent, LCR set to lower value

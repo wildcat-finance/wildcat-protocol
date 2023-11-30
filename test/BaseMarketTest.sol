@@ -20,7 +20,7 @@ contract BaseMarketTest is Test, ExpectedStateTracker {
   address internal wlUser = address(0x42);
   address internal nonwlUser = address(0x43);
 
-  function setUp() public {
+  function setUp() public virtual {
     setUpContracts(false);
   }
 
@@ -83,18 +83,13 @@ contract BaseMarketTest is Test, ExpectedStateTracker {
 
   function _deposit(address from, uint256 amount) internal asAccount(from) returns (uint256) {
     _authorizeLender(from);
-    uint256 currentBalance = market.balanceOf(from);
-    uint256 currentScaledBalance = market.scaledBalanceOf(from);
+    MarketState memory state = pendingState();
+    (uint256 currentScaledBalance, uint256 currentBalance) = _getBalance(state, from);
     asset.mint(from, amount);
     asset.approve(address(market), amount);
-    MarketState memory state = pendingState();
-    uint256 expectedNormalizedAmount = MathUtils.min(amount, state.maximumDeposit());
-    uint256 scaledAmount = state.scaleAmount(expectedNormalizedAmount);
-    state.scaledTotalSupply += scaledAmount.toUint104();
+    (uint104 scaledAmount, uint256 expectedNormalizedAmount) = _trackDeposit(state, from, amount);
     uint256 actualNormalizedAmount = market.depositUpTo(amount);
     assertEq(actualNormalizedAmount, expectedNormalizedAmount, 'Actual amount deposited');
-    lastTotalAssets += actualNormalizedAmount;
-    updateState(state);
     _checkState();
     assertApproxEqAbs(market.balanceOf(from), currentBalance + amount, 1);
     assertEq(market.scaledBalanceOf(from), currentScaledBalance + scaledAmount);
@@ -103,30 +98,10 @@ contract BaseMarketTest is Test, ExpectedStateTracker {
 
   function _requestWithdrawal(address from, uint256 amount) internal asAccount(from) {
     MarketState memory state = pendingState();
-    uint256 currentBalance = market.balanceOf(from);
-    uint256 currentScaledBalance = market.scaledBalanceOf(from);
-    uint104 scaledAmount = state.scaleAmount(amount).toUint104();
-
-    if (state.pendingWithdrawalExpiry == 0) {
-      // vm.expectEmit(address(market));
-      state.pendingWithdrawalExpiry = uint32(block.timestamp + parameters.withdrawalBatchDuration);
-      emit WithdrawalBatchCreated(state.pendingWithdrawalExpiry);
-    }
-    WithdrawalBatch storage batch = _withdrawalData.batches[state.pendingWithdrawalExpiry];
-    batch.scaledTotalAmount += scaledAmount;
-    state.scaledPendingWithdrawals += scaledAmount;
-    _withdrawalData
-    .accountStatuses[state.pendingWithdrawalExpiry][from].scaledAmount += scaledAmount;
-
-    // vm.expectEmit(address(market));
-    emit WithdrawalQueued(state.pendingWithdrawalExpiry, from, scaledAmount, amount);
-
-    uint256 availableLiquidity = _availableLiquidityForPendingBatch(batch, state);
-    if (availableLiquidity > 0) {
-      _applyWithdrawalBatchPayment(batch, state, state.pendingWithdrawalExpiry, availableLiquidity);
-    }
-    market.queueWithdrawal(amount);
+    (uint256 currentScaledBalance, uint256 currentBalance) = _getBalance(state, from);
+    (, uint104 scaledAmount) = _trackQueueWithdrawal(state, from, amount);
     updateState(state);
+    market.queueWithdrawal(amount);
     _checkState();
     assertApproxEqAbs(market.balanceOf(from), currentBalance - amount, 1, 'balance');
     assertEq(market.scaledBalanceOf(from), currentScaledBalance - scaledAmount, 'scaledBalance');
@@ -148,13 +123,9 @@ contract BaseMarketTest is Test, ExpectedStateTracker {
   function _borrow(uint256 amount) internal asAccount(borrower) {
     MarketState memory state = pendingState();
 
-    // vm.expectEmit(address(market));
-    emit Borrow(amount);
-    // _expectTransfer(address(asset), borrower, address(market), amount);
-    market.borrow(amount);
-
-    lastTotalAssets -= amount;
+    _trackBorrow(amount);
     updateState(state);
+    market.borrow(amount);
     _checkState();
   }
 

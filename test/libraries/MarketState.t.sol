@@ -112,7 +112,7 @@ contract MarketStateTest is Test {
 
     assertEq(
       state.$hasPendingExpiredBatch(),
-      pendingWithdrawalExpiry > 0 && pendingWithdrawalExpiry <= timestamp
+      pendingWithdrawalExpiry > 0 && pendingWithdrawalExpiry < timestamp
     );
   }
 

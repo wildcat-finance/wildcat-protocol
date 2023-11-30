@@ -18,6 +18,9 @@ contract WildcatArchControllerTest is Test, Prankster {
   event ControllerAdded(address indexed controllerFactory, address controller);
   event ControllerRemoved(address controller);
 
+  event AssetBlacklisted(address asset);
+  event AssetPermitted(address asset);
+
   WildcatArchController internal archController;
   address internal constant controllerFactory = address(1);
   address internal constant controller = address(2);
@@ -272,6 +275,81 @@ contract WildcatArchControllerTest is Test, Prankster {
     assertEq(borrowers.length, 1);
     assertEq(borrowers[0], borrower2);
     assertEq(archController.getRegisteredBorrowersCount(), 1);
+  }
+
+  // ========================================================================== //
+  //                                  Blacklist                                 //
+  // ========================================================================== //
+
+  function test_addBlacklist() external {
+    vm.expectEmit(address(archController));
+    emit AssetBlacklisted(borrower);
+
+    archController.addBlacklist(borrower);
+  }
+
+  function test_addBlacklist_Unauthorized() external {
+    vm.expectRevert(Ownable.Unauthorized.selector);
+    vm.prank(controllerFactory);
+    archController.addBlacklist(borrower);
+  }
+
+  function test_addBlacklist_AssetAlreadyBlacklisted() external {
+    archController.addBlacklist(borrower);
+    vm.expectRevert(WildcatArchController.AssetAlreadyBlacklisted.selector);
+    archController.addBlacklist(borrower);
+  }
+
+  function test_removeBlacklist() external {
+    archController.addBlacklist(borrower);
+    vm.expectEmit(address(archController));
+    emit AssetPermitted(borrower);
+    archController.removeBlacklist(borrower);
+  }
+
+  function test_removeBlacklist_AssetNotBlacklisted() external {
+    vm.expectRevert(WildcatArchController.AssetNotBlacklisted.selector);
+    archController.removeBlacklist(borrower);
+  }
+
+  function test_removeBlacklist_Unauthorized() external {
+    vm.expectRevert(Ownable.Unauthorized.selector);
+    vm.prank(controllerFactory);
+    archController.removeBlacklist(borrower);
+  }
+
+  function test_isBlacklistedAsset() external returns (bool) {
+    assertFalse(archController.isBlacklistedAsset(borrower));
+    archController.addBlacklist(borrower);
+    assertTrue(archController.isBlacklistedAsset(borrower));
+    archController.removeBlacklist(borrower);
+    assertFalse(archController.isBlacklistedAsset(borrower));
+  }
+
+  function test_getBlacklistedAssets() external returns (address[] memory) {
+    archController.addBlacklist(borrower);
+    archController.addBlacklist(borrower2);
+
+    address[] memory blackListedAssets = archController.getBlacklistedAssets();
+    assertEq(blackListedAssets.length, 2);
+    assertEq(blackListedAssets[0], borrower);
+    assertEq(blackListedAssets[1], borrower2);
+
+    blackListedAssets = archController.getBlacklistedAssets(0, 3);
+    assertEq(blackListedAssets.length, 2);
+    assertEq(blackListedAssets[0], borrower);
+    assertEq(blackListedAssets[1], borrower2);
+
+    blackListedAssets = archController.getBlacklistedAssets(1, 2);
+    assertEq(blackListedAssets.length, 1);
+    assertEq(blackListedAssets[0], borrower2);
+    assertEq(archController.getBlacklistedAssetsCount(), 2);
+
+    archController.removeBlacklist(borrower);
+    blackListedAssets = archController.getBlacklistedAssets();
+    assertEq(blackListedAssets.length, 1);
+    assertEq(blackListedAssets[0], borrower2);
+    assertEq(archController.getBlacklistedAssetsCount(), 1);
   }
 
   /* -------------------------------------------------------------------------- */

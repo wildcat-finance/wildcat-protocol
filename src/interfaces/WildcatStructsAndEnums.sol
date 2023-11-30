@@ -12,8 +12,8 @@ enum AuthRole {
 
 struct MarketParameters {
   address asset;
-  string namePrefix;
-  string symbolPrefix;
+  string name;
+  string symbol;
   address borrower;
   address controller;
   address feeRecipient;
@@ -25,6 +25,8 @@ struct MarketParameters {
   uint32 withdrawalBatchDuration;
   uint16 reserveRatioBips;
   uint32 delinquencyGracePeriod;
+  address archController;
+  address sphereXEngine;
 }
 
 struct MarketControllerParameters {
@@ -43,6 +45,7 @@ struct MarketControllerParameters {
   uint32 maximumWithdrawalBatchDuration;
   uint16 minimumAnnualInterestBips;
   uint16 maximumAnnualInterestBips;
+  address sphereXEngine;
 }
 
 struct ProtocolFeeConfiguration {

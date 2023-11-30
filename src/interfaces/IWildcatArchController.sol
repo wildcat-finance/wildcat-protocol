@@ -8,9 +8,49 @@ interface IWildcatArchController {
 
   function owner() external view returns (address);
 
-  /* -------------------------------------------------------------------------- */
-  /*                         Controller Factory Registry                        */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                               SphereX Config                               //
+  // ========================================================================== //
+
+  event ChangedSpherexOperator(address oldSphereXAdmin, address newSphereXAdmin);
+
+  event ChangedSpherexEngineAddress(address oldEngineAddress, address newEngineAddress);
+
+  event SpherexAdminTransferStarted(address currentAdmin, address pendingAdmin);
+
+  event SpherexAdminTransferCompleted(address oldAdmin, address newAdmin);
+
+  event NewAllowedSenderOnchain(address sender);
+
+  error SphereXOperatorRequired();
+
+  error SphereXAdminRequired();
+
+  error SphereXOperatorOrAdminRequired();
+
+  error SphereXNotPendingAdmin();
+
+  error SphereXNotEngine();
+
+  function pendingSphereXAdmin() external view returns (address);
+
+  function sphereXAdmin() external view returns (address);
+
+  function sphereXOperator() external view returns (address);
+
+  function sphereXEngine() external view returns (address);
+
+  function transferSphereXAdminRole(address newAdmin) external virtual;
+
+  function acceptSphereXAdminRole() external virtual;
+
+  function changeSphereXOperator(address newSphereXOperator) external;
+
+  function changeSphereXEngine(address newSphereXEngine) external;
+
+  // ========================================================================== //
+  //                         Controller Factory Registry                        //
+  // ========================================================================== //
 
   event ControllerFactoryAdded(address);
 
@@ -31,9 +71,9 @@ interface IWildcatArchController {
 
   function removeControllerFactory(address factory) external;
 
-  /* -------------------------------------------------------------------------- */
-  /*                             Controller Registry                            */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                             Controller Registry                            //
+  // ========================================================================== //
 
   event ControllerAdded(address, address);
 
@@ -54,9 +94,9 @@ interface IWildcatArchController {
 
   function removeController(address controller) external;
 
-  /* -------------------------------------------------------------------------- */
-  /*                             Borrowers Registry                             */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                             Borrowers Registry                             //
+  // ========================================================================== //
 
   event BorrowerAdded(address);
 
@@ -77,9 +117,32 @@ interface IWildcatArchController {
 
   function removeBorrower(address borrower) external;
 
-  /* -------------------------------------------------------------------------- */
-  /*                               Markets Registry                              */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                          Asset Blacklist Registry                          //
+  // ========================================================================== //
+
+  event AssetPermitted();
+
+  event AssetBlacklisted();
+
+  function addBlacklist(address asset) external;
+
+  function removeBlacklist(address asset) external;
+
+  function isBlacklistedAsset(address asset) external view returns (bool);
+
+  function getBlacklistedAssets() external view returns (address[] memory);
+
+  function getBlacklistedAssets(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory);
+
+  function getBlacklistedAssetsCount() external view returns (uint256);
+
+  // ========================================================================== //
+  //                               Markets Registry                             //
+  // ========================================================================== //
 
   event MarketAdded(address, address);
 
@@ -87,7 +150,10 @@ interface IWildcatArchController {
 
   function getRegisteredMarkets() external view returns (address[] memory);
 
-  function getRegisteredMarkets(uint256 start, uint256 end) external view returns (address[] memory);
+  function getRegisteredMarkets(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory);
 
   function getRegisteredMarketsCount() external view returns (uint256);
 

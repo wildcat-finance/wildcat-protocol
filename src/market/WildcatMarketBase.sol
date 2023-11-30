@@ -1,21 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../libraries/FeeMath.sol';
-import '../libraries/Withdrawal.sol';
-import { queryName, querySymbol } from '../libraries/StringQuery.sol';
+import '../ReentrancyGuard.sol';
+import '../spherex/SphereXProtectedRegisteredBase.sol';
 import '../interfaces/IMarketEventsAndErrors.sol';
+import '../interfaces/IERC20Metadata.sol';
 import '../interfaces/IWildcatMarketController.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
-import { IERC20, IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
-import '../ReentrancyGuard.sol';
-import '../libraries/BoolUtils.sol';
+import '../libraries/FeeMath.sol';
+import '../libraries/MarketErrors.sol';
+import '../libraries/MarketEvents.sol';
+import '../libraries/Withdrawal.sol';
 
-contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
-  using WithdrawalLib for MarketState;
+contract WildcatMarketBase is
+  SphereXProtectedRegisteredBase,
+  ReentrancyGuard,
+  IMarketEventsAndErrors
+{
   using SafeCastLib for uint256;
   using MathUtils for uint256;
-  using BoolUtils for bool;
 
   // ==================================================================== //
   //                       Market Config (immutable)                       //
@@ -59,6 +62,11 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
   /// @dev Token symbol (prefixed symbol of underlying asset).
   string public symbol;
 
+  /// @dev Returns immutable arch-controller address.
+  function archController() external view returns (address) {
+    return _archController;
+  }
+
   // ===================================================================== //
   //                             Market State                               //
   // ===================================================================== //
@@ -76,26 +84,10 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
   constructor() {
     MarketParameters memory parameters = IWildcatMarketController(msg.sender).getMarketParameters();
 
-    if ((parameters.protocolFeeBips > 0).and(parameters.feeRecipient == address(0))) {
-      revert FeeSetWithoutRecipient();
-    }
-    if (parameters.annualInterestBips > BIP) {
-      revert InterestRateTooHigh();
-    }
-    if (parameters.reserveRatioBips > BIP) {
-      revert ReserveRatioBipsTooHigh();
-    }
-    if (parameters.protocolFeeBips > BIP) {
-      revert InterestFeeTooHigh();
-    }
-    if (parameters.delinquencyFeeBips > BIP) {
-      revert PenaltyFeeTooHigh();
-    }
-
     // Set asset metadata
     asset = parameters.asset;
-    name = string.concat(parameters.namePrefix, queryName(parameters.asset));
-    symbol = string.concat(parameters.symbolPrefix, querySymbol(parameters.asset));
+    name = parameters.name;
+    symbol = parameters.symbol;
     decimals = IERC20Metadata(parameters.asset).decimals();
 
     _state = MarketState({
@@ -122,6 +114,8 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     delinquencyFeeBips = parameters.delinquencyFeeBips;
     delinquencyGracePeriod = parameters.delinquencyGracePeriod;
     withdrawalBatchDuration = parameters.withdrawalBatchDuration;
+    _archController = parameters.archController;
+    __SphereXProtectedRegisteredBase_init(parameters.sphereXEngine);
   }
 
   // ===================================================================== //
@@ -129,12 +123,12 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
   // ===================================================================== //
 
   modifier onlyBorrower() {
-    if (msg.sender != borrower) revert NotApprovedBorrower();
+    if (msg.sender != borrower) revert_NotApprovedBorrower();
     _;
   }
 
   modifier onlyController() {
-    if (msg.sender != controller) revert NotController();
+    if (msg.sender != controller) revert_NotController();
     _;
   }
 
@@ -150,7 +144,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
   function _getAccount(address accountAddress) internal view returns (Account memory account) {
     account = _accounts[accountAddress];
     if (account.approval == AuthRole.Blocked) {
-      revert AccountBlacklisted();
+      revert_AccountBlocked();
     }
   }
 
@@ -165,7 +159,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     if (account.approval != AuthRole.Blocked) {
       uint104 scaledBalance = account.scaledBalance;
       account.approval = AuthRole.Blocked;
-      emit AuthorizationStatusUpdated(accountAddress, AuthRole.Blocked);
+      emit_AuthorizationStatusUpdated(accountAddress, AuthRole.Blocked);
 
       if (scaledBalance > 0) {
         account.scaledBalance = 0;
@@ -174,9 +168,9 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
           accountAddress,
           address(this)
         );
-        emit Transfer(accountAddress, escrow, state.normalizeAmount(scaledBalance));
+        emit_Transfer(accountAddress, escrow, state.normalizeAmount(scaledBalance));
         _accounts[escrow].scaledBalance += scaledBalance;
-        emit SanctionedAccountAssetsSentToEscrow(
+        emit_SanctionedAccountAssetsSentToEscrow(
           accountAddress,
           escrow,
           state.normalizeAmount(scaledBalance)
@@ -193,22 +187,41 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *      If the account's role is not set, queries the controller to
    *      determine if it is an approved lender; if it is, its role
    *      is initialized to DepositAndWithdraw.
+   *
+   *      Return parameter is declared as a pointer rather than `Account`
+   *      to avoid unnecessary zeroing and allocation of memory.
    */
   function _getAccountWithRole(
     address accountAddress,
     AuthRole requiredRole
-  ) internal returns (Account memory account) {
-    account = _getAccount(accountAddress);
+  ) internal returns (uint256 accountPointer) {
+    Account memory account = _getAccount(accountAddress);
     // If account role is null, see if it is authorized on controller.
     if (account.approval == AuthRole.Null) {
       if (IWildcatMarketController(controller).isAuthorizedLender(accountAddress)) {
         account.approval = AuthRole.DepositAndWithdraw;
-        emit AuthorizationStatusUpdated(accountAddress, AuthRole.DepositAndWithdraw);
+        emit_AuthorizationStatusUpdated(accountAddress, AuthRole.DepositAndWithdraw);
       }
     }
     // If account role is insufficient, revert.
     if (uint256(account.approval) < uint256(requiredRole)) {
-      revert NotApprovedLender();
+      revert_NotApprovedLender();
+    }
+    assembly {
+      accountPointer := account
+    }
+  }
+
+  /**
+   * @dev Function type cast to avoid duplicate declaration of Account return parameter.
+   *
+   *      With `viaIR` enabled, calling this function is a noop.
+   */
+  function _castReturnAccount(
+    function(address, AuthRole) internal returns (uint256) fnIn
+  ) internal pure returns (function(address, AuthRole) internal returns (Account memory) fnOut) {
+    assembly {
+      fnOut := fnIn
     }
   }
 
@@ -221,7 +234,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *      to maintain in the market to avoid delinquency.
    */
   function coverageLiquidity() external view nonReentrantView returns (uint256) {
-    return currentState().liquidityRequired();
+    return _castReturnMarketState(_calculateCurrentStatePointers)().liquidityRequired();
   }
 
   /**
@@ -229,14 +242,32 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *      to normalized balances.
    */
   function scaleFactor() external view nonReentrantView returns (uint256) {
-    return currentState().scaleFactor;
+    return _castReturnMarketState(_calculateCurrentStatePointers)().scaleFactor;
   }
 
   /**
    * @dev Total balance in underlying asset.
    */
-  function totalAssets() public view returns (uint256) {
-    return IERC20(asset).balanceOf(address(this));
+  function totalAssets() public view returns (uint256 _totalAssets) {
+    address assetAddress = asset;
+    assembly {
+      // Write selector for `balanceOf(address)` to the end of the first word
+      // of scratch space, then write `address(this)` to the second word.
+      mstore(0, 0x70a08231)
+      mstore(0x20, address())
+      // Call `asset.balanceOf(address(this))`, writing up to 32 bytes of returndata
+      // to scratch space, overwriting calldata.
+      // Reverts if the call fails or does not return exactly 32 bytes.
+      if iszero(
+        and(eq(returndatasize(), 0x20), staticcall(gas(), assetAddress, 0x1c, 0x24, 0, 0x20))
+      ) {
+        // Revert with error message from the call.
+        returndatacopy(0, 0, returndatasize())
+        revert(0, returndatasize())
+      }
+      // Read the return value from scratch space
+      _totalAssets := mload(0)
+    }
   }
 
   /**
@@ -250,7 +281,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *      - protocol fees
    */
   function borrowableAssets() external view nonReentrantView returns (uint256) {
-    return currentState().borrowableAssets(totalAssets());
+    return _castReturnMarketState(_calculateCurrentStatePointers)().borrowableAssets(totalAssets());
   }
 
   /**
@@ -258,19 +289,23 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *      that have accrued and are pending withdrawal.
    */
   function accruedProtocolFees() external view nonReentrantView returns (uint256) {
-    return currentState().accruedProtocolFees;
+    return _castReturnMarketState(_calculateCurrentStatePointers)().accruedProtocolFees;
   }
 
   function totalDebts() external view nonReentrantView returns (uint256) {
-    return currentState().totalDebts();
+    return _castReturnMarketState(_calculateCurrentStatePointers)().totalDebts();
   }
 
   function outstandingDebt() external view nonReentrantView returns (uint256) {
-    return currentState().totalDebts().satSub(totalAssets());
+    return
+      _castReturnMarketState(_calculateCurrentStatePointers)().totalDebts().satSub(totalAssets());
   }
 
   function delinquentDebt() external view nonReentrantView returns (uint256) {
-    return currentState().liquidityRequired().satSub(totalAssets());
+    return
+      _castReturnMarketState(_calculateCurrentStatePointers)().liquidityRequired().satSub(
+        totalAssets()
+      );
   }
 
   /**
@@ -286,7 +321,45 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *      withdrawal batch if it is expired.
    */
   function currentState() public view nonReentrantView returns (MarketState memory state) {
-    (state, , ) = _calculateCurrentState();
+    state = _castReturnMarketState(_calculateCurrentStatePointers)();
+  }
+
+  /**
+   * @dev Call `_calculateCurrentState()` and return only the `state` parameter.
+   *
+   *      Casting the function type prevents a duplicate declaration of the MarketState
+   *      return parameter, which would cause unnecessary zeroing and allocation of memory.
+   *      With `viaIR` enabled, the cast is a noop.
+   */
+  function _calculateCurrentStatePointers() internal view returns (uint256 state) {
+    (state, , ) = _castReturnPointers(_calculateCurrentState)();
+  }
+
+  /**
+   * @dev Function type cast to avoid duplicate declaration of MarketState return parameter.
+   *
+   *      With `viaIR` enabled, calling this function is a noop.
+   */
+  function _castReturnMarketState(
+    function() internal view returns (uint256) fnIn
+  ) internal pure returns (function() internal view returns (MarketState memory) fnOut) {
+    assembly {
+      fnOut := fnIn
+    }
+  }
+
+  /**
+   * @dev Function type cast to avoid duplicate declaration of MarketState and WithdrawalBatch
+   *      return parameters.
+   *
+   *      With `viaIR` enabled, calling this function is a noop.
+   */
+  function _castReturnPointers(
+    function() internal view returns (MarketState memory, uint32, WithdrawalBatch memory) fnIn
+  ) internal pure returns (function() internal view returns (uint256, uint32, uint256) fnOut) {
+    assembly {
+      fnOut := fnIn
+    }
   }
 
   /**
@@ -295,7 +368,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *      market tokens for the pending withdrawal batch if it is expired.
    */
   function scaledTotalSupply() external view nonReentrantView returns (uint256) {
-    return currentState().scaledTotalSupply;
+    return _castReturnMarketState(_calculateCurrentStatePointers)().scaledTotalSupply;
   }
 
   /**
@@ -317,39 +390,10 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
    *      withdrawable by the fee recipient.
    */
   function withdrawableProtocolFees() external view returns (uint128) {
-    return currentState().withdrawableProtocolFees(totalAssets());
-  }
-
-  /**
-   * @dev Calculate effective interest rate currently paid by borrower.
-   *      Borrower pays base APR, protocol fee (on base APR) and delinquency
-   *      fee (if delinquent beyond grace period).
-   *
-   * @return apr paid by borrower in ray
-   */
-  function effectiveBorrowerAPR() external view returns (uint256) {
-    MarketState memory state = currentState();
-    // apr + (apr * protocolFee)
-    uint256 apr = MathUtils.bipToRay(state.annualInterestBips).bipMul(BIP + protocolFeeBips);
-    if (state.timeDelinquent > delinquencyGracePeriod) {
-      apr += MathUtils.bipToRay(delinquencyFeeBips);
-    }
-    return apr;
-  }
-
-  /**
-   * @dev Calculate effective interest rate currently earned by lenders.
-   *     Lenders earn base APR and delinquency fee (if delinquent beyond grace period)
-   *
-   * @return apr earned by lender in ray
-   */
-  function effectiveLenderAPR() external view returns (uint256) {
-    MarketState memory state = currentState();
-    uint256 apr = state.annualInterestBips;
-    if (state.timeDelinquent > delinquencyGracePeriod) {
-      apr += delinquencyFeeBips;
-    }
-    return MathUtils.bipToRay(apr);
+    return
+      _castReturnMarketState(_calculateCurrentStatePointers)().withdrawableProtocolFees(
+        totalAssets()
+      );
   }
 
   // /*//////////////////////////////////////////////////////////////
@@ -383,7 +427,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
             delinquencyGracePeriod,
             expiry
           );
-        emit InterestAndFeesAccrued(
+        emit_InterestAndFeesAccrued(
           lastInterestAccruedTimestamp,
           expiry,
           state.scaleFactor,
@@ -404,7 +448,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
           delinquencyGracePeriod,
           block.timestamp
         );
-      emit InterestAndFeesAccrued(
+      emit_InterestAndFeesAccrued(
         lastInterestAccruedTimestamp,
         block.timestamp,
         state.scaleFactor,
@@ -509,7 +553,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     bool isDelinquent = state.liquidityRequired() > totalAssets();
     state.isDelinquent = isDelinquent;
     _state = state;
-    emit StateUpdated(state.scaleFactor, isDelinquent);
+    emit_StateUpdated(state.scaleFactor, isDelinquent);
   }
 
   /**
@@ -535,7 +579,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
       }
     }
 
-    emit WithdrawalBatchExpired(
+    emit_WithdrawalBatchExpired(
       expiry,
       batch.scaledTotalAmount,
       batch.scaledAmountBurned,
@@ -545,7 +589,7 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     if (batch.scaledAmountBurned < batch.scaledTotalAmount) {
       _withdrawalData.unpaidBatches.push(expiry);
     } else {
-      emit WithdrawalBatchClosed(expiry);
+      emit_WithdrawalBatchClosed(expiry);
     }
 
     state.pendingWithdrawalExpiry = 0;
@@ -562,18 +606,16 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     MarketState memory state,
     uint32 expiry,
     uint256 availableLiquidity
-  ) internal {
+  ) internal returns (uint104 scaledAmountBurned, uint128 normalizedAmountPaid) {
     uint104 scaledAmountOwed = batch.scaledTotalAmount - batch.scaledAmountBurned;
     // Do nothing if batch is already paid
     if (scaledAmountOwed == 0) {
-      return;
+      return (0, 0);
     }
 
     uint256 scaledAvailableLiquidity = state.scaleAmount(availableLiquidity);
-    uint104 scaledAmountBurned = MathUtils
-      .min(scaledAvailableLiquidity, scaledAmountOwed)
-      .toUint104();
-    uint128 normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
+    scaledAmountBurned = MathUtils.min(scaledAvailableLiquidity, scaledAmountOwed).toUint104();
+    normalizedAmountPaid = state.normalizeAmount(scaledAmountBurned).toUint128();
 
     batch.scaledAmountBurned += scaledAmountBurned;
     batch.normalizedAmountPaid += normalizedAmountPaid;
@@ -586,8 +628,8 @@ contract WildcatMarketBase is ReentrancyGuard, IMarketEventsAndErrors {
     state.scaledTotalSupply -= scaledAmountBurned;
 
     // Emit transfer for external trackers to indicate burn.
-    emit Transfer(address(this), address(0), normalizedAmountPaid);
-    emit WithdrawalBatchPayment(expiry, scaledAmountBurned, normalizedAmountPaid);
+    emit_Transfer(address(this), address(0), normalizedAmountPaid);
+    emit_WithdrawalBatchPayment(expiry, scaledAmountBurned, normalizedAmountPaid);
   }
 
   function _applyWithdrawalBatchPaymentView(

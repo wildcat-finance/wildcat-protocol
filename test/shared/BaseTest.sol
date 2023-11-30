@@ -36,16 +36,16 @@ contract BaseTest is Test {
 
   function deployMarket(ConfigFuzzInputs memory inputs) internal returns (WildcatMarket market) {
     asset = new MockERC20('Token', 'TKN', 18);
-    MarketParameters memory parameters = getMarketParameters(inputs);
+    MarketInputParameters memory parameters = getMarketParameters(inputs);
 
     deployControllerAndMarket(parameters, true, false);
   }
 
   function getMarketParameters(
     ConfigFuzzInputs memory inputs
-  ) internal view returns (MarketParameters memory parameters) {
+  ) internal view returns (MarketInputParameters memory parameters) {
     inputs.constrain();
-    parameters = MarketParameters({
+    parameters = MarketInputParameters({
       asset: address(asset),
       namePrefix: 'Wildcat ',
       symbolPrefix: 'WC',
@@ -59,7 +59,8 @@ contract BaseTest is Test {
       delinquencyFeeBips: inputs.delinquencyFeeBips,
       withdrawalBatchDuration: inputs.withdrawalBatchDuration,
       reserveRatioBips: inputs.reserveRatioBips,
-      delinquencyGracePeriod: inputs.delinquencyGracePeriod
+      delinquencyGracePeriod: inputs.delinquencyGracePeriod,
+      sphereXEngine: address(0)
     });
   }
 

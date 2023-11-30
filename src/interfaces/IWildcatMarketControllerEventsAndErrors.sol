@@ -2,9 +2,9 @@
 pragma solidity >=0.8.20;
 
 interface IWildcatMarketControllerEventsAndErrors {
-  /* -------------------------------------------------------------------------- */
-  /*                                   Errors                                   */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                   Errors                                   //
+  // ========================================================================== //
 
   error DelinquencyGracePeriodOutOfBounds();
   error ReserveRatioBipsOutOfBounds();
@@ -18,6 +18,10 @@ interface IWildcatMarketControllerEventsAndErrors {
   // Error thrown when `deployMarket` called by an account other than `borrower` or
   // `controllerFactory`.
   error CallerNotBorrowerOrControllerFactory();
+
+  // Error thrown when `deployMarket` is called for an underlying asset which has
+  // been blacklisted by the arch-controller owner.
+  error UnderlyingNotPermitted();
 
   // Error thrown if borrower calls `deployMarket` and is no longer
   // registered with the arch-controller.
@@ -39,9 +43,13 @@ interface IWildcatMarketControllerEventsAndErrors {
 
   error MarketAlreadyClosed();
 
-  /* -------------------------------------------------------------------------- */
-  /*                                   Events                                   */
-  /* -------------------------------------------------------------------------- */
+  error UnknownNameQueryError();
+
+  error UnknownSymbolQueryError();
+
+  // ========================================================================== //
+  //                                   Events                                   //
+  // ========================================================================== //
 
   event LenderAuthorized(address);
 
@@ -74,11 +82,7 @@ interface IWildcatMarketControllerEventsAndErrors {
     uint256 temporaryReserveRatioExpiry
   );
 
-  event TemporaryExcessReserveRatioCanceled(
-    address indexed market
-  );
+  event TemporaryExcessReserveRatioCanceled(address indexed market);
 
-  event TemporaryExcessReserveRatioExpired(
-    address indexed market
-  );
+  event TemporaryExcessReserveRatioExpired(address indexed market);
 }

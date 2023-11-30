@@ -2,7 +2,7 @@
 pragma solidity >=0.8.20;
 
 import 'src/WildcatSanctionsSentinel.sol';
-import { SanctionsList } from 'src/libraries/Chainalysis.sol';
+import { SanctionsList } from '../shared/TestConstants.sol';
 
 import { MockChainalysis } from './MockChainalysis.sol';
 

@@ -41,9 +41,9 @@ contract WildcatMarketTest is BaseMarketTest {
     setUp();
     _deposit(alice, 1e18);
     _requestWithdrawal(alice, 1e18);
-    uint32 timestamp = uint32(block.timestamp);
+    uint32 timestamp = uint32(1);
     uint32 expiry = previousState.pendingWithdrawalExpiry;
-    fastForward(1 days);
+    fastForward(2 days);
     MarketState memory state = pendingState();
     vm.expectEmit(address(market));
     emit InterestAndFeesAccrued(timestamp, expiry, 1.001e27, 1e24, 0, 0);
@@ -51,24 +51,39 @@ contract WildcatMarketTest is BaseMarketTest {
     emit WithdrawalBatchExpired(expiry, 1e18, 1e18, 1e18);
     vm.expectEmit(address(market));
     emit WithdrawalBatchClosed(expiry);
+    uint256 scaleFactorDelta = uint(1.001e27).rayMul(.001e27);
     vm.expectEmit(address(market));
-    emit StateUpdated(1.001e27, false);
+    emit InterestAndFeesAccrued(
+      expiry,
+      expiry + 1 days,
+      uint256(1.001e27) + scaleFactorDelta,
+      1e24,
+      0,
+      0
+    );
+    vm.expectEmit(address(market));
+    emit StateUpdated(uint256(1.001e27) + scaleFactorDelta, false);
     market.updateState();
   }
 
   function test_updateState_HasPendingExpiredBatch_SameBlock() external {
+    parameters.annualInterestBips = 3650;
     parameters.withdrawalBatchDuration = 0;
     setUpContracts(true);
     setUp();
     _deposit(alice, 1e18);
     _requestWithdrawal(alice, 1e18);
+    uint32 timestamp = uint32(block.timestamp);
+    fastForward(1 days);
     MarketState memory state = pendingState();
     vm.expectEmit(address(market));
-    emit WithdrawalBatchExpired(block.timestamp, 1e18, 1e18, 1e18);
+    emit WithdrawalBatchExpired(timestamp, 1e18, 1e18, 1e18);
     vm.expectEmit(address(market));
-    emit WithdrawalBatchClosed(block.timestamp);
+    emit WithdrawalBatchClosed(timestamp);
     vm.expectEmit(address(market));
-    emit StateUpdated(1e27, false);
+    emit InterestAndFeesAccrued(timestamp, timestamp + 1 days, uint256(1.001e27), 1e24, 0, 0);
+    vm.expectEmit(address(market));
+    emit StateUpdated(uint256(1.001e27), false);
     market.updateState();
   }
 
@@ -237,7 +252,7 @@ contract WildcatMarketTest is BaseMarketTest {
     asAccount(address(controller))
   {
     _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
-    fastForward(parameters.withdrawalBatchDuration);
+    fastForward(parameters.withdrawalBatchDuration + 1);
     market.updateState();
     uint32[] memory unpaidBatches = market.getUnpaidBatchExpiries();
     assertEq(unpaidBatches.length, 1);
@@ -266,6 +281,8 @@ contract WildcatMarketTest is BaseMarketTest {
   function test_repay_RepayToClosedMarket() external {
     vm.prank(address(controller));
     market.closeMarket();
+    asset.mint(address(this), 1e18);
+    asset.approve(address(market), 1e18);
     vm.expectRevert(IMarketEventsAndErrors.RepayToClosedMarket.selector);
     market.repay(1e18);
   }
@@ -293,12 +310,40 @@ contract WildcatMarketTest is BaseMarketTest {
   /* ========================================================================== */
 
   function test_repayDelinquentDebt() external {
-    _depositBorrowWithdraw(alice, 1e18, 8e17, 2e17);// 20% of 8e17
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 2e17); // 20% of 8e17
     asset.mint(address(this), 1.6e17);
     asset.approve(address(market), 1.6e17);
     vm.expectEmit(address(market));
     emit DebtRepaid(address(this), 1.6e17);
     market.repayDelinquentDebt();
+  }
+
+  function test_repayDelinquentDebt2() public asAccount(borrower) {
+    assertEq(market.delinquencyGracePeriod(), 2000);
+    parameters.delinquencyGracePeriod = 86_400;
+    parameters.withdrawalBatchDuration = 0;
+    setUp();
+
+    assertEq(market.delinquencyGracePeriod(), 86_400, 'delinquencyGracePeriod');
+    assertEq(market.delinquencyFeeBips(), 1_000, 'delinquencyFeeBips');
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 1e18);
+
+    assertTrue(market.currentState().isDelinquent, 'should be delinquent');
+    fastForward(365 days);
+
+    MarketState memory state = pendingState();
+    updateState(state);
+    market.updateState();
+    _checkState();
+    uint delinquentDebt = state.liquidityRequired().satSub(lastTotalAssets);
+    asset.mint(borrower, delinquentDebt);
+    asset.approve(address(market), delinquentDebt);
+
+    state = pendingState();
+    _trackRepay(state, borrower, delinquentDebt);
+    updateState(state);
+    market.repayDelinquentDebt();
+    _checkState();
   }
 
   function test_repayDelinquentDebt_NullRepayAmount() external {

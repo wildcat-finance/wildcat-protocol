@@ -23,32 +23,14 @@ interface IMarketEventsAndErrors {
   /// @notice Error thrown when new maxTotalSupply lower than totalSupply
   error NewMaxSupplyTooLow();
 
-  /// @notice Error thrown when reserve ratio set higher than 100%
-  error ReserveRatioBipsTooHigh();
-
-  /// @notice Error thrown when interest rate set higher than 100%
-  error InterestRateTooHigh();
-
-  /// @notice Error thrown when interest fee set higher than 100%
-  error InterestFeeTooHigh();
-
-  /// @notice Error thrown when penalty fee set higher than 100%
-  error PenaltyFeeTooHigh();
-
   /// @notice Error thrown when transfer target is blacklisted
-  error AccountBlacklisted();
+  error AccountBlocked();
 
   error AccountNotBlocked();
 
   error NotReversedOrStunning();
 
-  error UnknownNameQueryError();
-
-  error UnknownSymbolQueryError();
-
   error BorrowAmountTooHigh();
-
-  error FeeSetWithoutRecipient();
 
   error InsufficientReservesForFeeWithdrawal();
 
@@ -81,6 +63,8 @@ interface IMarketEventsAndErrors {
   error InsufficientReservesForNewLiquidityRatio();
 
   error InsufficientReservesForOldLiquidityRatio();
+
+  error InvalidArrayLength();
 
   event Transfer(address indexed from, address indexed to, uint256 value);
 
@@ -160,8 +144,6 @@ interface IMarketEventsAndErrors {
     address indexed account,
     uint256 normalizedAmount
   );
-
-  event Withdrawal(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
   event SanctionedAccountWithdrawalSentToEscrow(
     address indexed account,

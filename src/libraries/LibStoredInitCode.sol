@@ -58,9 +58,8 @@ library LibStoredInitCode {
     uint256 initCodeHash
   ) internal pure returns (address create2Address) {
     assembly {
-      // Cache the free memory pointer so it can be restored
-      // at the end
-      let ptr := mload(0x40)
+      // Cache the free memory pointer so it can be restored at the end
+      let freeMemoryPointer := mload(0x40)
 
       // Write 0xff + address to bytes 11:32
       mstore(0x00, create2Prefix)
@@ -71,13 +70,11 @@ library LibStoredInitCode {
       // Write initcode hash to bytes 64:96
       mstore(0x40, initCodeHash)
 
-      // Calculate create2 hash for token0, token1
-      // The EVM only looks at the last 20 bytes, so the dirty
-      // bits at the beginning do not need to be cleaned
-      create2Address := keccak256(0x0b, 0x55)
+      // Calculate create2 address
+      create2Address := and(keccak256(0x0b, 0x55), 0xffffffffffffffffffffffffffffffffffffffff)
 
       // Restore the free memory pointer
-      mstore(0x40, ptr)
+      mstore(0x40, freeMemoryPointer)
     }
   }
 

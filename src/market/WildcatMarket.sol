@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../libraries/FeeMath.sol';
 import './WildcatMarketBase.sol';
 import './WildcatMarketConfig.sol';
 import './WildcatMarketToken.sol';
@@ -24,7 +23,7 @@ contract WildcatMarket is
    *      one exists and has expired, then update the market's
    *      delinquency status.
    */
-  function updateState() external nonReentrant {
+  function updateState() external nonReentrant sphereXGuardExternal {
     MarketState memory state = _getUpdatedState();
     _writeState(state);
   }
@@ -40,20 +39,18 @@ contract WildcatMarket is
    *      Reverts if the market is closed or if the scaled token amount
    *      that would be minted for the deposit is zero.
    */
-  function depositUpTo(
+  function _depositUpTo(
     uint256 amount
-  ) public virtual nonReentrant returns (uint256 /* actualAmount */) {
-
+  ) internal virtual nonReentrant returns (uint256 /* actualAmount */) {
     // Get current state
     MarketState memory state = _getUpdatedState();
 
     if (IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, msg.sender)) {
       _blockAccount(state, msg.sender);
       _writeState(state);
-    }
-    else {
+    } else {
       if (state.isClosed) {
-        revert DepositToClosedMarket();
+        revert_DepositToClosedMarket();
       }
 
       // Reduce amount if it would exceed totalSupply
@@ -61,18 +58,21 @@ contract WildcatMarket is
 
       // Scale the mint amount
       uint104 scaledAmount = state.scaleAmount(amount).toUint104();
-      if (scaledAmount == 0) revert NullMintAmount();
+      if (scaledAmount == 0) revert_NullMintAmount();
 
       // Transfer deposit from caller
       asset.safeTransferFrom(msg.sender, address(this), amount);
 
       // Cache account data and revert if not authorized to deposit.
-      Account memory account = _getAccountWithRole(msg.sender, AuthRole.DepositAndWithdraw);
+      Account memory account = _castReturnAccount(_getAccountWithRole)(
+        msg.sender,
+        AuthRole.DepositAndWithdraw
+      );
       account.scaledBalance += scaledAmount;
       _accounts[msg.sender] = account;
 
-      emit Transfer(address(0), msg.sender, amount);
-      emit Deposit(msg.sender, amount, scaledAmount);
+      emit_Transfer(address(0), msg.sender, amount);
+      emit_Deposit(msg.sender, amount, scaledAmount);
 
       // Increase supply
       state.scaledTotalSupply += scaledAmount;
@@ -85,35 +85,52 @@ contract WildcatMarket is
   }
 
   /**
+   * @dev Deposit up to `amount` underlying assets and mint market tokens
+   *      for `msg.sender`.
+   *
+   *      The actual deposit amount is limited by the market's maximum deposit
+   *      amount, which is the configured `maxTotalSupply` minus the current
+   *      total supply.
+   *
+   *      Reverts if the market is closed or if the scaled token amount
+   *      that would be minted for the deposit is zero.
+   */
+  function depositUpTo(
+    uint256 amount
+  ) external virtual sphereXGuardExternal returns (uint256 /* actualAmount */) {
+    return _depositUpTo(amount);
+  }
+
+  /**
    * @dev Deposit exactly `amount` underlying assets and mint market tokens
    *      for `msg.sender`.
    *
    *     Reverts if the deposit amount would cause the market to exceed the
    *     configured `maxTotalSupply`.
    */
-  function deposit(uint256 amount) external virtual {
-    uint256 actualAmount = depositUpTo(amount);
+  function deposit(uint256 amount) external virtual sphereXGuardExternal {
+    uint256 actualAmount = _depositUpTo(amount);
     if (amount != actualAmount) {
-      revert MaxSupplyExceeded();
+      revert_MaxSupplyExceeded();
     }
   }
 
   /**
    * @dev Withdraw available protocol fees to the fee recipient.
    */
-  function collectFees() external nonReentrant {
+  function collectFees() external nonReentrant sphereXGuardExternal {
     MarketState memory state = _getUpdatedState();
     if (state.accruedProtocolFees == 0) {
-      revert NullFeeAmount();
+      revert_NullFeeAmount();
     }
     uint128 withdrawableFees = state.withdrawableProtocolFees(totalAssets());
     if (withdrawableFees == 0) {
-      revert InsufficientReservesForFeeWithdrawal();
+      revert_InsufficientReservesForFeeWithdrawal();
     }
     state.accruedProtocolFees -= withdrawableFees;
     asset.safeTransfer(feeRecipient, withdrawableFees);
     _writeState(state);
-    emit FeesCollected(withdrawableFees);
+    emit_FeesCollected(withdrawableFees);
   }
 
   /**
@@ -124,44 +141,43 @@ contract WildcatMarket is
    *
    *      Reverts if the market is closed.
    */
-  function borrow(uint256 amount) external onlyBorrower nonReentrant {
-
-    if (WildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
-      revert BorrowWhileSanctioned();
+  function borrow(uint256 amount) external onlyBorrower nonReentrant sphereXGuardExternal {
+    if (IWildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
+      revert_BorrowWhileSanctioned();
     }
 
     MarketState memory state = _getUpdatedState();
     if (state.isClosed) {
-      revert BorrowFromClosedMarket();
+      revert_BorrowFromClosedMarket();
     }
     uint256 borrowable = state.borrowableAssets(totalAssets());
     if (amount > borrowable) {
-      revert BorrowAmountTooHigh();
+      revert_BorrowAmountTooHigh();
     }
     asset.safeTransfer(msg.sender, amount);
     _writeState(state);
-    emit Borrow(amount);
+    emit_Borrow(amount);
   }
 
   function _repay(MarketState memory state, uint256 amount) internal {
     if (amount == 0) {
-      revert NullRepayAmount();
+      revert_NullRepayAmount();
     }
     if (state.isClosed) {
-      revert RepayToClosedMarket();
+      revert_RepayToClosedMarket();
     }
     asset.safeTransferFrom(msg.sender, address(this), amount);
-    emit DebtRepaid(msg.sender, amount);
+    emit_DebtRepaid(msg.sender, amount);
   }
 
-  function repayOutstandingDebt() external nonReentrant {
+  function repayOutstandingDebt() external nonReentrant sphereXGuardExternal {
     MarketState memory state = _getUpdatedState();
     uint256 outstandingDebt = state.totalDebts().satSub(totalAssets());
     _repay(state, outstandingDebt);
     _writeState(state);
   }
 
-  function repayDelinquentDebt() external nonReentrant {
+  function repayDelinquentDebt() external nonReentrant sphereXGuardExternal {
     MarketState memory state = _getUpdatedState();
     uint256 delinquentDebt = state.liquidityRequired().satSub(totalAssets());
     _repay(state, delinquentDebt);
@@ -177,9 +193,15 @@ contract WildcatMarket is
    *
    *      Reverts if the market is closed or `amount` is 0.
    */
-  function repay(uint256 amount) external nonReentrant {
+  function repay(uint256 amount) external nonReentrant sphereXGuardExternal {
+    if (amount == 0) revert_NullRepayAmount();
+    asset.safeTransferFrom(msg.sender, address(this), amount);
+    emit_DebtRepaid(msg.sender, amount);
+
     MarketState memory state = _getUpdatedState();
-    _repay(state, amount);
+    if (state.isClosed) {
+      revert_RepayToClosedMarket();
+    }
     _writeState(state);
   }
 
@@ -192,9 +214,9 @@ contract WildcatMarket is
    *      collateralized; otherwise, transfers any assets in excess of
    *      debts to the borrower.
    */
-  function closeMarket() external onlyController nonReentrant {
+  function closeMarket() external onlyController nonReentrant sphereXGuardExternal {
     if (_withdrawalData.unpaidBatches.length() > 0) {
-      revert CloseMarketWithUnpaidWithdrawals();
+      revert_CloseMarketWithUnpaidWithdrawals();
     }
 
     MarketState memory state = _getUpdatedState();
@@ -216,6 +238,6 @@ contract WildcatMarket is
       asset.safeTransfer(borrower, currentlyHeld - totalDebts);
     }
     _writeState(state);
-    emit MarketClosed(block.timestamp);
+    emit_MarketClosed(block.timestamp);
   }
 }

@@ -112,7 +112,7 @@ contract FeeMathTest is BaseTest {
     ConfigFuzzInputs calldata configInputs,
     StateFuzzInputs calldata stateInputs
   ) external {
-    MarketParameters memory parameters = getMarketParameters(configInputs);
+    MarketInputParameters memory parameters = getMarketParameters(configInputs);
     MarketState memory state = getMarketState(stateInputs);
     bytes32 stateHash = keccak256(abi.encode(state));
     uint256 baseInterestRay;
