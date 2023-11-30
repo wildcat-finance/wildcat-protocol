@@ -74,11 +74,11 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     );
   }
 
-  function test_updateAccountAuthorization_Revoke_AccountBlacklisted(address _account) external {
+  function test_updateAccountAuthorization_Revoke_AccountBlocked(address _account) external {
     sanctionsSentinel.sanction(_account);
     market.nukeFromOrbit(_account);
     vm.startPrank(parameters.controller);
-    vm.expectRevert(IMarketEventsAndErrors.AccountBlacklisted.selector);
+    vm.expectRevert(IMarketEventsAndErrors.AccountBlocked.selector);
     _updateAccountAuthorization(_account, false);
   }
 
@@ -102,11 +102,11 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     _updateAccountAuthorization(_account, false);
   }
 
-  function test_updateAccountAuthorization_AccountBlacklisted(address _account) external {
+  function test_updateAccountAuthorization_AccountBlocked(address _account) external {
     sanctionsSentinel.sanction(_account);
     market.nukeFromOrbit(_account);
     vm.startPrank(parameters.controller);
-    vm.expectRevert(IMarketEventsAndErrors.AccountBlacklisted.selector);
+    vm.expectRevert(IMarketEventsAndErrors.AccountBlocked.selector);
     _updateAccountAuthorization(_account, true);
   }
 

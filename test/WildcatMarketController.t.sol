@@ -261,12 +261,12 @@ contract WildcatMarketControllerTest is BaseMarketTest {
     controller.authorizeLendersAndUpdateMarkets(lenders, markets);
   }
 
-  function test_authorizeLendersAndUpdateMarkets_AccountBlacklisted() external asAccount(borrower) {
+  function test_authorizeLendersAndUpdateMarkets_AccountBlocked() external asAccount(borrower) {
     address[] memory lenders = _aliceAndBob();
     address[] memory markets = _twoMarkets();
     sanctionsSentinel.sanction(alice);
     WildcatMarket(markets[1]).nukeFromOrbit(alice);
-    vm.expectRevert(AccountBlacklisted.selector);
+    vm.expectRevert(AccountBlocked.selector);
     controller.authorizeLendersAndUpdateMarkets(lenders, markets);
   }
 
@@ -302,7 +302,7 @@ contract WildcatMarketControllerTest is BaseMarketTest {
     controller.deauthorizeLendersAndUpdateMarkets(lenders, markets);
   }
 
-  function test_deauthorizeLendersAndUpdateMarkets_AccountBlacklisted()
+  function test_deauthorizeLendersAndUpdateMarkets_AccountBlocked()
     external
     asAccount(borrower)
   {
@@ -311,7 +311,7 @@ contract WildcatMarketControllerTest is BaseMarketTest {
     controller.authorizeLendersAndUpdateMarkets(lenders, markets);
     sanctionsSentinel.sanction(alice);
     WildcatMarket(markets[1]).nukeFromOrbit(alice);
-    vm.expectRevert(AccountBlacklisted.selector);
+    vm.expectRevert(AccountBlocked.selector);
     controller.deauthorizeLendersAndUpdateMarkets(lenders, markets);
   }
 
