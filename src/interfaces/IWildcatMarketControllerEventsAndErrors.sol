@@ -2,9 +2,9 @@
 pragma solidity >=0.8.20;
 
 interface IWildcatMarketControllerEventsAndErrors {
-  /* -------------------------------------------------------------------------- */
-  /*                                   Errors                                   */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                   Errors                                   //
+  // ========================================================================== //
 
   error DelinquencyGracePeriodOutOfBounds();
   error ReserveRatioBipsOutOfBounds();
@@ -39,9 +39,9 @@ interface IWildcatMarketControllerEventsAndErrors {
 
   error MarketAlreadyClosed();
 
-  /* -------------------------------------------------------------------------- */
-  /*                                   Events                                   */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                   Events                                   //
+  // ========================================================================== //
 
   event LenderAuthorized(address);
 
@@ -74,11 +74,7 @@ interface IWildcatMarketControllerEventsAndErrors {
     uint256 temporaryReserveRatioExpiry
   );
 
-  event TemporaryExcessReserveRatioCanceled(
-    address indexed market
-  );
+  event TemporaryExcessReserveRatioCanceled(address indexed market);
 
-  event TemporaryExcessReserveRatioExpired(
-    address indexed market
-  );
+  event TemporaryExcessReserveRatioExpired(address indexed market);
 }
