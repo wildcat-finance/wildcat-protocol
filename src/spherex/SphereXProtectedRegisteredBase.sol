@@ -10,10 +10,11 @@ import './SphereXProtectedErrors.sol';
 /**
  * @title Modified version of SphereXProtectedBase for contracts registered
  *        on Wildcat's arch controller.
+ * 
+ * @author Modified from https://github.com/spherex-xyz/spherex-protect-contracts/blob/main/src/SphereXProtectedBase.sol
  *
- * @dev In this version, the WildcatArchController deployment is effectively
- *      the SphereX operator. There is no admin because the arch controller
- *      address can not be modified.
+ * @dev In this version, the WildcatArchController deployment is the SphereX operator.
+ *      There is no admin because the arch controller address can not be modified.
  *
  *      All admin functions/events/errors have been removed to reduce contract size.
  *
