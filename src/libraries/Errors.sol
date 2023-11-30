@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.20;
 
 uint256 constant Panic_CompilerPanic = 0x00;
