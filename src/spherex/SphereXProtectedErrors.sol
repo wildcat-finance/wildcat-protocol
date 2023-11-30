@@ -14,6 +14,13 @@ function revert_SphereXAdminRequired() pure {
   }
 }
 
+function revert_SphereXOperatorOrAdminRequired() pure {
+  assembly {
+    mstore(0, 0xb2dbeb59)
+    revert(0x1c, 0x04)
+  }
+}
+
 function revert_SphereXNotPendingAdmin() pure {
   assembly {
     mstore(0, 0x4d28a58e)
