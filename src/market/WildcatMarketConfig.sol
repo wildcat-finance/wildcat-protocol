@@ -139,17 +139,11 @@ contract WildcatMarketConfig is WildcatMarketBase {
   /**
    * @dev Sets the maximum total supply - this only limits deposits and
    *      does not affect interest accrual.
-   *
-   *      Can not be set lower than current total supply.
    */
   function setMaxTotalSupply(
     uint256 _maxTotalSupply
   ) external onlyController nonReentrant sphereXGuardExternal {
     MarketState memory state = _getUpdatedState();
-
-    if (_maxTotalSupply < state.totalSupply()) {
-      revert_NewMaxSupplyTooLow();
-    }
 
     state.maxTotalSupply = _maxTotalSupply.toUint128();
     _writeState(state);

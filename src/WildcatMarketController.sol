@@ -629,8 +629,6 @@ contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMark
   /**
    * @dev Sets the maximum total supply (capacity) of a market - this only limits
    *      deposits and does not affect interest accrual.
-   *
-   *      Can not be set lower than the market's current total supply.
    */
   function setMaxTotalSupply(
     address market,

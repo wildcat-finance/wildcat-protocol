@@ -40,14 +40,6 @@ function revert_BadLaunchCode() pure {
   }
 }
 
-/// @dev Equivalent to `revert NewMaxSupplyTooLow()`
-function revert_NewMaxSupplyTooLow() pure {
-  assembly {
-    mstore(0, 0xd2955d3b)
-    revert(0x1c, 0x04)
-  }
-}
-
 /// @dev Equivalent to `revert ReserveRatioBipsTooHigh()`
 function revert_ReserveRatioBipsTooHigh() pure {
   assembly {
