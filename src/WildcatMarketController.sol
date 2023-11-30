@@ -37,9 +37,9 @@ contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMark
   using SafeCastLib for uint256;
   using SafeTransferLib for address;
 
-  /* -------------------------------------------------------------------------- */
-  /*                                 Immutables                                 */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                 Immutables                                 //
+  // ========================================================================== //
 
   function archController() external view override returns (address) {
     return _archController;
@@ -72,7 +72,12 @@ contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMark
   uint16 internal immutable MinimumAnnualInterestBips;
   uint16 internal immutable MaximumAnnualInterestBips;
 
+  // ========================================================================== //
+  //                                   Storage                                  //
+  // ========================================================================== //
+
   EnumerableSet.AddressSet internal _authorizedLenders;
+
   EnumerableSet.AddressSet internal _controlledMarkets;
 
   /// @dev Temporary storage for market parameters, used during market deployment
@@ -80,21 +85,9 @@ contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMark
 
   mapping(address => TemporaryReserveRatio) public override temporaryExcessReserveRatio;
 
-  // MarketParameterConstraints internal immutable constraints
-
-  modifier onlyBorrower() {
-    if (msg.sender != borrower) {
-      revert CallerNotBorrower();
-    }
-    _;
-  }
-
-  modifier onlyControlledMarket(address market) {
-    if (!_controlledMarkets.contains(market)) {
-      revert NotControlledMarket();
-    }
-    _;
-  }
+  // ========================================================================== //
+  //                                 Constructor                                //
+  // ========================================================================== //
 
   constructor() {
     controllerFactory = msg.sender;
@@ -118,9 +111,78 @@ contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMark
     __SphereXProtectedRegisteredBase_init(parameters.sphereXEngine);
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                               Lender Registry                              */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                  Modifiers                                 //
+  // ========================================================================== //
+
+  modifier onlyBorrower() {
+    if (msg.sender != borrower) {
+      revert CallerNotBorrower();
+    }
+    _;
+  }
+
+  modifier onlyControlledMarket(address market) {
+    if (!_controlledMarkets.contains(market)) {
+      revert NotControlledMarket();
+    }
+    _;
+  }
+
+  // ========================================================================== //
+  //                        Controller Parameter Queries                        //
+  // ========================================================================== //
+
+  /**
+   * @dev Returns immutable protocol fee configuration for new markets.
+   *      Queried from the controller factory.
+   *
+   * @return feeRecipient         feeRecipient to use in new markets
+   * @return originationFeeAsset  Asset used to pay fees for new market
+   *                              deployments
+   * @return originationFeeAmount Amount of originationFeeAsset paid
+   *                              for new market deployments
+   * @return protocolFeeBips      protocolFeeBips to use in new markets
+   */
+  function getProtocolFeeConfiguration()
+    external
+    view
+    override
+    returns (
+      address feeRecipient,
+      address originationFeeAsset,
+      uint80 originationFeeAmount,
+      uint16 protocolFeeBips
+    )
+  {
+    return IWildcatMarketControllerFactory(controllerFactory).getProtocolFeeConfiguration();
+  }
+
+  /**
+   * @dev Returns immutable constraints on market parameters that
+   *      the controller variant will enforce.
+   */
+  function getParameterConstraints()
+    external
+    view
+    override
+    returns (MarketParameterConstraints memory constraints)
+  {
+    constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
+    constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
+    constraints.minimumReserveRatioBips = MinimumReserveRatioBips;
+    constraints.maximumReserveRatioBips = MaximumReserveRatioBips;
+    constraints.minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
+    constraints.maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
+    constraints.minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
+    constraints.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
+    constraints.minimumAnnualInterestBips = MinimumAnnualInterestBips;
+    constraints.maximumAnnualInterestBips = MaximumAnnualInterestBips;
+  }
+
+  // ========================================================================== //
+  //                               Lender Registry                              //
+  // ========================================================================== //
 
   /**
    * @dev Returns the set of authorized lenders.
@@ -277,9 +339,9 @@ contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMark
     }
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                                Market Queries                               */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                               Market Queries                               //
+  // ========================================================================== //
 
   function isControlledMarket(address market) external view override returns (bool) {
     return _controlledMarkets.contains(market);
@@ -315,9 +377,9 @@ contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMark
     return LibStoredInitCode.calculateCreate2Address(ownCreate2Prefix, salt, marketInitCodeHash);
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                              Market Deployment                              */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                              Market Deployment                             //
+  // ========================================================================== //
 
   /**
    * @dev Get the temporarily stored market parameters for a market that is
@@ -547,52 +609,9 @@ contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMark
     );
   }
 
-  /**
-   * @dev Returns immutable protocol fee configuration for new markets.
-   *      Queried from the controller factory.
-   *
-   * @return feeRecipient         feeRecipient to use in new markets
-   * @return originationFeeAsset  Asset used to pay fees for new market
-   *                              deployments
-   * @return originationFeeAmount Amount of originationFeeAsset paid
-   *                              for new market deployments
-   * @return protocolFeeBips      protocolFeeBips to use in new markets
-   */
-  function getProtocolFeeConfiguration()
-    external
-    view
-    override
-    returns (
-      address feeRecipient,
-      address originationFeeAsset,
-      uint80 originationFeeAmount,
-      uint16 protocolFeeBips
-    )
-  {
-    return IWildcatMarketControllerFactory(controllerFactory).getProtocolFeeConfiguration();
-  }
-
-  /**
-   * @dev Returns immutable constraints on market parameters that
-   *      the controller variant will enforce.
-   */
-  function getParameterConstraints()
-    external
-    view
-    override
-    returns (MarketParameterConstraints memory constraints)
-  {
-    constraints.minimumDelinquencyGracePeriod = MinimumDelinquencyGracePeriod;
-    constraints.maximumDelinquencyGracePeriod = MaximumDelinquencyGracePeriod;
-    constraints.minimumReserveRatioBips = MinimumReserveRatioBips;
-    constraints.maximumReserveRatioBips = MaximumReserveRatioBips;
-    constraints.minimumDelinquencyFeeBips = MinimumDelinquencyFeeBips;
-    constraints.maximumDelinquencyFeeBips = MaximumDelinquencyFeeBips;
-    constraints.minimumWithdrawalBatchDuration = MinimumWithdrawalBatchDuration;
-    constraints.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
-    constraints.minimumAnnualInterestBips = MinimumAnnualInterestBips;
-    constraints.maximumAnnualInterestBips = MaximumAnnualInterestBips;
-  }
+  // ========================================================================== //
+  //                              Market Management                             //
+  // ========================================================================== //
 
   /**
    * @dev Close a market, setting interest rate to zero and returning all

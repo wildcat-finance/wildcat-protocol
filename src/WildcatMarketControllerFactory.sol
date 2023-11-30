@@ -17,8 +17,13 @@ contract WildcatMarketControllerFactory is
 {
   using EnumerableSet for EnumerableSet.AddressSet;
 
-  // Returns immutable arch-controller
-  address public immutable override archController;
+  // ========================================================================== //
+  //                                 Immutables                                 //
+  // ========================================================================== //
+
+  function archController() external view override returns (address) {
+    return _archController;
+  }
 
   // Returns sentinel used by controller
   address public immutable override sentinel;
@@ -48,16 +53,13 @@ contract WildcatMarketControllerFactory is
   uint16 internal immutable MinimumAnnualInterestBips;
   uint16 internal immutable MaximumAnnualInterestBips;
 
+  // ========================================================================== //
+  //                                   Storage                                  //
+  // ========================================================================== //
+
   ProtocolFeeConfiguration internal _protocolFeeConfiguration;
 
   EnumerableSet.AddressSet internal _deployedControllers;
-
-  modifier onlyArchControllerOwner() {
-    if (msg.sender != IWildcatArchController(archController).owner()) {
-      revert CallerNotArchControllerOwner();
-    }
-    _;
-  }
 
   // ========================================================================== //
   //                                 Constructor                                //
@@ -116,6 +118,17 @@ contract WildcatMarketControllerFactory is
     bytes memory marketInitCode = type(WildcatMarket).creationCode;
     initCodeHash = uint256(keccak256(marketInitCode));
     initCodeStorage = LibStoredInitCode.deployInitCode(marketInitCode);
+  }
+
+  // ========================================================================== //
+  //                                  Modifiers                                 //
+  // ========================================================================== //
+
+  modifier onlyArchControllerOwner() {
+    if (msg.sender != IWildcatArchController(_archController).owner()) {
+      revert CallerNotArchControllerOwner();
+    }
+    _;
   }
 
   // ========================================================================== //
@@ -337,7 +350,7 @@ contract WildcatMarketControllerFactory is
   }
 
   function _deployController() internal returns (address controller) {
-    if (!IWildcatArchController(archController).isRegisteredBorrower(msg.sender)) {
+    if (!IWildcatArchController(_archController).isRegisteredBorrower(msg.sender)) {
       revert NotRegisteredBorrower();
     }
 
@@ -358,7 +371,7 @@ contract WildcatMarketControllerFactory is
     LibStoredInitCode.create2WithStoredInitCode(controllerInitCodeStorage, salt);
     // Clear temporary borrower - reset to 1 to minimize SSTORE costs
     _tmpMarketBorrowerParameter = address(1);
-    IWildcatArchController(archController).registerController(controller);
+    IWildcatArchController(_archController).registerController(controller);
     _deployedControllers.add(controller);
     emit NewController(msg.sender, controller);
   }
