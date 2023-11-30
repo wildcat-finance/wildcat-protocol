@@ -2,11 +2,8 @@
 pragma solidity >=0.8.20;
 
 import './WildcatMarketBase.sol';
-import '../libraries/MarketState.sol';
-import '../libraries/FeeMath.sol';
-import '../libraries/FIFOQueue.sol';
-import '../interfaces/IWildcatSanctionsSentinel.sol';
 import 'solady/utils/SafeTransferLib.sol';
+import '../libraries/BoolUtils.sol';
 
 contract WildcatMarketWithdrawals is WildcatMarketBase {
   using SafeTransferLib for address;
@@ -14,9 +11,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
   using SafeCastLib for uint256;
   using BoolUtils for bool;
 
-  /* -------------------------------------------------------------------------- */
-  /*                             Withdrawal Queries                             */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                             Withdrawal Queries                             //
+  // ========================================================================== //
 
   /**
    * @dev Returns the expiry timestamp of every unpaid withdrawal batch.
@@ -75,9 +72,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     return newTotalWithdrawn - previousTotalWithdrawn;
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                             Withdrawal Actions                             */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                             Withdrawal Actions                             //
+  // ========================================================================== //
 
   /**
    * @dev Create a withdrawal request for a lender.

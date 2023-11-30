@@ -1,28 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../libraries/FeeMath.sol';
-import '../libraries/Withdrawal.sol';
-import { queryName, querySymbol } from '../libraries/StringQuery.sol';
+import '../ReentrancyGuard.sol';
+import '../spherex/SphereXProtectedRegisteredBase.sol';
 import '../interfaces/IMarketEventsAndErrors.sol';
+import '../interfaces/IERC20Metadata.sol';
 import '../interfaces/IWildcatMarketController.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
-import { IERC20, IERC20Metadata } from '../interfaces/IERC20Metadata.sol';
-import '../ReentrancyGuard.sol';
-import '../libraries/MarketEvents.sol';
+import '../libraries/FeeMath.sol';
 import '../libraries/MarketErrors.sol';
-import '../libraries/BoolUtils.sol';
-import '../spherex/SphereXProtectedRegisteredBase.sol';
+import '../libraries/MarketEvents.sol';
+import '../libraries/Withdrawal.sol';
 
 contract WildcatMarketBase is
   SphereXProtectedRegisteredBase,
   ReentrancyGuard,
   IMarketEventsAndErrors
 {
-  using WithdrawalLib for MarketState;
   using SafeCastLib for uint256;
   using MathUtils for uint256;
-  using BoolUtils for bool;
 
   // ==================================================================== //
   //                       Market Config (immutable)                       //
@@ -148,7 +144,7 @@ contract WildcatMarketBase is
   function _getAccount(address accountAddress) internal view returns (Account memory account) {
     account = _accounts[accountAddress];
     if (account.approval == AuthRole.Blocked) {
-      revert_AccountBlacklisted();
+      revert_AccountBlocked();
     }
   }
 

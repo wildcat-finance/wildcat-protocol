@@ -24,15 +24,11 @@ interface IMarketEventsAndErrors {
   error NewMaxSupplyTooLow();
 
   /// @notice Error thrown when transfer target is blacklisted
-  error AccountBlacklisted();
+  error AccountBlocked();
 
   error AccountNotBlocked();
 
   error NotReversedOrStunning();
-
-  error UnknownNameQueryError();
-
-  error UnknownSymbolQueryError();
 
   error BorrowAmountTooHigh();
 
@@ -148,8 +144,6 @@ interface IMarketEventsAndErrors {
     address indexed account,
     uint256 normalizedAmount
   );
-
-  event Withdrawal(address indexed account, uint256 assetAmount, uint256 scaledAmount);
 
   event SanctionedAccountWithdrawalSentToEscrow(
     address indexed account,

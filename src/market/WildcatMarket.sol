@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import '../libraries/FeeMath.sol';
 import './WildcatMarketBase.sol';
 import './WildcatMarketConfig.sol';
 import './WildcatMarketToken.sol';
@@ -143,7 +142,7 @@ contract WildcatMarket is
    *      Reverts if the market is closed.
    */
   function borrow(uint256 amount) external onlyBorrower nonReentrant sphereXGuardExternal {
-    if (WildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
+    if (IWildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
       revert_BorrowWhileSanctioned();
     }
 

@@ -5,7 +5,6 @@ import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSe
 import 'solady/utils/SafeTransferLib.sol';
 import './market/WildcatMarket.sol';
 import './interfaces/IWildcatArchController.sol';
-import './interfaces/IWildcatMarketControllerEventsAndErrors.sol';
 import './interfaces/IWildcatMarketControllerFactory.sol';
 import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';

@@ -39,6 +39,10 @@ interface IWildcatMarketControllerEventsAndErrors {
 
   error MarketAlreadyClosed();
 
+  error UnknownNameQueryError();
+
+  error UnknownSymbolQueryError();
+
   // ========================================================================== //
   //                                   Events                                   //
   // ========================================================================== //

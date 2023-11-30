@@ -80,8 +80,8 @@ function revert_PenaltyFeeTooHigh() pure {
   }
 }
 
-/// @dev Equivalent to `revert AccountBlacklisted()`
-function revert_AccountBlacklisted() pure {
+/// @dev Equivalent to `revert AccountBlocked()`
+function revert_AccountBlocked() pure {
   assembly {
     mstore(0, 0x7d28af3f)
     revert(0x1c, 0x04)
@@ -100,22 +100,6 @@ function revert_AccountNotBlocked() pure {
 function revert_NotReversedOrStunning() pure {
   assembly {
     mstore(0, 0x3c57ebee)
-    revert(0x1c, 0x04)
-  }
-}
-
-/// @dev Equivalent to `revert UnknownNameQueryError()`
-function revert_UnknownNameQueryError() pure {
-  assembly {
-    mstore(0, 0xed3df7ad)
-    revert(0x1c, 0x04)
-  }
-}
-
-/// @dev Equivalent to `revert UnknownSymbolQueryError()`
-function revert_UnknownSymbolQueryError() pure {
-  assembly {
-    mstore(0, 0x89ff8157)
     revert(0x1c, 0x04)
   }
 }

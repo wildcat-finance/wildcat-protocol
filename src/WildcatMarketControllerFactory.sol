@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
+import './spherex/SphereXProtectedRegisteredBase.sol';
+import './interfaces/IWildcatMarketControllerFactory.sol';
 import './interfaces/WildcatStructsAndEnums.sol';
 import './interfaces/IWildcatArchController.sol';
-import './interfaces/IWildcatMarketControllerFactory.sol';
+import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 import './market/WildcatMarket.sol';
 import './WildcatMarketController.sol';
-import './spherex/SphereXProtectedRegisteredBase.sol';
 
 contract WildcatMarketControllerFactory is
   IWildcatMarketControllerFactory,

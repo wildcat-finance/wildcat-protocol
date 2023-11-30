@@ -6,9 +6,9 @@ import './WildcatMarketBase.sol';
 contract WildcatMarketToken is WildcatMarketBase {
   using SafeCastLib for uint256;
 
-  /* -------------------------------------------------------------------------- */
-  /*                                ERC20 Queries                               */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                ERC20 Queries                               //
+  // ========================================================================== //
 
   mapping(address => mapping(address => uint256)) public allowance;
 
@@ -25,9 +25,9 @@ contract WildcatMarketToken is WildcatMarketBase {
     return _castReturnMarketState(_calculateCurrentStatePointers)().totalSupply();
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                                ERC20 Actions                               */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                ERC20 Actions                               //
+  // ========================================================================== //
 
   function approve(
     address spender,

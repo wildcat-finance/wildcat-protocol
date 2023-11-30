@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { IERC20 } from './interfaces/IERC20.sol';
-import { IChainalysisSanctionsList } from './interfaces/IChainalysisSanctionsList.sol';
-import { SanctionsList } from './libraries/Chainalysis.sol';
-import { WildcatSanctionsSentinel } from './WildcatSanctionsSentinel.sol';
-import { IWildcatSanctionsEscrow } from './interfaces/IWildcatSanctionsEscrow.sol';
+import './interfaces/IERC20.sol';
+import './interfaces/IWildcatSanctionsEscrow.sol';
+import './interfaces/IWildcatSanctionsSentinel.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
 contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
@@ -18,7 +16,7 @@ contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
 
   constructor() {
     sentinel = msg.sender;
-    (borrower, account, asset) = WildcatSanctionsSentinel(sentinel).tmpEscrowParams();
+    (borrower, account, asset) = IWildcatSanctionsSentinel(sentinel).tmpEscrowParams();
   }
 
   function balance() public view override returns (uint256) {
@@ -26,7 +24,7 @@ contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
   }
 
   function canReleaseEscrow() public view override returns (bool) {
-    return !WildcatSanctionsSentinel(sentinel).isSanctioned(borrower, account);
+    return !IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, account);
   }
 
   function escrowedAsset() public view override returns (address, uint256) {

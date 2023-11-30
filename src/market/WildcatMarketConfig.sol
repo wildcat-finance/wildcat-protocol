@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
+import './WildcatMarketBase.sol';
 import '../interfaces/IWildcatSanctionsSentinel.sol';
 import '../libraries/FeeMath.sol';
 import '../libraries/SafeCastLib.sol';
-import './WildcatMarketBase.sol';
 
 contract WildcatMarketConfig is WildcatMarketBase {
   using SafeCastLib for uint256;
-  using BoolUtils for bool;
 
   // ===================================================================== //
   //                      External Config Getters                          //
@@ -51,9 +50,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
     return _state.reserveRatioBips;
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                                  Sanctions                                 */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                                  Sanctions                                 //
+  // ========================================================================== //
 
   /// @dev Block a sanctioned account from interacting with the market
   ///      and transfer its balance to an escrow contract.
@@ -109,9 +108,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
     _accounts[accountAddress] = account;
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                           External Config Setters                          */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                           External Config Setters                          //
+  // ========================================================================== //
 
   /**
    * @dev Updates multiple accounts' authorization statuses based on whether the controller

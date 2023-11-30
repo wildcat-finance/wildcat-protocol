@@ -211,14 +211,6 @@ function emit_WithdrawalExecuted(uint256 expiry, address account, uint256 normal
   }
 }
 
-function emit_Withdrawal(address account, uint256 assetAmount, uint256 scaledAmount) {
-  assembly {
-    mstore(0, assetAmount)
-    mstore(0x20, scaledAmount)
-    log2(0, 0x40, 0xdf273cb619d95419a9cd0ec88123a0538c85064229baa6363788f743fff90deb, account)
-  }
-}
-
 function emit_SanctionedAccountWithdrawalSentToEscrow(
   address account,
   address escrow,
