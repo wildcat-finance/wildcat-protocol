@@ -25,8 +25,7 @@ struct MarketParameters {
   uint32 withdrawalBatchDuration;
   uint16 reserveRatioBips;
   uint32 delinquencyGracePeriod;
-  address sphereXAdmin;
-  address sphereXOperator;
+  address archController;
   address sphereXEngine;
 }
 
@@ -46,8 +45,6 @@ struct MarketControllerParameters {
   uint32 maximumWithdrawalBatchDuration;
   uint16 minimumAnnualInterestBips;
   uint16 maximumAnnualInterestBips;
-  address sphereXAdmin;
-  address sphereXOperator;
   address sphereXEngine;
 }
 
