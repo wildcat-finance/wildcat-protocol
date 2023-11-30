@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
-import { IWildcatSanctionsSentinel, WildcatSanctionsSentinel, WildcatSanctionsEscrow, IChainalysisSanctionsList, IWildcatArchController } from '../src/WildcatSanctionsSentinel.sol';
-import { SanctionsList } from '../src/libraries/Chainalysis.sol';
+import { Test } from 'forge-std/Test.sol';
+import { IWildcatSanctionsSentinel, WildcatSanctionsSentinel, WildcatSanctionsEscrow, IChainalysisSanctionsList } from 'src/WildcatSanctionsSentinel.sol';
+import 'src/interfaces/IWildcatArchController.sol';
+import { SanctionsList } from './shared/TestConstants.sol';
 
 import { MockChainalysis, deployMockChainalysis } from './helpers/MockChainalysis.sol';
 import { MockERC20 } from './helpers/MockERC20.sol';
-import { Test } from 'forge-std/Test.sol';
 
 // -- TEMP START --
 contract MockWildcatArchController {
