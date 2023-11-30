@@ -233,15 +233,15 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     market.setMaxTotalSupply(_maxTotalSupply);
   }
 
-  function test_setMaxTotalSupply_NewMaxSupplyTooLow(
+  function test_setMaxTotalSupply_BelowCurrentSupply(
     uint256 _totalSupply,
     uint256 _maxTotalSupply
   ) external asAccount(parameters.controller) {
     _totalSupply = bound(_totalSupply, 1, DefaultMaximumSupply - 1);
     _maxTotalSupply = bound(_maxTotalSupply, 0, _totalSupply - 1);
     _deposit(alice, _totalSupply);
-    vm.expectRevert(IMarketEventsAndErrors.NewMaxSupplyTooLow.selector);
     market.setMaxTotalSupply(_maxTotalSupply);
+    assertEq(market.maxTotalSupply(), _maxTotalSupply, 'maxTotalSupply should be _maxTotalSupply');
   }
 
   function test_setAnnualInterestBips(
