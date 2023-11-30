@@ -3,15 +3,25 @@ pragma solidity >=0.8.20;
 
 import { EnumerableSet } from 'openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import 'solady/auth/Ownable.sol';
+import './spherex/SphereXConfig.sol';
 import './libraries/MathUtils.sol';
+import './interfaces/ISphereXProtectedRegisteredBase.sol';
 
-contract WildcatArchController is Ownable {
+contract WildcatArchController is SphereXConfig, Ownable {
   using EnumerableSet for EnumerableSet.AddressSet;
+
+  // ========================================================================== //
+  //                                   Storage                                  //
+  // ========================================================================== //
 
   EnumerableSet.AddressSet internal _markets;
   EnumerableSet.AddressSet internal _controllerFactories;
   EnumerableSet.AddressSet internal _borrowers;
   EnumerableSet.AddressSet internal _controllers;
+
+  // ========================================================================== //
+  //                              Events and Errors                             //
+  // ========================================================================== //
 
   error NotControllerFactory();
   error NotController();
@@ -38,22 +48,100 @@ contract WildcatArchController is Ownable {
   event ControllerAdded(address indexed controllerFactory, address controller);
   event ControllerRemoved(address controller);
 
-  modifier onlyControllerFactory() {
-    if (!_controllerFactories.contains(msg.sender)) {
-      revert NotControllerFactory();
-    }
-    _;
-  }
+  // ========================================================================== //
+  //                                 Constructor                                //
+  // ========================================================================== //
 
-  modifier onlyController() {
-    if (!_controllers.contains(msg.sender)) {
-      revert NotController();
-    }
-    _;
-  }
-
-  constructor() {
+  constructor() SphereXConfig(msg.sender, address(0), address(0)) {
     _initializeOwner(msg.sender);
+  }
+
+  // ========================================================================== //
+  //                            SphereX Engine Update                           //
+  // ========================================================================== //
+
+  /**
+   * @dev Update SphereX engine on registered contracts and add them as
+   *      allowed senders on the engine contract.
+   */
+  function updateSphereXEngineOnRegisteredContracts(
+    address[] calldata controllerFactories,
+    address[] calldata controllers,
+    address[] calldata markets
+  ) external spherexOnlyOperatorOrAdmin {
+    address engineAddress = sphereXEngine();
+    bytes memory changeSphereXEngineCalldata = abi.encodeWithSelector(
+      ISphereXProtectedRegisteredBase.changeSphereXEngine.selector,
+      engineAddress
+    );
+    bytes memory addAllowedSenderOnChainCalldata;
+    if (engineAddress != address(0)) {
+      addAllowedSenderOnChainCalldata = abi.encodeWithSelector(
+        ISphereXEngine.addAllowedSenderOnChain.selector,
+        address(0)
+      );
+    }
+    _updateSphereXEngineOnRegisteredContractsInSet(
+      _controllerFactories,
+      engineAddress,
+      controllerFactories,
+      changeSphereXEngineCalldata,
+      addAllowedSenderOnChainCalldata,
+      ControllerFactoryDoesNotExist.selector
+    );
+    _updateSphereXEngineOnRegisteredContractsInSet(
+      _controllers,
+      engineAddress,
+      controllers,
+      changeSphereXEngineCalldata,
+      addAllowedSenderOnChainCalldata,
+      ControllerDoesNotExist.selector
+    );
+    _updateSphereXEngineOnRegisteredContractsInSet(
+      _markets,
+      engineAddress,
+      markets,
+      changeSphereXEngineCalldata,
+      addAllowedSenderOnChainCalldata,
+      MarketDoesNotExist.selector
+    );
+  }
+
+  function _updateSphereXEngineOnRegisteredContractsInSet(
+    EnumerableSet.AddressSet storage set,
+    address engineAddress,
+    address[] memory contracts,
+    bytes memory changeSphereXEngineCalldata,
+    bytes memory addAllowedSenderOnChainCalldata,
+    bytes4 notInSetErrorSelectorBytes
+  ) internal {
+    for (uint256 i = 0; i < contracts.length; i++) {
+      address account = contracts[i];
+      if (!set.contains(account)) {
+        uint32 notInSetErrorSelector = uint32(notInSetErrorSelectorBytes);
+        assembly {
+          mstore(0, notInSetErrorSelector)
+          revert(0x1c, 0x04)
+        }
+      }
+      _callWith(account, changeSphereXEngineCalldata);
+      if (engineAddress != address(0)) {
+        assembly {
+          mstore(add(addAllowedSenderOnChainCalldata, 0x24), account)
+        }
+        _callWith(engineAddress, addAllowedSenderOnChainCalldata);
+        emit_NewAllowedSenderOnchain(account);
+      }
+    }
+  }
+
+  function _callWith(address target, bytes memory data) internal {
+    assembly {
+      if iszero(call(gas(), target, 0, add(data, 0x20), mload(data), 0, 0)) {
+        returndatacopy(0, 0, returndatasize())
+        revert(0, returndatasize())
+      }
+    }
   }
 
   /* ========================================================================== */
@@ -107,6 +195,7 @@ contract WildcatArchController is Ownable {
     if (!_controllerFactories.add(factory)) {
       revert ControllerFactoryAlreadyExists();
     }
+    _addAllowedSenderOnChain(factory);
     emit ControllerFactoryAdded(factory);
   }
 
@@ -146,10 +235,18 @@ contract WildcatArchController is Ownable {
   /*                                 Controllers                                */
   /* ========================================================================== */
 
+  modifier onlyControllerFactory() {
+    if (!_controllerFactories.contains(msg.sender)) {
+      revert NotControllerFactory();
+    }
+    _;
+  }
+
   function registerController(address controller) external onlyControllerFactory {
     if (!_controllers.add(controller)) {
       revert ControllerAlreadyExists();
     }
+    _addAllowedSenderOnChain(controller);
     emit ControllerAdded(msg.sender, controller);
   }
 
@@ -189,10 +286,18 @@ contract WildcatArchController is Ownable {
   /*                                   Markets                                   */
   /* ========================================================================== */
 
+  modifier onlyController() {
+    if (!_controllers.contains(msg.sender)) {
+      revert NotController();
+    }
+    _;
+  }
+
   function registerMarket(address market) external onlyController {
     if (!_markets.add(market)) {
       revert MarketAlreadyExists();
     }
+    _addAllowedSenderOnChain(market);
     emit MarketAdded(msg.sender, market);
   }
 
