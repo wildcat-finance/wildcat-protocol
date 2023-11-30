@@ -60,14 +60,12 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
       address(archController),
       address(sanctionsSentinel)
     );
-    controllerFactory.changeSphereXOperator(SphereXOperator);
     archController.registerControllerFactory(address(controllerFactory));
     _checkSphereXConfig(address(controllerFactory), 'WildcatMarketControllerFactory');
   }
 
   function _checkSphereXConfig(address contractAddress, string memory label) internal asSelf {
-    SphereXProtectedBaseMinimal _contract = SphereXProtectedBaseMinimal(contractAddress);
-    assertEq(_contract.sphereXAdmin(), SphereXAdmin, string.concat(label, ': sphereXAdmin'));
+    SphereXProtectedRegisteredBase _contract = SphereXProtectedRegisteredBase(contractAddress);
     assertEq(_contract.sphereXOperator(), SphereXOperator, string.concat(label, ': sphereXOperator'));
     assertEq(_contract.sphereXEngine(), SphereXEngine, string.concat(label, ': sphereXEngine'));
   }
