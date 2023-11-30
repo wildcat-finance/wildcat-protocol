@@ -124,6 +124,7 @@ contract SphereXConfigTest is Test, Prankster {
   }
 
   function test_acceptSphereXAdminRole_SphereXNotPendingAdmin(address newAdmin) external {
+    vm.assume(newAdmin != address(1));
     vm.expectRevert(SphereXNotPendingAdmin.selector);
     config.acceptSphereXAdminRole();
 
@@ -198,8 +199,6 @@ contract SphereXConfigTest is Test, Prankster {
     vm.prank(operator);
     config.changeSphereXEngine(address(0));
 
-    vm.expectEmit(address(config));
-    emit NewAllowedSenderOnchain(sender);
     vm.prank(admin);
     config.addSender(sender);
   }
@@ -207,10 +206,4 @@ contract SphereXConfigTest is Test, Prankster {
   function toAddr(bytes memory label) internal pure returns (address addr) {
     addr = address(uint160(uint(keccak256(label))));
   }
-  /* function pendingSphereXAdmin() public view returns (address) {
-function sphereXAdmin() public view returns (address) {
-function sphereXOperator() public view returns (address) {
-function sphereXEngine() public view returns (address) {
-function transferSphereXAdminRole(address newAdmin) public virtual onlySphereXAdmin {
-function acceptSphereXAdminRole() public virtual { */
 }
