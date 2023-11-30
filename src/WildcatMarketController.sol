@@ -462,6 +462,10 @@ contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMark
     } else if (msg.sender != address(controllerFactory)) {
       revert CallerNotBorrowerOrControllerFactory();
     }
+    
+    if (IWildcatArchController(_archController).isBlacklistedAsset(asset)) {
+      revert UnderlyingNotPermitted();
+    }
 
     enforceParameterConstraints(
       namePrefix,

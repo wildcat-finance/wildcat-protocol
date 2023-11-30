@@ -18,6 +18,7 @@ contract WildcatArchController is SphereXConfig, Ownable {
   EnumerableSet.AddressSet internal _controllerFactories;
   EnumerableSet.AddressSet internal _borrowers;
   EnumerableSet.AddressSet internal _controllers;
+  EnumerableSet.AddressSet internal _assetBlacklist;
 
   // ========================================================================== //
   //                              Events and Errors                             //
@@ -32,8 +33,10 @@ contract WildcatArchController is SphereXConfig, Ownable {
   error MarketAlreadyExists();
 
   error BorrowerDoesNotExist();
+  error AssetAlreadyBlacklisted();
   error ControllerFactoryDoesNotExist();
   error ControllerDoesNotExist();
+  error AssetNotBlacklisted();
   error MarketDoesNotExist();
 
   event MarketAdded(address indexed controller, address market);
@@ -44,6 +47,9 @@ contract WildcatArchController is SphereXConfig, Ownable {
 
   event BorrowerAdded(address borrower);
   event BorrowerRemoved(address borrower);
+
+  event AssetBlacklisted(address asset);
+  event AssetPermitted(address asset);
 
   event ControllerAdded(address indexed controllerFactory, address controller);
   event ControllerRemoved(address controller);
@@ -186,6 +192,51 @@ contract WildcatArchController is SphereXConfig, Ownable {
   function getRegisteredBorrowersCount() external view returns (uint256) {
     return _borrowers.length();
   }
+
+  // ========================================================================== //
+  //                          Asset Blacklist Registry                          //
+  // ========================================================================== //
+
+  function addBlacklist(address asset) external onlyOwner {
+    if (!_assetBlacklist.add(asset)) {
+      revert AssetAlreadyBlacklisted();
+    }
+    emit AssetBlacklisted(asset);
+  }
+
+  function removeBlacklist(address asset) external onlyOwner {
+    if (!_assetBlacklist.remove(asset)) {
+      revert AssetNotBlacklisted();
+    }
+    emit AssetPermitted(asset);
+  }
+
+  function isBlacklistedAsset(address asset) external view returns (bool) {
+    return _assetBlacklist.contains(asset);
+  }
+
+  function getBlacklistedAssets() external view returns (address[] memory) {
+    return _assetBlacklist.values();
+  }
+
+  function getBlacklistedAssets(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory arr) {
+    uint256 len = _assetBlacklist.length();
+    end = MathUtils.min(end, len);
+    uint256 count = end - start;
+    arr = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      arr[i] = _assetBlacklist.at(start + i);
+    }
+  }
+
+  function getBlacklistedAssetsCount() external view returns (uint256) {
+    return _assetBlacklist.length();
+  }
+
+
 
   /* ========================================================================== */
   /*                            Controller Factories                            */

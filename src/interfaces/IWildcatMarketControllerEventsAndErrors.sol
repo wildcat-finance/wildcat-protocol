@@ -19,6 +19,10 @@ interface IWildcatMarketControllerEventsAndErrors {
   // `controllerFactory`.
   error CallerNotBorrowerOrControllerFactory();
 
+  // Error thrown when `deployMarket` is called for an underlying asset which has
+  // been blacklisted by the arch-controller owner.
+  error UnderlyingNotPermitted();
+
   // Error thrown if borrower calls `deployMarket` and is no longer
   // registered with the arch-controller.
   error NotRegisteredBorrower();
