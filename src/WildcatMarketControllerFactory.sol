@@ -9,11 +9,11 @@ import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 import './market/WildcatMarket.sol';
 import './WildcatMarketController.sol';
-import './spherex/SphereXProtectedMinimal.sol';
+import './spherex/SphereXProtectedRegisteredBase.sol';
 
 contract WildcatMarketControllerFactory is
   IWildcatMarketControllerFactory,
-  SphereXProtectedMinimal
+  SphereXProtectedRegisteredBase
 {
   using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -59,13 +59,17 @@ contract WildcatMarketControllerFactory is
     _;
   }
 
+  // ========================================================================== //
+  //                                 Constructor                                //
+  // ========================================================================== //
+
   constructor(
-    address _archController,
-    address _sentinel,
+    address archController_,
+    address sentinel_,
     MarketParameterConstraints memory constraints
   ) {
-    archController = _archController;
-    sentinel = _sentinel;
+    _archController = archController_;
+    sentinel = sentinel_;
     if (
       constraints.minimumAnnualInterestBips > constraints.maximumAnnualInterestBips ||
       constraints.maximumAnnualInterestBips > 10000 ||
@@ -91,6 +95,7 @@ contract WildcatMarketControllerFactory is
 
     (controllerInitCodeStorage, controllerInitCodeHash) = _storeControllerInitCode();
     (marketInitCodeStorage, marketInitCodeHash) = _storeMarketInitCode();
+    __SphereXProtectedRegisteredBase_init(IWildcatArchController(archController_).sphereXEngine());
   }
 
   function _storeControllerInitCode()
@@ -112,6 +117,10 @@ contract WildcatMarketControllerFactory is
     initCodeHash = uint256(keccak256(marketInitCode));
     initCodeStorage = LibStoredInitCode.deployInitCode(marketInitCode);
   }
+
+  // ========================================================================== //
+  //                             Controller Queries                             //
+  // ========================================================================== //
 
   function isDeployedController(address controller) external view override returns (bool) {
     return _deployedControllers.contains(controller);
@@ -137,6 +146,10 @@ contract WildcatMarketControllerFactory is
       arr[i] = _deployedControllers.at(start + i);
     }
   }
+
+  // ========================================================================== //
+  //                                Configuration                               //
+  // ========================================================================== //
 
   /**
    * @dev Returns protocol fee configuration for new markets.
@@ -236,9 +249,9 @@ contract WildcatMarketControllerFactory is
     constraints.maximumAnnualInterestBips = MaximumAnnualInterestBips;
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                            Controller Deployment                           */
-  /* -------------------------------------------------------------------------- */
+  // ========================================================================== //
+  //                            Controller Deployment                           //
+  // ========================================================================== //
 
   address internal _tmpMarketBorrowerParameter = address(1);
 
@@ -249,7 +262,7 @@ contract WildcatMarketControllerFactory is
     override
     returns (MarketControllerParameters memory parameters)
   {
-    parameters.archController = address(archController);
+    parameters.archController = _archController;
     parameters.borrower = _tmpMarketBorrowerParameter;
     parameters.sentinel = sentinel;
     parameters.marketInitCodeStorage = marketInitCodeStorage;
@@ -264,8 +277,6 @@ contract WildcatMarketControllerFactory is
     parameters.maximumWithdrawalBatchDuration = MaximumWithdrawalBatchDuration;
     parameters.minimumAnnualInterestBips = MinimumAnnualInterestBips;
     parameters.maximumAnnualInterestBips = MaximumAnnualInterestBips;
-    parameters.sphereXAdmin = sphereXAdmin();
-    parameters.sphereXOperator = sphereXOperator();
     parameters.sphereXEngine = sphereXEngine();
   }
 
@@ -350,7 +361,6 @@ contract WildcatMarketControllerFactory is
     IWildcatArchController(archController).registerController(controller);
     _deployedControllers.add(controller);
     emit NewController(msg.sender, controller);
-    _addAllowedSenderOnChain(controller);
   }
 
   function computeControllerAddress(address borrower) external view override returns (address) {

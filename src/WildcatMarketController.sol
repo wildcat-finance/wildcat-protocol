@@ -10,7 +10,7 @@ import './interfaces/IWildcatMarketControllerFactory.sol';
 import './libraries/LibStoredInitCode.sol';
 import './libraries/MathUtils.sol';
 import { queryName, querySymbol } from './libraries/StringQuery.sol';
-import './spherex/SphereXProtectedBaseMinimal.sol';
+import './spherex/SphereXProtectedRegisteredBase.sol';
 
 struct TemporaryReserveRatio {
   uint16 originalAnnualInterestBips;
@@ -32,7 +32,7 @@ struct TmpMarketParameterStorage {
   uint32 delinquencyGracePeriod;
 }
 
-contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBaseMinimal {
+contract WildcatMarketController is SphereXProtectedRegisteredBase, IWildcatMarketController {
   using EnumerableSet for EnumerableSet.AddressSet;
   using SafeCastLib for uint256;
   using SafeTransferLib for address;
@@ -41,7 +41,9 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
   /*                                 Immutables                                 */
   /* -------------------------------------------------------------------------- */
 
-  address public immutable override archController;
+  function archController() external view override returns (address) {
+    return _archController;
+  }
 
   address public immutable override controllerFactory;
 
@@ -98,7 +100,7 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
     controllerFactory = msg.sender;
     MarketControllerParameters memory parameters = IWildcatMarketControllerFactory(msg.sender)
       .getMarketControllerParameters();
-    archController = parameters.archController;
+    _archController = parameters.archController;
     borrower = parameters.borrower;
     sentinel = parameters.sentinel;
     marketInitCodeStorage = parameters.marketInitCodeStorage;
@@ -113,11 +115,7 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
     MaximumWithdrawalBatchDuration = parameters.maximumWithdrawalBatchDuration;
     MinimumAnnualInterestBips = parameters.minimumAnnualInterestBips;
     MaximumAnnualInterestBips = parameters.maximumAnnualInterestBips;
-    __SphereXProtectedBase_init(
-      parameters.sphereXAdmin,
-      parameters.sphereXOperator,
-      parameters.sphereXEngine
-    );
+    __SphereXProtectedRegisteredBase_init(parameters.sphereXEngine);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -345,8 +343,7 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
     parameters.withdrawalBatchDuration = _tmpMarketParameters.withdrawalBatchDuration;
     parameters.reserveRatioBips = _tmpMarketParameters.reserveRatioBips;
     parameters.delinquencyGracePeriod = _tmpMarketParameters.delinquencyGracePeriod;
-    parameters.sphereXAdmin = sphereXAdmin();
-    parameters.sphereXOperator = sphereXOperator();
+    parameters.archController = _archController;
     parameters.sphereXEngine = sphereXEngine();
   }
 
@@ -398,7 +395,7 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
     uint32 delinquencyGracePeriod
   ) external override sphereXGuardExternal returns (address market) {
     if (msg.sender == borrower) {
-      if (!IWildcatArchController(archController).isRegisteredBorrower(msg.sender)) {
+      if (!IWildcatArchController(_archController).isRegisteredBorrower(msg.sender)) {
         revert NotRegisteredBorrower();
       }
     } else if (msg.sender != address(controllerFactory)) {
@@ -451,7 +448,7 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
     }
     LibStoredInitCode.create2WithStoredInitCode(marketInitCodeStorage, salt);
 
-    IWildcatArchController(archController).registerMarket(market);
+    IWildcatArchController(_archController).registerMarket(market);
     _controlledMarkets.add(market);
 
     _resetTmpMarketParameters();
@@ -468,8 +465,6 @@ contract WildcatMarketController is IWildcatMarketController, SphereXProtectedBa
       parameters.reserveRatioBips,
       parameters.delinquencyGracePeriod
     );
-
-    _addAllowedSenderOnChain(market);
   }
 
   /**
