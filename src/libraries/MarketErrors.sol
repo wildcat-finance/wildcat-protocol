@@ -75,7 +75,7 @@ function revert_PenaltyFeeTooHigh() pure {
 /// @dev Equivalent to `revert AccountBlocked()`
 function revert_AccountBlocked() pure {
   assembly {
-    mstore(0, 0x7d28af3f)
+    mstore(0, 0x6bc671fd)
     revert(0x1c, 0x04)
   }
 }
