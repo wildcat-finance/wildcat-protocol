@@ -184,7 +184,7 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
    *      If the account's role is not set, queries the controller to
    *      determine if it is an approved lender; if it is, its role
    *      is initialized to DepositAndWithdraw.
-   * 
+   *
    *      Return parameter is declared as a pointer rather than `Account`
    *      to avoid unnecessary zeroing and allocation of memory.
    */
@@ -211,7 +211,7 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
 
   /**
    * @dev Function type cast to avoid duplicate declaration of Account return parameter.
-   * 
+   *
    *      With `viaIR` enabled, calling this function is a noop.
    */
   function _castReturnAccount(
@@ -334,7 +334,7 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
 
   /**
    * @dev Function type cast to avoid duplicate declaration of MarketState return parameter.
-   * 
+   *
    *      With `viaIR` enabled, calling this function is a noop.
    */
   function _castReturnMarketState(
@@ -348,7 +348,7 @@ contract WildcatMarketBase is ReentrancyGuardMinimal, IMarketEventsAndErrors {
   /**
    * @dev Function type cast to avoid duplicate declaration of MarketState and WithdrawalBatch
    *      return parameters.
-   * 
+   *
    *      With `viaIR` enabled, calling this function is a noop.
    */
   function _castReturnPointers(
