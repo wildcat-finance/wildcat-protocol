@@ -41,7 +41,11 @@ contract MarketLensTest is BaseMarketTest {
 
     assertEq(market.protocolFeeBips(), data.protocolFeeBips, 'protocolFeeBips');
     assertEq(market.delinquencyFeeBips(), data.delinquencyFeeBips, 'delinquencyFeeBips');
-    assertEq(market.withdrawalBatchDuration(), data.withdrawalBatchDuration, 'withdrawalBatchDuration');
+    assertEq(
+      market.withdrawalBatchDuration(),
+      data.withdrawalBatchDuration,
+      'withdrawalBatchDuration'
+    );
     assertEq(
       market.delinquencyGracePeriod(),
       data.delinquencyGracePeriod,
@@ -49,7 +53,7 @@ contract MarketLensTest is BaseMarketTest {
     );
     assertEq(market.reserveRatioBips(), data.reserveRatioBips, 'reserveRatioBips');
 
-    (,uint128 tmpReserveRatioBips, uint128 temporaryReserveRatioExpiry) = controller
+    (, uint128 tmpReserveRatioBips, uint128 temporaryReserveRatioExpiry) = controller
       .temporaryExcessReserveRatio(address(market));
     assertEq(data.temporaryReserveRatio, temporaryReserveRatioExpiry != 0, 'temporaryReserveRatio');
     assertEq(data.originalReserveRatioBips, tmpReserveRatioBips, 'originalReserveRatioBips');

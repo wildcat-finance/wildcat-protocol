@@ -41,9 +41,7 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
    *      `borrower`.
    */
   function isSanctioned(address borrower, address account) public view override returns (bool) {
-    return
-      !sanctionOverrides[borrower][account] &&
-      isFlaggedByChainalysis(account);
+    return !sanctionOverrides[borrower][account] && isFlaggedByChainalysis(account);
   }
 
   /**
@@ -101,7 +99,6 @@ contract WildcatSanctionsSentinel is IWildcatSanctionsSentinel {
     address account,
     address asset
   ) public override returns (address escrowContract) {
-
     escrowContract = getEscrowAddress(borrower, account, asset);
 
     // Skip creation if the address code size is non-zero

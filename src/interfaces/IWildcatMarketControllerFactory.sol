@@ -95,7 +95,10 @@ interface IWildcatMarketControllerFactory {
     view
     returns (MarketParameterConstraints memory constraints);
 
-  function getMarketControllerParameters() external view returns (MarketControllerParameters memory);
+  function getMarketControllerParameters()
+    external
+    view
+    returns (MarketControllerParameters memory);
 
   /**
    * @dev Deploys a new instance of the wildcat controller variant

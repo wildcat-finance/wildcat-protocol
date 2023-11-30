@@ -14,7 +14,10 @@ contract WildcatMarketToken is WildcatMarketBase {
 
   /// @notice Returns the normalized balance of `account` with interest.
   function balanceOf(address account) public view virtual nonReentrantView returns (uint256) {
-    return _castReturnMarketState(_calculateCurrentStatePointers)().normalizeAmount(_accounts[account].scaledBalance);
+    return
+      _castReturnMarketState(_calculateCurrentStatePointers)().normalizeAmount(
+        _accounts[account].scaledBalance
+      );
   }
 
   /// @notice Returns the normalized total supply with interest.
@@ -26,12 +29,18 @@ contract WildcatMarketToken is WildcatMarketBase {
   /*                                ERC20 Actions                               */
   /* -------------------------------------------------------------------------- */
 
-  function approve(address spender, uint256 amount) external virtual nonReentrant sphereXGuardExternal returns (bool) {
+  function approve(
+    address spender,
+    uint256 amount
+  ) external virtual nonReentrant sphereXGuardExternal returns (bool) {
     _approve(msg.sender, spender, amount);
     return true;
   }
 
-  function transfer(address to, uint256 amount) external virtual nonReentrant sphereXGuardExternal returns (bool) {
+  function transfer(
+    address to,
+    uint256 amount
+  ) external virtual nonReentrant sphereXGuardExternal returns (bool) {
     _transfer(msg.sender, to, amount);
     return true;
   }

@@ -310,7 +310,7 @@ contract WildcatMarketTest is BaseMarketTest {
   /* ========================================================================== */
 
   function test_repayDelinquentDebt() external {
-    _depositBorrowWithdraw(alice, 1e18, 8e17, 2e17);// 20% of 8e17
+    _depositBorrowWithdraw(alice, 1e18, 8e17, 2e17); // 20% of 8e17
     asset.mint(address(this), 1.6e17);
     asset.approve(address(market), 1.6e17);
     vm.expectEmit(address(market));

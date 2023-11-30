@@ -1,4 +1,5 @@
-pragma solidity ^0.8.17;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
 function emit_ChangedSpherexOperator(address oldSphereXAdmin, address newSphereXAdmin) {
   assembly {

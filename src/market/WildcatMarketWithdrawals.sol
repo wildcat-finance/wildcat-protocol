@@ -32,7 +32,7 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     if ((expiry == pendingBatchExpiry).and(expiry > 0)) {
       return pendingBatch;
     }
-    
+
     WithdrawalBatch storage _batch = _withdrawalData.batches[expiry];
     batch.scaledTotalAmount = _batch.scaledTotalAmount;
     batch.scaledAmountBurned = _batch.scaledAmountBurned;
@@ -43,7 +43,9 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
     address accountAddress,
     uint32 expiry
   ) external view nonReentrantView returns (AccountWithdrawalStatus memory status) {
-    AccountWithdrawalStatus storage _status = _withdrawalData.accountStatuses[expiry][accountAddress];
+    AccountWithdrawalStatus storage _status = _withdrawalData.accountStatuses[expiry][
+      accountAddress
+    ];
     status.scaledAmount = _status.scaledAmount;
     status.normalizedAmountWithdrawn = _status.normalizedAmountWithdrawn;
   }
@@ -81,22 +83,24 @@ contract WildcatMarketWithdrawals is WildcatMarketBase {
    * @dev Create a withdrawal request for a lender.
    */
   function queueWithdrawal(uint256 amount) external nonReentrant sphereXGuardExternal {
-
     MarketState memory state = _getUpdatedState();
-    
+
     uint104 scaledAmount = state.scaleAmount(amount).toUint104();
     if (scaledAmount == 0) {
       revert_NullBurnAmount();
     }
 
     // Cache account data and revert_if not authorized to withdraw.
-    Account memory account = _castReturnAccount(_getAccountWithRole)(msg.sender, AuthRole.WithdrawOnly);
+    Account memory account = _castReturnAccount(_getAccountWithRole)(
+      msg.sender,
+      AuthRole.WithdrawOnly
+    );
 
     // Reduce caller's balance and emit transfer event.
     account.scaledBalance -= scaledAmount;
     _accounts[msg.sender] = account;
     emit_Transfer(msg.sender, address(this), amount);
-    
+
     // Cache batch expiry on the stack for gas savings.
     uint32 expiry = state.pendingWithdrawalExpiry;
 

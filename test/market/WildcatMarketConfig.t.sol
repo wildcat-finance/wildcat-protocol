@@ -252,7 +252,6 @@ contract WildcatMarketConfigTest is BaseMarketTest {
     assertEq(market.annualInterestBips(), _annualInterestBips);
   }
 
-
   function test_setAnnualInterestBips_NotController(uint16 _annualInterestBips) external {
     vm.expectRevert(IMarketEventsAndErrors.NotController.selector);
     market.setAnnualInterestBips(_annualInterestBips);

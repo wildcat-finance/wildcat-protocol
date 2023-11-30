@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 // (c) SphereX 2023 Terms&Conditions
-
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import { ISphereXEngine, ModifierLocals } from './ISphereXEngine.sol';
 import './SphereXProtectedEvents.sol';
@@ -12,10 +11,6 @@ abstract contract SphereXConfig {
   //                                Storage Slots                               //
   // ========================================================================== //
 
-  /**
-   * @dev we would like to avoid occupying storage slots
-   * @dev to easily incorporate with existing contracts
-   */
   bytes32 private constant SPHEREX_ADMIN_STORAGE_SLOT =
     bytes32(uint256(keccak256('eip1967.spherex.spherex')) - 1);
   bytes32 private constant SPHEREX_PENDING_ADMIN_STORAGE_SLOT =
@@ -86,31 +81,24 @@ abstract contract SphereXConfig {
   // ========================================================================== //
 
   /**
-   * Returns the currently pending admin address, the one that can call acceptSphereXAdminRole to become the admin.
-   * @dev Could not use OZ Ownable2Step because the client's contract might use it.
+   * @dev Returns the current pending admin address, which is able to call
+   *      acceptSphereXAdminRole to become the admin.
    */
   function pendingSphereXAdmin() public view returns (address) {
     return _getAddress(SPHEREX_PENDING_ADMIN_STORAGE_SLOT);
   }
 
-  /**
-   * Returns the current admin address, the one that can call acceptSphereXAdminRole to become the admin.
-   * @dev Could not use OZ Ownable2Step because the client's contract might use it.
-   */
+  /// @dev Returns the current admin address, which is able to change the operator.
   function sphereXAdmin() public view returns (address) {
     return _getAddress(SPHEREX_ADMIN_STORAGE_SLOT);
   }
 
-  /**
-   * Returns the current operator address.
-   */
+  /// @dev Returns the current operator address.
   function sphereXOperator() public view returns (address) {
     return _getAddress(SPHEREX_OPERATOR_STORAGE_SLOT);
   }
 
-  /**
-   * @dev Returns the current engine address.
-   */
+  /// @dev Returns the current engine address.
   function sphereXEngine() public view returns (address) {
     return _getAddress(SPHEREX_ENGINE_STORAGE_SLOT);
   }
@@ -120,18 +108,15 @@ abstract contract SphereXConfig {
   // ========================================================================== //
 
   /**
-   * @dev Sets the address of the next admin.
-   *      This address will have to accept the role to become the new admin.
+   * @dev Set pending admin to `newAdmin`, allowing it to call 
+   *      `acceptSphereXAdminRole()` to receive the admin role.
    */
   function transferSphereXAdminRole(address newAdmin) public virtual onlySphereXAdmin {
     _setAddress(SPHEREX_PENDING_ADMIN_STORAGE_SLOT, newAdmin);
     emit_SpherexAdminTransferStarted(sphereXAdmin(), newAdmin);
   }
 
-  /**
-   * @dev Accepting the admin role and completing the transfer.
-   * @dev Could not use OZ Ownable2Step because the client's contract might use it.
-   */
+  /// @dev Accepts a pending admin transfer.
   function acceptSphereXAdminRole() public virtual {
     if (msg.sender != pendingSphereXAdmin()) {
       revert_SphereXNotPendingAdmin();
@@ -142,9 +127,7 @@ abstract contract SphereXConfig {
     emit_SpherexAdminTransferCompleted(oldAdmin, msg.sender);
   }
 
-  /**
-   * @param newSphereXOperator new address of the new operator account
-   */
+  /// @dev Changes the address of the SphereX operator.
   function changeSphereXOperator(address newSphereXOperator) external onlySphereXAdmin {
     address oldSphereXOperator = _getAddress(SPHEREX_OPERATOR_STORAGE_SLOT);
     _setAddress(SPHEREX_OPERATOR_STORAGE_SLOT, newSphereXOperator);
@@ -152,10 +135,10 @@ abstract contract SphereXConfig {
   }
 
   /**
+   * @dev  Changes the address of the SphereX engine.
    *
-   * @param newSphereXEngine new address of the spherex engine
-   * @dev this is also used to actually enable the defense
-   * (because as long is this address is 0, the protection is disabled).
+   *       This is also used to enable SphereX protection, which is disabled
+   *       when the engine address is 0.
    */
   function changeSphereXEngine(address newSphereXEngine) external spherexOnlyOperator {
     address oldEngine = _getAddress(SPHEREX_ENGINE_STORAGE_SLOT);
@@ -193,26 +176,15 @@ abstract contract SphereXConfig {
   //                          Internal Storage Helpers                          //
   // ========================================================================== //
 
-  /**
-   * Stores a new address in an arbitrary slot
-   * @param slot where to store the address
-   * @param newAddress address to store in given slot
-   */
+  /// @dev Stores an address in an arbitrary slot
   function _setAddress(bytes32 slot, address newAddress) internal {
-    // solhint-disable-next-line no-inline-assembly
-    // slither-disable-next-line assembly
     assembly {
       sstore(slot, newAddress)
     }
   }
 
-  /**
-   * Returns an address from an arbitrary slot.
-   * @param slot to read an address from
-   */
+  /// @dev Returns an address from an arbitrary slot.
   function _getAddress(bytes32 slot) internal view returns (address addr) {
-    // solhint-disable-next-line no-inline-assembly
-    // slither-disable-next-line assembly
     assembly {
       addr := sload(slot)
     }

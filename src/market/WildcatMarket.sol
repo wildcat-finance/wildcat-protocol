@@ -65,7 +65,10 @@ contract WildcatMarket is
       asset.safeTransferFrom(msg.sender, address(this), amount);
 
       // Cache account data and revert if not authorized to deposit.
-      Account memory account = _castReturnAccount(_getAccountWithRole)(msg.sender, AuthRole.DepositAndWithdraw);
+      Account memory account = _castReturnAccount(_getAccountWithRole)(
+        msg.sender,
+        AuthRole.DepositAndWithdraw
+      );
       account.scaledBalance += scaledAmount;
       _accounts[msg.sender] = account;
 
@@ -82,7 +85,6 @@ contract WildcatMarket is
     }
   }
 
-  
   /**
    * @dev Deposit up to `amount` underlying assets and mint market tokens
    *      for `msg.sender`.
@@ -94,14 +96,9 @@ contract WildcatMarket is
    *      Reverts if the market is closed or if the scaled token amount
    *      that would be minted for the deposit is zero.
    */
-   function depositUpTo(
+  function depositUpTo(
     uint256 amount
-  )
-    external
-    virtual
-    sphereXGuardExternal
-    returns (uint256 /* actualAmount */)
-  {
+  ) external virtual sphereXGuardExternal returns (uint256 /* actualAmount */) {
     return _depositUpTo(amount);
   }
 
@@ -146,7 +143,6 @@ contract WildcatMarket is
    *      Reverts if the market is closed.
    */
   function borrow(uint256 amount) external onlyBorrower nonReentrant sphereXGuardExternal {
-
     if (WildcatSanctionsSentinel(sentinel).isFlaggedByChainalysis(borrower)) {
       revert_BorrowWhileSanctioned();
     }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 // (c) SphereX 2023 Terms&Conditions
-
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import { ISphereXEngine, ModifierLocals } from './ISphereXEngine.sol';
 import './SphereXProtectedEvents.sol';
@@ -10,7 +9,7 @@ import './SphereXProtectedErrors.sol';
 /**
  * @title Modified version of SphereXProtectedBase for contracts registered
  *        on Wildcat's arch controller.
- * 
+ *
  * @author Modified from https://github.com/spherex-xyz/spherex-protect-contracts/blob/main/src/SphereXProtectedBase.sol
  *
  * @dev In this version, the WildcatArchController deployment is the SphereX operator.

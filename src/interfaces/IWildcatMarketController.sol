@@ -138,6 +138,7 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
    *      Can not be set lower than the market's current total supply.
    */
   function setMaxTotalSupply(address market, uint256 maxTotalSupply) external;
+
   /**
    * @dev Modify the interest rate for a market.
    * If the new interest rate is lower than the current interest rate,
@@ -153,7 +154,10 @@ interface IWildcatMarketController is IWildcatMarketControllerEventsAndErrors {
 
   function temporaryExcessReserveRatio(
     address
-  ) external view returns (uint16 originalAnnualInterestBips, uint16 originalReserveRatioBips, uint32 expiry);
+  )
+    external
+    view
+    returns (uint16 originalAnnualInterestBips, uint16 originalReserveRatioBips, uint32 expiry);
 
   /**
    * @dev Deploys a new instance of the market through the market factory

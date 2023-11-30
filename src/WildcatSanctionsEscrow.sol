@@ -8,7 +8,6 @@ import { WildcatSanctionsSentinel } from './WildcatSanctionsSentinel.sol';
 import { IWildcatSanctionsEscrow } from './interfaces/IWildcatSanctionsEscrow.sol';
 import 'solady/utils/SafeTransferLib.sol';
 
-
 contract WildcatSanctionsEscrow is IWildcatSanctionsEscrow {
   using SafeTransferLib for address;
 

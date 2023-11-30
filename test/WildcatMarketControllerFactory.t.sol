@@ -20,17 +20,8 @@ contract WildcatMarketControllerFactoryTest is Test {
       constraints
     );
     archController.registerControllerFactory(address(controllerFactory));
-    assertEq(
-      controllerFactory.archController(),
-      address(archController),
-      'archController'
-    );
-    assertEq(
-      controllerFactory.sentinel(),
-      address(0),
-      'sentinel'
-    );
-
+    assertEq(controllerFactory.archController(), address(archController), 'archController');
+    assertEq(controllerFactory.sentinel(), address(0), 'sentinel');
   }
 
   function _resetConstraints() internal {

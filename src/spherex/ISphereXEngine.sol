@@ -1,4 +1,6 @@
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: UNLICENSED
+// (c) SphereX 2023 Terms&Conditions
+pragma solidity ^0.8.20;
 
 /// @dev this struct is used to reduce the stack usage of the modifiers.
 struct ModifierLocals {

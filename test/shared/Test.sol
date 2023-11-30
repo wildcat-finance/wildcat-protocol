@@ -154,10 +154,10 @@ contract Test is ForgeTest, Prankster, IWildcatMarketControllerEventsAndErrors {
       numControllers + 1,
       'controller count'
     );
-    
+
     address[] memory controllers = controllerFactory.getDeployedControllers();
     assertEq(controllers[controllers.length - 1], expectedController, 'getDeployedControllers');
-    controllers = controllerFactory.getDeployedControllers( numControllers, numControllers + 1);
+    controllers = controllerFactory.getDeployedControllers(numControllers, numControllers + 1);
     assertEq(controllers[controllers.length - 1], expectedController, 'getDeployedControllers');
 
     _checkSphereXConfig(address(_controller), 'WildcatMarketController');

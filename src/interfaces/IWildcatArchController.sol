@@ -13,37 +13,37 @@ interface IWildcatArchController {
   // ========================================================================== //
 
   event ChangedSpherexOperator(address oldSphereXAdmin, address newSphereXAdmin);
-  
+
   event ChangedSpherexEngineAddress(address oldEngineAddress, address newEngineAddress);
-  
+
   event SpherexAdminTransferStarted(address currentAdmin, address pendingAdmin);
-  
+
   event SpherexAdminTransferCompleted(address oldAdmin, address newAdmin);
-  
+
   event NewAllowedSenderOnchain(address sender);
 
   error SphereXOperatorRequired();
-  
+
   error SphereXAdminRequired();
-  
+
   error SphereXOperatorOrAdminRequired();
-  
+
   error SphereXNotPendingAdmin();
-  
+
   error SphereXNotEngine();
 
   function pendingSphereXAdmin() external view returns (address);
-  
+
   function sphereXAdmin() external view returns (address);
-  
+
   function sphereXOperator() external view returns (address);
-  
+
   function sphereXEngine() external view returns (address);
-  
+
   function transferSphereXAdminRole(address newAdmin) external virtual;
-  
+
   function acceptSphereXAdminRole() external virtual;
-  
+
   function changeSphereXOperator(address newSphereXOperator) external;
 
   function changeSphereXEngine(address newSphereXEngine) external;
@@ -127,7 +127,10 @@ interface IWildcatArchController {
 
   function getRegisteredMarkets() external view returns (address[] memory);
 
-  function getRegisteredMarkets(uint256 start, uint256 end) external view returns (address[] memory);
+  function getRegisteredMarkets(
+    uint256 start,
+    uint256 end
+  ) external view returns (address[] memory);
 
   function getRegisteredMarketsCount() external view returns (uint256);
 

@@ -129,8 +129,11 @@ library MarketDataLib {
     data.delinquencyGracePeriod = market.delinquencyGracePeriod();
     data.withdrawalBatchDuration = market.withdrawalBatchDuration();
 
-    (data.originalAnnualInterestBips, data.originalReserveRatioBips, data.temporaryReserveRatioExpiry) = WildcatMarketController(market.controller())
-      .temporaryExcessReserveRatio(address(market));
+    (
+      data.originalAnnualInterestBips,
+      data.originalReserveRatioBips,
+      data.temporaryReserveRatioExpiry
+    ) = WildcatMarketController(market.controller()).temporaryExcessReserveRatio(address(market));
     data.temporaryReserveRatio = data.temporaryReserveRatioExpiry > 0;
 
     data.unpaidWithdrawalBatchExpiries = market.getUnpaidBatchExpiries();

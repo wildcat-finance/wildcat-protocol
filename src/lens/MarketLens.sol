@@ -215,7 +215,6 @@ contract MarketLens {
     result.fill(query);
   }
 
-
   function queryLenderAccounts(
     LenderAccountQuery[] memory queries
   ) external view returns (LenderAccountQueryResult[] memory result) {
@@ -273,7 +272,11 @@ contract MarketLens {
     address market,
     uint32 expiry,
     address[] calldata lenders
-  ) external view returns (WithdrawalBatchData memory batch, WithdrawalBatchLenderStatus[] memory statuses) {
+  )
+    external
+    view
+    returns (WithdrawalBatchData memory batch, WithdrawalBatchLenderStatus[] memory statuses)
+  {
     batch.fill(WildcatMarket(market), expiry);
 
     statuses = new WithdrawalBatchLenderStatus[](lenders.length);
@@ -281,5 +284,4 @@ contract MarketLens {
       statuses[i].fill(WildcatMarket(market), batch, lenders[i]);
     }
   }
-
 }
