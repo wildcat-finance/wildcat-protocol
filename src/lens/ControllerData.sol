@@ -44,7 +44,7 @@ library ControllerDataLib {
     data.controller = controllerFactory.computeControllerAddress(borrower);
     data.controllerFactory = address(controllerFactory);
     data.isRegisteredBorrower = archController.isRegisteredBorrower(borrower);
-    data.hasDeployedController = data.controller.codehash != 0;
+    data.hasDeployedController = data.controller.code.length != 0;
     data.fees.fill(controllerFactory);
     data.constraints = controllerFactory.getParameterConstraints();
     if (data.hasDeployedController) {
