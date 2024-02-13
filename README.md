@@ -1,8 +1,8 @@
 # The Wildcat Protocol
 
-Read the code. We'll work on this bit.
+Here's the code. Enjoy it.
 
-For the time being:
+For other bits and pieces:
 
 ### The Whitepaper
 
@@ -10,8 +10,8 @@ For the time being:
 
 ### The Manifesto
 
-[https://tinyurl.com/wildcat-manifesto](https://medium.com/@wildcatprotocol/the-wildcat-manifesto-db23d4b9484d)https://medium.com/@wildcatprotocol/the-wildcat-manifesto-db23d4b9484d
+[https://tinyurl.com/wildcat-manifesto](https://medium.com/@wildcatprotocol/the-wildcat-manifesto-db23d4b9484d)
 
 ### The Documentation
 
-[https://wildcat-protocol.gitbook.io](https://wildcat-protocol.gitbook.io/wildcat/)https://wildcat-protocol.gitbook.io/wildcat/
+[https://wildcat-protocol.gitbook.io](https://wildcat-protocol.gitbook.io/wildcat/)
