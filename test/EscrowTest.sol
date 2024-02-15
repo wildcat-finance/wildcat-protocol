@@ -239,7 +239,7 @@ contract EscrowTest is Test {
     MockERC20(asset).mint(address(escrow), amount);
     assertEq(escrow.balance(), amount);
 
-    if (sanctioned && caller != borrower) {
+    if (sanctioned) {
       vm.expectRevert(IWildcatSanctionsEscrow.CanNotReleaseEscrow.selector);
       escrow.releaseEscrow();
     } else {
