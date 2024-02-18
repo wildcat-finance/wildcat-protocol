@@ -74,9 +74,9 @@ contract WildcatMarketConfig is WildcatMarketBase {
   //          *          *          *       ```--. . , ; .--'''      *
   //          *          *          *   💸        | |   |            *
   //          *          *          *          .-=||  | |=-.    💸   *
-  //  💰🤑💰 *   😅    *    😐    *    💸    `-=#$%&%$#=-'         *
-  //   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪       *
-  //   /\     * 💰/\ 💰 * 💰/\ 💰 *    _____.,-#%&$@%#&#~,._____    *
+  //  💰🤑💰  *    😅    *    😐    *    💸    `-=#$%&%$#=-'         *
+  //   \|/    *   /|\    *   /|\    *  🌪         | ;  :|    🌪      *
+  //   /\     * 💰/\ 💰  * 💰/\ 💰  *    _____.,-#%&$@%#&#~,._____   *
   // ******************************************************************
   function nukeFromOrbit(address accountAddress) external nonReentrant sphereXGuardExternal {
     if (!IWildcatSanctionsSentinel(sentinel).isSanctioned(borrower, accountAddress)) {
